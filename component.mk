@@ -1,3 +1,3 @@
+DISABLE_SPIFFS := 1
 COMPONENT_DEPENDS := ArduinoJson6
-
-#ArduinoStreamUtils
+COMPONENT_SRCDIRS := src $(call ListAllSubDirs,$(COMPONENT_PATH)/src)

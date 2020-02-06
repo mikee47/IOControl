@@ -9,7 +9,7 @@
  *
  */
 
-#include "Modbus.h"
+#include <IO/Modbus/driver.h>
 #include "Digital.h"
 #include "HardwareSerial.h"
 #include "Platform/System.h"
@@ -59,9 +59,9 @@ static uint16_t crc16_update(uint16_t crc, uint8_t a)
 	return crc;
 }
 
-void Modbus::uartCallback(uart_t* uart, uint32_t status)
+void ModbusDriver::uartCallback(uart_t* uart, uint32_t status)
 {
-	auto modbus = static_cast<Modbus*>(uart_get_callback_param(uart));
+	auto modbus = static_cast<ModbusDriver*>(uart_get_callback_param(uart));
 	// Guard against spurious interrupts
 	if(modbus == nullptr) {
 		return;
@@ -80,7 +80,7 @@ void Modbus::uartCallback(uart_t* uart, uint32_t status)
 }
 
 // Prepare for communication with a slave device
-void Modbus::begin(uint8_t txEnablePin, ModbusDelegate callback)
+void ModbusDriver::begin(uint8_t txEnablePin, ModbusDelegate callback)
 {
 	this->txEnablePin = txEnablePin;
 	transactionCallback = callback;
@@ -111,7 +111,7 @@ void Modbus::begin(uint8_t txEnablePin, ModbusDelegate callback)
  * We write data into the hardware FIFO: no need for any software buffering.
  *
  */
-bool Modbus::execute(ModbusTransaction& mbt)
+bool ModbusDriver::execute(ModbusTransaction& mbt)
 {
 	// Fail if transaction already in progress
 	if(transaction != nullptr) {
@@ -171,7 +171,7 @@ bool Modbus::execute(ModbusTransaction& mbt)
 	timer.initializeMs<MODBUS_TRANSACTION_TIMEOUT_MS>(
 		[](void* arg) {
 			Serial.setUartCallback(nullptr);
-			reinterpret_cast<Modbus*>(arg)->completeTransaction(MBE_ResponseTimedOut);
+			reinterpret_cast<ModbusDriver*>(arg)->completeTransaction(MBE_ResponseTimedOut);
 		},
 		this);
 	timer.startOnce();
@@ -191,7 +191,7 @@ bool Modbus::execute(ModbusTransaction& mbt)
  * We'll need some code (probably in common) which lets us post to the queue.
  *
  */
-void Modbus::receiveComplete()
+void ModbusDriver::receiveComplete()
 {
 	Serial.setUartCallback(nullptr);
 	timer.stop();
@@ -199,14 +199,14 @@ void Modbus::receiveComplete()
 	// Now need to schedule a task callback to process the received data
 	System.queueCallback(
 		[](uint32_t param) {
-			auto modbus = reinterpret_cast<Modbus*>(param);
+			auto modbus = reinterpret_cast<ModbusDriver*>(param);
 			auto status = modbus->processResponse();
 			modbus->completeTransaction(status);
 		},
 		reinterpret_cast<uint32_t>(this));
 }
 
-ModbusExceptionCode Modbus::processResponse()
+ModbusExceptionCode ModbusDriver::processResponse()
 {
 	auto size = (size_t)Serial.available();
 	// SlaveID, Function, CRC with at least 1 data byte
@@ -275,9 +275,9 @@ ModbusExceptionCode Modbus::processResponse()
 /*
  * Called by serial ISR when transaction has completed, or by expiry timer.
  */
-void Modbus::completeTransaction(ModbusExceptionCode status)
+void ModbusDriver::completeTransaction(ModbusExceptionCode status)
 {
-	debug_d("Modbus::completeTransaction(): %s", modbusExceptionString(status).c_str());
+	debug_d("ModbusDriver::completeTransaction(): %s", modbusExceptionString(status).c_str());
 
 	ModbusTransaction* mbt = transaction;
 	transaction = nullptr;

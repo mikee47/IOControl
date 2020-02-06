@@ -5,17 +5,18 @@
  *      Author: mikee47
  */
 
-#include "IOControl.h"
-#include "IOControls.h"
+#include <IO/Control.h>
 
-IODeviceClassMap IOController::m_deviceClasses;
+namespace IO
+{
+DeviceClassMap Controller::m_deviceClasses;
 
 // Manages configurable device instances
-CIODeviceManager devmgr;
-
-DEFINE_FSTR_LOCAL(METHOD_IOCONTROL, "iocontrol")
+DeviceManager devmgr;
 
 // Global json tags
+DEFINE_FSTR(ATTR_COMMAND, "command")
+DEFINE_FSTR(ATTR_NAME, "name")
 DEFINE_FSTR(ATTR_DEVICE, "device")
 DEFINE_FSTR(ATTR_DEVICES, "devices")
 DEFINE_FSTR(ATTR_ID, "id")
@@ -30,16 +31,16 @@ DEFINE_FSTR_LOCAL(JS_DEVICES, "devices")
 DEFINE_FSTR_LOCAL(ATTR_CONTROLLER, "controller")
 DEFINE_FSTR_LOCAL(ATTR_CLASS, "class")
 
-#define XX(_tag, _comment) #_tag "\0"
+#define XX(tag, comment) #tag "\0"
 DEFINE_FSTR_LOCAL(IOCOMMAND_STRINGS, IOCOMMAND_MAP(XX))
 #undef XX
 
-String IoCommandToStr(io_command_t cmd)
+String toString(Command cmd)
 {
-	return CStringArray(IOCOMMAND_STRINGS)[cmd];
+	return CStringArray(IOCOMMAND_STRINGS)[unsigned(cmd)];
 }
 
-static bool strToIoCommand(const char* str, io_command_t& cmd)
+static bool strToIoCommand(const char* str, Command& cmd)
 {
 	CStringArray commandStrings(IOCOMMAND_STRINGS);
 	auto i = commandStrings.indexOf(str);
@@ -48,88 +49,70 @@ static bool strToIoCommand(const char* str, io_command_t& cmd)
 		return false;
 	}
 
-	cmd = io_command_t(i);
+	cmd = Command(i);
 	return true;
 }
 
-/* CIORequest */
+/* Request */
 
-ioerror_t IORequest::parseJson(JsonObjectConst json)
+Error Request::parseJson(JsonObjectConst json)
 {
 	Json::getValue(json[ATTR_ID], m_id);
 
 	// Command is optional - may have already been set
 	const char* cmd;
 	if(Json::getValue(json[ATTR_COMMAND], cmd) && !strToIoCommand(cmd, m_command)) {
-		return ioe_bad_command;
+		return Error::bad_command;
 	}
 
-	devnode_id_t id;
+	DevNode id;
 	JsonArrayConst arr;
 	if(Json::getValue(json[ATTR_NODE], id)) {
 		unsigned count = json[ATTR_COUNT] | 1;
 		while(count--) {
 			if(!setNode(id++)) {
-				return ioe_bad_node;
+				return Error::bad_node;
 			}
 		}
 	} else if(Json::getValue(json[ATTR_NODES], arr)) {
 		for(unsigned id : arr)
 			if(!setNode(id))
-				return ioe_bad_node;
+				return Error::bad_node;
 	}
 	// all nodes
 	else if(!setNode(NODES_ALL)) {
-		return ioe_bad_node;
+		return Error::bad_node;
 	}
 
-	return ioe_success;
+	return Error::success;
 }
 
-void IORequest::getJson(JsonObject json) const
+void Request::getJson(JsonObject json) const
 {
 	if(m_id.length() != 0) {
 		json[ATTR_ID] = m_id;
 	}
-	json[ATTR_METHOD] = String(METHOD_IOCONTROL);
-	json[ATTR_COMMAND] = IoCommandToStr(m_command);
+	json[ATTR_COMMAND] = toString(m_command);
 	json[ATTR_DEVICE] = m_device.id();
 	setStatus(json, m_status);
 }
 
-ioerror_t IORequest::submit()
+Error Request::submit()
 {
 	return m_device.submit(*this);
-}
-
-// Called by controller when queued for execution
-void IORequest::queued()
-{
-	if(m_control != nullptr) {
-		m_control->requestQueued(*this);
-	}
 }
 
 /*
  * Request has completed. Device will destroy Notify originator then destroy this request.
  */
-void IORequest::complete(request_status_t status)
+void Request::complete(Status status)
 {
 	debug_i("Request 0x%08X (%s) complete", this, m_id.c_str());
 	m_status = status;
-	/*
-	 * Destroy this request object (via device/controller) before invoking any completion
-	 * callback. This releases our allocated memory including space on the request queue.
-	 */
-	IOControl* control = m_control;
-	String id = m_id;
 	m_device.requestComplete(*this);
-	if(control != nullptr) {
-		control->requestComplete(id);
-	}
 }
 
-String IORequest::caption()
+String Request::caption()
 {
 	String s(uint32_t(this), HEX);
 	s += " (";
@@ -140,12 +123,12 @@ String IORequest::caption()
 	return s;
 }
 
-/* CIODevice */
+/* Device */
 
-ioerror_t IODevice::init(JsonObjectConst config)
+Error Device::init(JsonObjectConst config)
 {
 	m_name = config[ATTR_NAME].as<const char*>();
-	return Json::getValue(config[ATTR_ID], m_id) ? ioe_success : ioe_no_device_id;
+	return Json::getValue(config[ATTR_ID], m_id) ? Error::success : Error::no_device_id;
 }
 
 /*
@@ -157,55 +140,55 @@ ioerror_t IODevice::init(JsonObjectConst config)
  * first. That is only called if, for example, controller is being restarted
  * or configuration reloaded.
  */
-ioerror_t IODevice::start()
+Error Device::start()
 {
 	if(m_state == devstate_normal || m_state == devstate_starting) {
-		return ioe_success;
+		return Error::success;
 	}
 
-	IORequest* req = createRequest();
+	Request* req = createRequest();
 	if(req == nullptr) {
-		return ioe_nomem;
+		return Error::nomem;
 	}
 
 	// This fails if device doesn't have any nodes
 	if(!req->nodeQuery(NODES_ALL)) {
 		delete req;
 		m_state = devstate_normal;
-		return ioe_success;
+		return Error::success;
 	}
 
-	ioerror_t err = req->submit();
-	if(err) {
+	Error err = req->submit();
+	if(!!err) {
 		delete req;
 		return err;
 	}
 
 	m_state = devstate_starting;
-	return ioe_success;
+	return Error::success;
 }
 
 /*
  * Inherited classes might override this method to place device in a
  * low-power state.
  */
-ioerror_t IODevice::stop()
+Error Device::stop()
 {
-	return ioe_success;
+	return Error::success;
 }
 
-void IODevice::requestComplete(IORequest& request)
+void Device::requestComplete(Request& request)
 {
-	if(request.status() == status_error) {
+	if(request.status() == Status::error) {
 		m_state = devstate_fault;
 		m_controller.deviceError(*this);
-	} else if(request.status() == status_success && m_state == devstate_starting) {
+	} else if(request.status() == Status::success && m_state == devstate_starting) {
 		m_state = devstate_normal;
 	}
 	m_controller.requestComplete(request);
 }
 
-String IODevice::caption()
+String Device::caption()
 {
 	return m_controller.id() + '/' + m_id;
 }
@@ -215,7 +198,7 @@ String IODevice::caption()
 /*
  * Before constructing a device instance, verify the class names match
  */
-bool IOController::verifyClass(String classname)
+bool Controller::verifyClass(const String& classname)
 {
 	if(this->classname() == classname) {
 		return true;
@@ -225,25 +208,26 @@ bool IOController::verifyClass(String classname)
 	return false;
 }
 
-ioerror_t IOController::createDevice(JsonObjectConst config)
+Error Controller::createDevice(JsonObjectConst config)
 {
 	String cls = config[ATTR_CLASS];
-	device_class_t devclass = m_deviceClasses[cls];
+	auto devclass = m_deviceClasses[cls];
 	if(devclass == nullptr) {
 		debug_e("Device class '%s' not registered", cls.c_str());
-		return ioe_bad_device_class;
+		return Error::bad_device_class;
 	}
-	device_constructor_t create = devclass().constructor;
+	auto create = devclass().constructor;
 	assert(create);
 
-	IODevice* device;
-	ioerror_t err = create(*this, device);
-	if(err) {
+	Device* device = nullptr;
+	Error err = create(*this, device);
+	if(!!err) {
 		debug_err(err, cls);
 		return err;
 	}
+	assert(device != nullptr);
 	err = device->init(config);
-	if(err) {
+	if(!!err) {
 		delete device;
 		debug_err(err, cls);
 		return err;
@@ -255,7 +239,7 @@ ioerror_t IOController::createDevice(JsonObjectConst config)
 	return err;
 }
 
-void IOController::freeDevices()
+void Controller::freeDevices()
 {
 	unsigned i = m_devices.count();
 	while(i--) {
@@ -264,7 +248,7 @@ void IOController::freeDevices()
 	}
 }
 
-IODevice* IOController::findDevice(const String& id)
+Device* Controller::findDevice(const String& id)
 {
 	for(unsigned i = 0; i < m_devices.count(); ++i) {
 		if(m_devices[i]->id() == id) {
@@ -279,7 +263,7 @@ IODevice* IOController::findDevice(const String& id)
  * This timer is used for handling device re-starts so we don't need it to hog memory all
  * the time.
  */
-void IOController::startTimer()
+void Controller::startTimer()
 {
 	PRINT_HEAP();
 
@@ -290,13 +274,13 @@ void IOController::startTimer()
 		}
 
 		m_deviceCheckTimer->initializeMs<DEVICECHECK_INTERVAL>(
-			[](void* arg) { static_cast<IOController*>(arg)->startDevices(); }, this);
+			[](void* arg) { static_cast<Controller*>(arg)->startDevices(); }, this);
 	}
 
 	m_deviceCheckTimer->startOnce();
 }
 
-void IOController::stopTimer()
+void Controller::stopTimer()
 {
 	delete m_deviceCheckTimer;
 	m_deviceCheckTimer = nullptr;
@@ -306,7 +290,7 @@ void IOController::stopTimer()
  * Inherited controllers call this after their own begin() code.
  * We schedule device initialisation here.
  */
-void IOController::startDevices()
+void Controller::startDevices()
 {
 	debug_i("%s.startDevices()", id().c_str());
 
@@ -315,14 +299,14 @@ void IOController::startDevices()
 	stopTimer();
 	unsigned failCount = 0;
 	for(unsigned i = 0; i < m_devices.count(); ++i) {
-		IODevice* device = m_devices[i];
-		ioerror_t err = device->start();
+		Device* device = m_devices[i];
+		Error err = device->start();
 
-		debug_i("%s->start(): %s", device->caption().c_str(), ioerrorString(err).c_str());
+		debug_i("%s->start(): %s", device->caption().c_str(), toString(err).c_str());
 
 		PRINT_HEAP();
 
-		if(err) {
+		if(!!err) {
 			++failCount;
 		}
 	}
@@ -333,7 +317,7 @@ void IOController::startDevices()
 	}
 }
 
-void IOController::stopDevices()
+void Controller::stopDevices()
 {
 	stopTimer();
 	for(unsigned i = 0; i < m_devices.count(); ++i) {
@@ -344,15 +328,15 @@ void IOController::stopDevices()
 /*
  * An error occurred on a device. Schedule a restart operation.
  */
-void IOController::deviceError(IODevice& device)
+void Controller::deviceError(Device& device)
 {
 	startTimer();
 }
 
-ioerror_t IOController::submit(IORequest& request)
+Error Controller::submit(Request& request)
 {
-	if(request.command() == ioc_undefined) {
-		return ioe_no_command;
+	if(request.command() == Command::undefined) {
+		return Error::no_command;
 	}
 
 	/* Can re-submit a request instead of completing it to retry or progress
@@ -365,29 +349,24 @@ ioerror_t IOController::submit(IORequest& request)
 		debug_d("Re-submitting request %s", request.caption().c_str());
 		// Execute directly, don't invoke callback
 		execute(request);
-		return ioe_success;
+		return Error::success;
 	}
 
 	debug_d("Queueing request %s", request.caption().c_str());
 	if(!m_queue.enqueue(&request)) {
-		return ioe_queue_full;
+		return Error::queue_full;
 	}
 
-	request.queued();
-
 	executeNext();
-	return ioe_success;
+	return Error::success;
 }
 
-void IOController::requestComplete(IORequest& request)
+void Controller::requestComplete(Request& request)
 {
 	devmgr.callback(request);
 
-	// Not yet added to queue - that's a problem
-	if(m_queue.peek() != &request) {
-		debug_e("** Request queue out of sync");
-		assert(false);
-	}
+	// Check queue is in sync
+	assert(m_queue.peek() == &request);
 
 	delete m_queue.dequeue();
 
@@ -397,48 +376,29 @@ void IOController::requestComplete(IORequest& request)
 /*
  *
  */
-void IOController::executeNext()
+void Controller::executeNext()
 {
 	// If we're busy, we'll get called again when current transaction has completed
 	if(!busy() && m_queue.count()) {
-		IORequest* req = m_queue.peek();
-		debug_i("Executing request 0x%08X, %s: %s", req, req->id().c_str(), IoCommandToStr(req->command()).c_str());
+		Request* req = m_queue.peek();
+		debug_i("Executing request 0x%08X, %s: %s", req, req->id().c_str(), toString(req->command()).c_str());
 		devmgr.callback(*req);
 		execute(*req);
 	}
 }
 
-/* CIODeviceManager */
+/* DeviceManager */
 
-void CIODeviceManager::registerController(IOController& controller)
+void DeviceManager::registerController(Controller& controller)
 {
 	m_controllers[controller.id()] = &controller;
 	debug_i("Controller '%s' registered", controller.id().c_str());
 }
 
-/** @brief Load device config and create device tree.
- *
- * 	@fixme 15/8/18
- * 	There's a crash 28 (invalid location access) when devmgr.json is uploaded.
- * 	It implicates this method, pointing to the IODevice::getNodeState call.
- * 	Suspect it's trying to access a null object somwhere.
- *
- * 	During testing the call to devMgrInit() in main.cpp was commented out.
- * 	The crash then occurs every time devmgr.json is uploaded; need to track
- * 	through the logic as there's obviously a check missing, or some variable
- * 	hasn't been set to a default value.
- *
- */
-ioerror_t CIODeviceManager::begin(const String& configFile)
+Error DeviceManager::begin(JsonObjectConst config)
 {
 	auto err = end();
-	if(err) {
-		return err;
-	}
-
-	IOJsonDocument config(2048);
-	err = config.loadFromFile(configFile);
-	if(err) {
+	if(!!err) {
 		return err;
 	}
 
@@ -449,7 +409,7 @@ ioerror_t CIODeviceManager::begin(const String& configFile)
 		int i = m_controllers.indexOf(ctrl);
 		if(i < 0) {
 			// Not a fatal error - keep going as other devices might be OK
-			err = ioe_bad_controller;
+			err = Error::bad_controller;
 			debug_err(err, ctrl);
 			continue;
 		}
@@ -462,7 +422,7 @@ ioerror_t CIODeviceManager::begin(const String& configFile)
 	return err;
 }
 
-void CIODeviceManager::start()
+void DeviceManager::start()
 {
 	// Start all controllers
 	for(unsigned i = 0; i < m_controllers.count(); ++i) {
@@ -470,7 +430,7 @@ void CIODeviceManager::start()
 	}
 }
 
-bool CIODeviceManager::canStop()
+bool DeviceManager::canStop()
 {
 	for(unsigned i = 0; i < m_controllers.count(); ++i) {
 		if(!m_controllers.valueAt(i)->canStop()) {
@@ -481,25 +441,25 @@ bool CIODeviceManager::canStop()
 	return true;
 }
 
-ioerror_t CIODeviceManager::stop()
+Error DeviceManager::stop()
 {
 	if(!canStop()) {
-		return ioe_busy;
+		return Error::busy;
 	}
 
 	// Stop all controllers
 	for(unsigned i = 0; i < m_controllers.count(); ++i) {
-		IOController* controller = m_controllers.valueAt(i);
+		auto controller = m_controllers.valueAt(i);
 		controller->stop();
 	}
 
-	return ioe_success;
+	return Error::success;
 }
 
-ioerror_t CIODeviceManager::end()
+Error DeviceManager::end()
 {
 	auto err = stop();
-	if(err) {
+	if(!!err) {
 		return err;
 	}
 
@@ -509,10 +469,10 @@ ioerror_t CIODeviceManager::end()
 		controller->freeDevices();
 	}
 
-	return ioe_success;
+	return Error::success;
 }
 
-IODevice* CIODeviceManager::findDevice(const String& id)
+Device* DeviceManager::findDevice(const String& id)
 {
 	for(unsigned i = 0; i < m_controllers.count(); ++i) {
 		auto controller = m_controllers.valueAt(i);
@@ -526,19 +486,19 @@ IODevice* CIODeviceManager::findDevice(const String& id)
 	return nullptr;
 }
 
-ioerror_t CIODeviceManager::createRequest(const String& devid, IORequest*& request)
+Error DeviceManager::createRequest(const String& devid, Request*& request)
 {
 	if(!devid) {
-		return ioe_no_device_id;
+		return Error::no_device_id;
 	}
 
 	auto dev = findDevice(devid);
 	if(dev == nullptr) {
-		return ioe_bad_device;
+		return Error::bad_device;
 	}
 
 	request = dev->createRequest();
-	return request ? ioe_success : ioe_nomem;
+	return request ? Error::success : Error::nomem;
 }
 
 /*
@@ -550,63 +510,60 @@ ioerror_t CIODeviceManager::createRequest(const String& devid, IORequest*& reque
  * DEVNODES[]
  *
  */
-void CIODeviceManager::handleMessage(WSCommandConnection* connection, JsonObject json, IOControl* control)
+Error DeviceManager::handleMessage(JsonObject json, void* param)
 {
-	IORequest* req;
-	ioerror_t err = ioe_success;
+	Request* req;
+	Error err = Error::success;
 
 	// Command group ?
 	bool isDevnode = json.containsKey(ATTR_DEVNODES);
 	if(isDevnode || json.containsKey(ATTR_DEVICES)) {
-		io_command_t cmd = ioc_undefined;
+		Command cmd = Command::undefined;
 		const char* s;
 		if(Json::getValue(json[ATTR_COMMAND], s) && !strToIoCommand(s, cmd)) {
-			err = ioe_bad_command;
-			setError(json, err, s);
-			return;
+			err = Error::bad_command;
+			return setError(json, err, s);
 		}
 
 		JsonArray arr = json[isDevnode ? ATTR_DEVNODES : ATTR_DEVICES];
 		if(arr.size() > MAX_REQUESTS) {
-			setError(json, ioe_queue_full);
-			return;
+			return setError(json, Error::queue_full);
 		}
 
 		String requestId = json[ATTR_ID];
 
 		// Build requests then submit together
-		FIFO<IORequest*, MAX_REQUESTS> queue;
+		FIFO<Request*, MAX_REQUESTS> queue;
 
-		ioerror_t err = ioe_success;
+		Error err = Error::success;
 		for(auto obj : arr) {
 			if(isDevnode) {
 				err = createRequest(obj[ATTR_DEVICE], req);
-				if(err) {
+				if(!!err) {
 					setError(obj, err);
-					continue;
+					break;
 				}
 
 				req->setID(requestId);
-				req->setConnection(connection);
-				req->setControl(control);
-				if(cmd != ioc_undefined)
+				req->setParam(param);
+				if(cmd != Command::undefined) {
 					req->setCommand(cmd);
+				}
 				err = req->parseJson(obj);
-				if(err) {
+				if(!!err) {
 					delete req;
 					setError(obj, err);
 					break;
 				}
 			} else {
 				err = createRequest(obj, req);
-				if(err) {
+				if(!!err) {
 					setError(json, err);
 					break;
 				}
 
 				req->setID(requestId);
-				req->setConnection(connection);
-				req->setControl(control);
+				req->setParam(param);
 				req->setCommand(cmd);
 				req->setNode(NODES_ALL);
 			}
@@ -614,53 +571,50 @@ void CIODeviceManager::handleMessage(WSCommandConnection* connection, JsonObject
 			queue.enqueue(req);
 		}
 
-		if(!err)
-			if(cmd == ioc_toggle) {
+		if(!err) {
+			if(cmd == Command::toggle) {
 				// Change request to an explicit on or off command
 				// For toggle command, first node gives state
 				devnode_state_t state = state_none;
-				for(unsigned i = 0; i < queue.count(); ++i)
+				for(unsigned i = 0; i < queue.count(); ++i) {
 					state |= queue[i]->getNodeState(NODES_ALL);
-				for(unsigned i = 0; i < queue.count(); ++i)
-					queue[i]->setCommand((state & state_on) ? ioc_off : ioc_on);
+				}
+				for(unsigned i = 0; i < queue.count(); ++i) {
+					queue[i]->setCommand((state & state_on) ? Command::off : Command::on);
+				}
 			}
+		}
 
 		// Submit requests, or delete them all if there was an error
 		while(queue.count()) {
 			req = queue.dequeue();
-			if(!err)
+			if(!err) {
 				err = req->submit();
-			if(err)
+			}
+			if(!!err) {
 				delete req;
+			}
 		}
 	} else {
 		// Single request
 		err = createRequest(json[ATTR_DEVICE], req);
-		if(err) {
-			setError(json, err, json[ATTR_DEVICE]);
-			return;
+		if(!!err) {
+			return setError(json, err, json[ATTR_DEVICE]);
 		}
 
-		req->setConnection(connection);
-		req->setControl(control);
+		req->setParam(param);
 		err = req->parseJson(json);
-		if(!err)
+		if(!err) {
 			err = req->submit();
+		}
 
-		if(err) {
+		if(!!err) {
 			delete req;
-			setError(json, err);
+			return setError(json, err);
 		}
 	}
 
-	if(err)
-		return;
-
-	// Response will be sent when command starts executing
-	json[DONT_RESPOND] = true;
+	return err;
 }
 
-String CIODeviceManager::getMethod() const
-{
-	return METHOD_IOCONTROL;
-}
+} // namespace IO

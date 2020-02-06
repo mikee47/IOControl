@@ -8,37 +8,40 @@
 
 #pragma once
 
-#include <IOControl.h>
+#include <IO/Control.h>
 #include <SimpleTimer.h>
 
-// Device configuration
-DECLARE_FSTR(DMX512_CONTROLLER_CLASSNAME)
+class HardwareSerial;
 
-class DMX512Device;
-class DMX512Controller;
-
-class DMX512Request: public IORequest
+namespace DMX512
 {
-	friend DMX512Controller;
+// Device configuration
+DECLARE_FSTR(CONTROLLER_CLASSNAME)
+
+class Device;
+class Controller;
+
+class Request : public IO::Request
+{
+	friend Controller;
 
 public:
-	DMX512Request(DMX512Device& device) :
-		IORequest(reinterpret_cast<IODevice&>(device))
+	Request(Device& device) : IO::Request(reinterpret_cast<IO::Device&>(device))
 	{
 	}
 
-	DMX512Device& device()
+	Device& device()
 	{
-		return reinterpret_cast<DMX512Device&>(m_device);
+		return reinterpret_cast<Device&>(m_device);
 	}
 
-	ioerror_t parseJson(JsonObjectConst json) override;
+	IO::Error parseJson(JsonObjectConst json) override;
 
 	void getJson(JsonObject json) const override;
 
-	bool setNode(devnode_id_t nodeId) override
+	bool setNode(IO::DevNode node) override
 	{
-		m_node = nodeId;
+		m_node = node;
 		return true;
 	}
 
@@ -60,19 +63,13 @@ private:
 	int m_code = 0;
 };
 
-
 // Bit values
-enum DmxNodeState {
-	DMXNF_disabled,
-	DMXNF_enabling,
-	DMXNF_enabled,
-	DMXNF_disabling
-};
+enum DmxNodeState { DMXNF_disabled, DMXNF_enabling, DMXNF_enabled, DMXNF_disabling };
 
 struct DmxNodeData {
-	uint8_t target = 0;
-	uint8_t value = 0;
-	DmxNodeState state = DMXNF_disabled;
+	uint8_t target;
+	uint8_t value;
+	DmxNodeState state;
 
 	bool changed() const
 	{
@@ -81,25 +78,27 @@ struct DmxNodeData {
 
 	void enable()
 	{
-		if (state != DMXNF_enabled) {
+		if(state != DMXNF_enabled) {
 			state = DMXNF_enabling;
 		}
 	}
 
 	void disable()
 	{
-		if (state != DMXNF_disabled) {
+		if(state != DMXNF_disabled) {
 			state = DMXNF_disabling;
 		}
 	}
 
 	void setTarget(int newTarget)
 	{
-		if (newTarget < 0)
-			newTarget = 0;
-		else if (newTarget > 0xFF)
-			newTarget = 0xFF;
-		target = uint8_t(newTarget);
+		if(newTarget < 0) {
+			target = 0;
+		} else if(newTarget > 0xFF) {
+			target = 0xFF;
+		} else {
+			target = uint8_t(newTarget);
+		}
 	}
 
 	void setValue(uint8_t newValue)
@@ -111,17 +110,16 @@ struct DmxNodeData {
 
 	bool adjust()
 	{
-		if (state == DMXNF_disabled) {
+		if(state == DMXNF_disabled) {
 			return false;
 		}
 
 		uint8_t adjustTarget = (state == DMXNF_disabling) ? 0 : target;
 
-		if (value == adjustTarget) {
-			if (state == DMXNF_disabling) {
+		if(value == adjustTarget) {
+			if(state == DMXNF_disabling) {
 				state = DMXNF_disabled;
-			}
-			else if (state == DMXNF_enabling) {
+			} else if(state == DMXNF_enabling) {
 				state = DMXNF_enabled;
 			}
 			return false;
@@ -141,27 +139,26 @@ struct DmxNodeData {
  *  callback()
  *  fillRequestData()
  */
-class DMX512Device: public IODevice
+class Device : public IO::Device
 {
-//	friend DMX512Request;
-	friend DMX512Controller;
+	//	friend DMX512Request;
+	friend Controller;
 
 public:
-	DMX512Device(DMX512Controller& controller) :
-		IODevice(reinterpret_cast<IOController&>(controller))
+	Device(Controller& controller) : IO::Device(reinterpret_cast<IO::Controller&>(controller))
 	{
 	}
 
-	~DMX512Device() override
+	~Device() override
 	{
 		delete m_nodeData;
 	}
 
-	static const device_class_info_t deviceClass();
+	static const IO::DeviceClassInfo deviceClass();
 
-	IORequest* createRequest() override
+	IO::Request* createRequest() override
 	{
-		return new DMX512Request(*this);
+		return new Request(*this);
 	}
 
 	uint16_t address() const override
@@ -169,7 +166,7 @@ public:
 		return m_address;
 	}
 
-	devnode_id_t nodeIdMax() const override
+	IO::DevNode nodeIdMax() const override
 	{
 		return m_nodeCount - 1;
 	}
@@ -179,40 +176,37 @@ public:
 		return m_nodeCount;
 	}
 
-	const DmxNodeData& getNodeData(devnode_id_t nodeId) const
+	const DmxNodeData& getNodeData(IO::DevNode node) const
 	{
-		assert(nodeId < m_nodeCount);
-		return m_nodeData[nodeId];
+		assert(node < m_nodeCount);
+		return m_nodeData[node];
 	}
 
 protected:
-	ioerror_t init(JsonObjectConst config);
+	IO::Error init(JsonObjectConst config);
 	/** @brief controller calls this before performing an update,
 	 *  typically for effects processing.
 	 *  Return true if value changed.
 	 */
 	bool update();
-	ioerror_t execute(DMX512Request& request);
+	IO::Error execute(Request& request);
 
 private:
-	uint16_t m_address = 0x01; ///< Start address for this device, may occupy more than one slot
-	uint8_t m_nodeCount = 1; ///< Number of DMX slots managed by this device
+	uint16_t m_address = 0x01;		   ///< Start address for this device, may occupy more than one slot
+	uint8_t m_nodeCount = 1;		   ///< Number of DMX slots managed by this device
 	DmxNodeData* m_nodeData = nullptr; ///< Data for each slot, starting at address
 };
 
-class HardwareSerial;
-
-class DMX512Controller: public IOController
+class Controller : public IO::Controller
 {
 public:
-	DMX512Controller(uint8_t instance) :
-		IOController(instance)
+	Controller(uint8_t instance) : IO::Controller(instance)
 	{
 	}
 
 	String classname() override
 	{
-		return DMX512_CONTROLLER_CLASSNAME;
+		return CONTROLLER_CLASSNAME;
 	}
 
 	void start() override;
@@ -224,11 +218,13 @@ public:
 	}
 
 private:
-	void execute(IORequest& request) override;
+	void execute(IO::Request& request) override;
 	void updateSlaves();
 	void transmitComplete(HardwareSerial& serial);
 
 	bool m_updating = false; ///< Currently sending update
-	bool m_changed = false; ///< Data has changed
-	SimpleTimer m_timer; ///< For slave update cycle timing
+	bool m_changed = false;  ///< Data has changed
+	SimpleTimer m_timer;	 ///< For slave update cycle timing
 };
+
+} // namespace DMX512

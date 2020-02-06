@@ -13,9 +13,10 @@
 #include <WString.h>
 #include <SimpleTimer.h>
 #include <FIFO.h>
-#include <cmdio/CommandHandler.h>
+#include <WHashMap.h>
+#include <ArduinoJson.h>
 #include <Data/CStringArray.h>
-#include <ArduinoStreamUtils.h>
+#include "Status.h"
 
 #ifdef ENABLE_HEAP_PRINTING
 #ifdef ENABLE_MALLOC_COUNT
@@ -35,10 +36,14 @@
 // Maximum queued requests per controller
 #define MAX_REQUESTS 16
 
-// IOController attempts device restart on error at this interval
+// Controller attempts device restart on error at this interval
 #define DEVICECHECK_INTERVAL 10000
 
+namespace IO
+{
 // Global tags
+DECLARE_FSTR(ATTR_COMMAND)
+DECLARE_FSTR(ATTR_NAME)
 DECLARE_FSTR(ATTR_DEVICE)
 DECLARE_FSTR(ATTR_DEVICES)
 DECLARE_FSTR(ATTR_ID)
@@ -67,120 +72,64 @@ DECLARE_FSTR(ATTR_DELAY)
 	XX(send, "Action with no acknowledgement or response")                                                             \
 	XX(adjust, "Adjust value")
 
-enum __attribute__((packed)) io_command_t {
-#define XX(_tag, _comment) ioc_##_tag,
+enum class Command {
+#define XX(tag, comment) tag,
 	IOCOMMAND_MAP(XX)
 #undef XX
-		ioc_MAX
 };
 
-String IoCommandToStr(io_command_t cmd);
+String toString(Command cmd);
 
-class IOController;
-class IODevice;
-class IORequest;
-class CIODeviceManager;
+class Controller;
+class Device;
+class Request;
+class DeviceManager;
 
 /*
  * A request goes through the following states:
  *  submitted - request.submit()
- *  queued    - IOController places request on internal queue
- *  executed  - IOController retrieves request from queue
+ *  queued    - Controller places request on internal queue
+ *  executed  - Controller retrieves request from queue
  *  completed - Request fully handled, status indicates success/failure
  *
- * An IOController invokes this callback twice, when a request is about to
+ * An Controller invokes this callback twice, when a request is about to
  * be executed and again when it has completed.
- * request.status() will be 'status_pending' at execution, any other value
+ * request.status() will be 'Status::pending' at execution, any other value
  * at completion.
  */
-typedef Delegate<void(IORequest& request)> IoCallback;
+using IoCallback = Delegate<void(Request& request)>;
 
-typedef ioerror_t (*device_constructor_t)(IOController& controller, IODevice*& device);
+using DeviceConstructor = Error (&)(Controller& controller, Device*& device);
 
-struct device_class_info_t {
+struct DeviceClassInfo {
 	const FlashString& name;
-	device_constructor_t constructor;
+	DeviceConstructor constructor;
 };
 
-typedef const device_class_info_t (*device_class_t)();
+using DeviceClass = const DeviceClassInfo (*)();
 
-using IODeviceClassMap = HashMap<String, device_class_t>;
-using IODeviceList = Vector<IODevice*>;
-
-static inline ioerror_t ioGetDeserializeError(const DeserializationError& error)
-{
-	switch(error.code()) {
-	case DeserializationError::Ok:
-		return ioe_success;
-	case DeserializationError::NoMemory:
-	case DeserializationError::TooDeep:
-		return ioe_nomem;
-	default:
-		return ioe_bad_config;
-	}
-}
-
-/**
- * @brief JSON document handling with IO error codes
- */
-class IOJsonDocument : public DynamicJsonDocument
-{
-public:
-	IOJsonDocument(size_t capacity) : DynamicJsonDocument(capacity)
-	{
-		debug_i("IOJsonDocument@%p capacity = %u", this, capacity);
-	}
-
-	~IOJsonDocument()
-	{
-#ifndef SMING_RELEASE
-		auto used = memoryUsage();
-		auto avail = capacity() - used;
-		debug_i("~IOJsonDocument@%p used = %u, avail = %u", this, used, avail);
-		if(avail < (capacity() / 16)) {
-			debug_w("WARNING! Document nearly full");
-		}
-#endif
-	}
-
-	ioerror_t loadFromFile(const String& filename)
-	{
-		FileStream stream(filename);
-		if(!stream.isValid()) {
-			return ioe_file;
-		}
-		ReadBufferingStream buffer(stream, 64);
-		auto dserr = deserializeJson(*this, buffer);
-		auto err = ioGetDeserializeError(dserr);
-		if(err) {
-			debug_e("IOJsonDocument load ERROR '%s': %s", filename.c_str(), ioerrorString(err).c_str());
-		} else {
-			debug_i("IOJsonDocument@%p::load '%s', size = %u, json memory = %u", this, filename.c_str(),
-					stream.getSize(), memoryUsage());
-		}
-		return err;
-	}
-};
+using DeviceClassMap = HashMap<String, DeviceClass>;
+using IODeviceList = Vector<Device*>;
 
 /*
  * Serialises hardware requests on a physical bus.
  */
-class IOController
+class Controller
 {
-	friend IODevice;
+	friend Device;
 
 public:
-	IOController(uint8_t instance) : m_devices(4, 4), m_instance(instance)
+	Controller(uint8_t instance) : m_devices(4, 4), m_instance(instance)
 	{
 	}
 
-	virtual ~IOController()
+	virtual ~Controller()
 	{
 		freeDevices();
 		stopTimer();
 	}
 
-	static void registerDeviceClass(const device_class_t devclass)
+	static void registerDeviceClass(const DeviceClass devclass)
 	{
 		String classname = devclass().name;
 		m_deviceClasses[classname] = devclass;
@@ -197,12 +146,12 @@ public:
 		return m_devices;
 	}
 
-	bool verifyClass(String classname);
+	bool verifyClass(const String& classname);
 
 	void freeDevices();
-	ioerror_t createDevice(JsonObjectConst config);
+	Error createDevice(JsonObjectConst config);
 
-	IODevice* findDevice(const String& id);
+	Device* findDevice(const String& id);
 
 	virtual String classname() = 0;
 
@@ -234,37 +183,37 @@ protected:
 	 * Returns false if request could not be queued. Caller may then either
 	 * delete the request or try again later.
 	 */
-	ioerror_t submit(IORequest& request);
+	Error submit(Request& request);
 
-	virtual void execute(IORequest& request) = 0;
+	virtual void execute(Request& request) = 0;
 
-	void requestComplete(IORequest& request);
+	void requestComplete(Request& request);
 
 	void startTimer();
 	void stopTimer();
 
 protected:
 	IODeviceList m_devices;
-	FIFO<IORequest*, MAX_REQUESTS> m_queue;
+	FIFO<Request*, MAX_REQUESTS> m_queue;
 
 private:
 	void executeNext();
 
-	void deviceError(IODevice& device);
+	void deviceError(Device& device);
 
 	void startDevices();
 	void stopDevices();
 
 private:
-	static IODeviceClassMap m_deviceClasses;
+	static DeviceClassMap m_deviceClasses;
 	SimpleTimer* m_deviceCheckTimer = nullptr;
 	uint8_t m_instance = 0;
 };
 
 // Identifies a device node
-typedef uint16_t devnode_id_t;
+typedef uint16_t DevNode;
 // Special value to indicate all nodes
-const devnode_id_t NODES_ALL = 0xFFFF;
+constexpr DevNode NODES_ALL = 0xFFFF;
 
 // For a normal on/off output node
 enum __attribute__((packed)) devnode_state_t {
@@ -309,10 +258,10 @@ enum __attribute__((packed)) device_state_t {
  * Handles requests for a specific device; the requests are executed by the relevant
  * controller.
  */
-class IODevice
+class Device
 {
-	friend IORequest;
-	friend IOController;
+	friend Request;
+	friend Controller;
 
 public:
 	/*
@@ -320,15 +269,15 @@ public:
 	 * User code then registers required device classes
 	 */
 	// static void registerClass()
-	IODevice(IOController& controller) : m_controller(controller)
+	Device(Controller& controller) : m_controller(controller)
 	{
 	}
 
-	virtual ~IODevice()
+	virtual ~Device()
 	{
 	}
 
-	virtual IORequest* createRequest() = 0;
+	virtual Request* createRequest() = 0;
 
 	const String& id() const
 	{
@@ -347,7 +296,7 @@ public:
 
 	String caption();
 
-	IOController& controller() const
+	Controller& controller() const
 	{
 		return m_controller;
 	}
@@ -358,12 +307,12 @@ public:
 	}
 
 	// Typically devices have a contiguous valid range of node IDs
-	virtual devnode_id_t nodeIdMin() const
+	virtual DevNode nodeIdMin() const
 	{
 		return 0;
 	}
 
-	virtual devnode_id_t nodeIdMax() const
+	virtual DevNode nodeIdMax() const
 	{
 		return 0;
 	}
@@ -374,33 +323,31 @@ public:
 		return 0;
 	}
 
-	virtual devnode_state_t getNodeState(devnode_id_t nodeId) const
+	virtual devnode_state_t getNodeState(DevNode node) const
 	{
 		return state_none;
 	}
 
 protected:
-	virtual ioerror_t init(JsonObjectConst config);
-	virtual ioerror_t start();
-	virtual ioerror_t stop();
+	virtual Error init(JsonObjectConst config);
+	virtual Error start();
+	virtual Error stop();
 
-	ioerror_t submit(IORequest& request)
+	Error submit(Request& request)
 	{
 		return m_controller.submit(request);
 	}
 
-	virtual void requestComplete(IORequest& request);
+	virtual void requestComplete(Request& request);
 
 protected:
 	String m_id;
 	String m_name;
-	IOController& m_controller;
+	Controller& m_controller;
 	device_state_t m_state = devstate_stopped;
 };
 
-class IOControl;
-
-/** @brief CIORequest represents a single user request/response over a bus.
+/** @brief Request represents a single user request/response over a bus.
  *
  * Inherited classes provide additional methods to encapsulate
  * specific commands or functions.
@@ -417,58 +364,43 @@ class IOControl;
  * In brief, ownership of a request belongs with the user up until submit()
  * is called, which passes ownership to the IO mechanism.
  */
-class IORequest
+class Request
 {
-	friend IOController;
+	friend Controller;
 
 public:
-	IORequest(IODevice& device) : m_device(device)
+	Request(Device& device) : m_device(device)
 	{
-		debug_d("CIORequest 0x%08X created", (uint32_t)this);
+		debug_d("Request 0x%08X created", (uint32_t)this);
 	}
 
-	virtual ~IORequest()
+	virtual ~Request()
 	{
-		debug_d("CIORequest 0x%08X (%s) destroyed", (uint32_t)this, m_id.c_str());
+		debug_d("Request 0x%08X (%s) destroyed", (uint32_t)this, m_id.c_str());
 	}
 
-	void setConnection(WSCommandConnection* connection)
-	{
-		m_connection = connection;
-	}
-
-	void setControl(IOControl* control)
-	{
-		m_control = control;
-	}
-
-	IODevice& device() const
+	Device& device() const
 	{
 		return m_device;
 	}
 
-	request_status_t status() const
+	Status status() const
 	{
 		return m_status;
 	}
 
-	WSCommandConnection* connection() const
-	{
-		return m_connection;
-	}
-
 	String caption();
 
-	virtual ioerror_t parseJson(JsonObjectConst json);
+	virtual Error parseJson(JsonObjectConst json);
 
-	ioerror_t submit();
+	Error submit();
 
 	/*
 	 * Usually called by device or controller, but can also be used to
 	 * pass a request to its callback first, for example on a configuration
 	 * error.
 	 */
-	void complete(request_status_t status);
+	void complete(Status status);
 
 	/*
 	 * Get response as JSON message, in textual format
@@ -480,42 +412,47 @@ public:
 		m_id = value;
 	}
 
-	void setCommand(io_command_t cmd)
+	void setCommand(Command cmd)
 	{
-		debug_d("setCommand(0x%08X: %s)", cmd, IoCommandToStr(cmd).c_str());
+		debug_d("setCommand(0x%08X: %s)", cmd, toString(cmd).c_str());
 		m_command = cmd;
 	}
 
-	bool nodeQuery(devnode_id_t nodeId)
+	void setParam(void* param)
 	{
-		m_command = ioc_query;
-		return setNode(nodeId);
+		m_param = param;
 	}
 
-	bool nodeOff(devnode_id_t nodeId)
+	bool nodeQuery(DevNode node)
 	{
-		setCommand(ioc_off);
-		return setNode(nodeId);
+		m_command = Command::query;
+		return setNode(node);
 	}
 
-	bool nodeOn(devnode_id_t nodeId)
+	bool nodeOff(DevNode node)
 	{
-		setCommand(ioc_on);
-		return setNode(nodeId);
+		setCommand(Command::off);
+		return setNode(node);
 	}
 
-	bool nodeToggle(devnode_id_t nodeId)
+	bool nodeOn(DevNode node)
 	{
-		setCommand(ioc_toggle);
-		return setNode(nodeId);
+		setCommand(Command::on);
+		return setNode(node);
 	}
 
-	virtual bool setNode(devnode_id_t nodeId)
+	bool nodeToggle(DevNode node)
+	{
+		setCommand(Command::toggle);
+		return setNode(node);
+	}
+
+	virtual bool setNode(DevNode node)
 	{
 		return false;
 	}
 
-	virtual devnode_state_t getNodeState(devnode_id_t nodeId)
+	virtual devnode_state_t getNodeState(DevNode node)
 	{
 		return state_unknown;
 	}
@@ -524,16 +461,16 @@ public:
 	 * Generic set state command. 0 is off, otherwise on.
 	 * Dimmable nodes use percentage level 0 - 100.
 	 */
-	virtual bool setNodeState(devnode_id_t nodeId, devnode_state_t state)
+	virtual bool setNodeState(DevNode node, devnode_state_t state)
 	{
 		if(state == state_on) {
-			setCommand(ioc_on);
+			setCommand(Command::on);
 		} else if(state == state_off) {
-			setCommand(ioc_off);
+			setCommand(Command::off);
 		} else {
 			return false;
 		}
-		return setNode(nodeId);
+		return setNode(node);
 	}
 
 	const String& id() const
@@ -541,97 +478,91 @@ public:
 		return m_id;
 	}
 
-	io_command_t command() const
+	Command command() const
 	{
 		return m_command;
 	}
 
-protected:
-	void queued();
+	/**
+	 * @brief User-assigned parameter
+	 */
+	void* param() const
+	{
+		return m_param;
+	}
 
 protected:
-	IODevice& m_device;
-	//
-	IOControl* m_control = nullptr;
-	//
-	WSCommandConnection* m_connection = nullptr;
-	// Active command
-	io_command_t m_command = ioc_undefined;
-	//
-	request_status_t m_status = status_pending;
-	// User assigned request ID
-	String m_id;
+	Device& m_device;
+	void* m_param;							///< User-assigned parameter
+	Command m_command = Command::undefined; ///< Active command
+	Status m_status = Status::pending;
+	String m_id; ///< User assigned request ID
 };
 
-using IOControllerMap = HashMap<String, IOController*>;
+using ControllerMap = HashMap<String, Controller*>;
 
-class CIODeviceManager : public WSCommandHandler
+class DeviceManager
 {
 public:
-	/** @brief Controllers register themselves so they can be located
-	 *  @note we don't own the controller; these are typically static objects
+	/**
+	 * @brief Controllers register themselves so they can be located
+	 * @note we don't own the controller; these are typically static objects
 	 */
-	void registerController(IOController& controller);
+	void registerController(Controller& controller);
 
-	/** @brief Device classes call this to register themselves
-	 *
+	/**
+	 * @brief Device classes call this to register themselves
 	 */
-	void registerDeviceClass(device_class_t devclass);
+	void registerDeviceClass(DeviceClass devclass);
 
-	IOControllerMap& controllers()
+	ControllerMap& controllers()
 	{
 		return m_controllers;
 	}
 
-	ioerror_t begin(const String& configFile);
+	/**
+	 * @brief Load device config and create device tree.
+	 */
+	Error begin(JsonObjectConst config);
 
-	ioerror_t end();
+	Error end();
 
 	void start();
 
-	ioerror_t stop();
+	Error stop();
 
 	bool canStop();
 
-	IODevice* findDevice(const String& id);
-	ioerror_t createRequest(const String& devid, IORequest*& request);
+	Device* findDevice(const String& id);
 
-	/* CCommandHandler */
+	Error createRequest(const String& devid, Request*& request);
 
-	String getMethod() const override;
-
-	UserRole getMinAccess() const override
-	{
-		return UserRole::User;
-	}
-
-	void handleMessage(WSCommandConnection* connection, JsonObject json, IOControl* control);
-
-	void handleMessage(WSCommandConnection* connection, JsonObject json) override
-	{
-		handleMessage(connection, json, nullptr);
-	}
-
-	/** @brief set the callback handler function for all I/O requests
-	 *  @note Callback invoked twice; once when executed, then again when completed.
+	/**
+	 * @brief set the callback handler function for all I/O requests
+	 * @note Callback invoked twice; once when executed, then again when completed.
 	 */
 	void setCallback(IoCallback callback)
 	{
 		m_callback = callback;
 	}
 
-	/** @brief invoke the callback, if one is registered
-	 *  @note called by IOController
+	/**
+	 * @brief invoke the callback, if one is registered
+	 * @note called by Controller
 	 */
-	void callback(IORequest& request)
+	void callback(Request& request)
 	{
 		if(m_callback)
 			m_callback(request);
 	}
 
+	Error handleMessage(JsonObject json, void* param);
+
 private:
-	IOControllerMap m_controllers; ///< We don't own the controllers
+	ControllerMap m_controllers; ///< We don't own the controllers
 	IoCallback m_callback = nullptr;
 };
 
-extern CIODeviceManager devmgr;
+extern DeviceManager devmgr;
+
+} // namespace IO

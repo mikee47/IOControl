@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "IOModbus.h"
+#include "../Modbus.h"
 
 /**
  *  R421A08 modbus 8-channel relay board
@@ -43,15 +43,17 @@
 // Channels start with 1
 #define R421_CHANNEL_MIN 1
 
+namespace R421A
+{
 struct r421_response_t {
 	// Response data
 	uint32_t channelMask;
 	uint32_t channelStates;
 };
 
-class ModbusR421ADevice;
+class Device;
 
-class ModbusRequestR421A : public ModbusRequest
+class Request : public Modbus::Request
 {
 private:
 	// Associated command data
@@ -67,50 +69,50 @@ protected:
 	void callback(const ModbusTransaction& mbt);
 
 public:
-	ModbusRequestR421A(ModbusDevice& device) : ModbusRequest(device)
+	Request(Modbus::Device& device) : Modbus::Request(device)
 	{
 		m_data = {};
 		m_response = {};
 	}
 
-	ioerror_t parseJson(JsonObjectConst json) override;
+	IO::Error parseJson(JsonObjectConst json) override;
 
 	void getJson(JsonObject json) const override;
 
-	const ModbusR421ADevice& device() const
+	const Device& device() const
 	{
-		return reinterpret_cast<ModbusR421ADevice&>(m_device);
+		return reinterpret_cast<Device&>(m_device);
 	}
 
-	bool setNode(devnode_id_t nodeId) override;
+	bool setNode(IO::DevNode node) override;
 
-	bool nodeLatch(devnode_id_t nodeId)
+	bool nodeLatch(IO::DevNode node)
 	{
-		setCommand(ioc_latch);
-		return setNode(nodeId);
+		setCommand(IO::Command::latch);
+		return setNode(node);
 	}
 
-	bool nodeMomentary(devnode_id_t nodeId)
+	bool nodeMomentary(IO::DevNode node)
 	{
-		setCommand(ioc_momentary);
-		return setNode(nodeId);
+		setCommand(IO::Command::momentary);
+		return setNode(node);
 	}
 
-	bool nodeDelay(devnode_id_t nodeId, uint8_t secs)
+	bool nodeDelay(IO::DevNode node, uint8_t secs)
 	{
-		setCommand(ioc_delay);
+		setCommand(IO::Command::delay);
 		m_data.delay = secs;
-		return setNode(nodeId);
+		return setNode(node);
 	}
 
-	devnode_state_t getNodeState(devnode_id_t nodeId) override;
+	IO::devnode_state_t getNodeState(IO::DevNode node) override;
 
-	bool setNodeState(devnode_id_t nodeId, devnode_state_t state) override
+	bool setNodeState(IO::DevNode node, IO::devnode_state_t state) override
 	{
-		if(state == state_on) {
-			nodeOn(nodeId);
-		} else if(state == state_off) {
-			nodeOff(nodeId);
+		if(state == IO::state_on) {
+			nodeOn(node);
+		} else if(state == IO::state_off) {
+			nodeOff(node);
 		} else {
 			return false;
 		}
@@ -123,7 +125,7 @@ public:
 	}
 };
 
-class ModbusR421ADevice : public ModbusDevice
+class Device : public Modbus::Device
 {
 private:
 	// Tracks current output states as far as possible
@@ -132,19 +134,19 @@ private:
 	uint8_t m_channelCount;
 
 protected:
-	ioerror_t init(JsonObjectConst config);
+	IO::Error init(JsonObjectConst config);
 
 	// We use this to track states
-	void requestComplete(IORequest& request);
+	void requestComplete(IO::Request& request);
 
 public:
-	ModbusR421ADevice(ModbusController& controller) : ModbusDevice(controller)
+	Device(Modbus::Controller& controller) : Modbus::Device(controller)
 	{
 	}
 
-	IORequest* createRequest() override
+	IO::Request* createRequest() override
 	{
-		return new ModbusRequestR421A(*this);
+		return new Request(*this);
 	}
 
 	const r421_response_t& states() const
@@ -152,12 +154,12 @@ public:
 		return m_states;
 	}
 
-	devnode_id_t nodeIdMin() const override
+	IO::DevNode nodeIdMin() const override
 	{
 		return R421_CHANNEL_MIN;
 	}
 
-	devnode_id_t nodeIdMax() const override
+	IO::DevNode nodeIdMax() const override
 	{
 		return R421_CHANNEL_MIN + m_channelCount - 1;
 	}
@@ -167,12 +169,14 @@ public:
 		return m_channelCount;
 	}
 
-	bool nodeValid(devnode_id_t nodeId) const
+	bool isValid(IO::DevNode node) const
 	{
-		return nodeId >= nodeIdMin() && nodeId <= nodeIdMax();
+		return node >= nodeIdMin() && node <= nodeIdMax();
 	}
 
-	devnode_state_t getNodeState(devnode_id_t nodeId) const override;
+	IO::devnode_state_t getNodeState(IO::DevNode node) const override;
 
-	static const device_class_info_t deviceClass();
+	static const IO::DeviceClassInfo deviceClass();
 };
+
+} // namespace R421A

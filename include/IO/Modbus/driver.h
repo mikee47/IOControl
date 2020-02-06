@@ -177,10 +177,10 @@ struct ModbusTransaction {
 /** @brief  Delegate callback type for modbus transaction */
 typedef Delegate<void(ModbusTransaction& mbt)> ModbusDelegate;
 
-class Modbus
+class ModbusDriver
 {
 public:
-	Modbus() : transaction(nullptr)
+	ModbusDriver() : transaction(nullptr)
 	{
 	}
 

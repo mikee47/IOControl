@@ -11,30 +11,32 @@
 
 #pragma once
 
-#include <IOControl.h>
-#include "Modbus.h"
+#include <IO/Control.h>
+#include "driver.h"
 
+namespace Modbus
+{
 // Device configuration
-DECLARE_FSTR(MODBUS_CONTROLLER_CLASSNAME)
+DECLARE_FSTR(CONTROLLER_CLASSNAME)
 
 // json tags
 DECLARE_FSTR(ATTR_STATES)
 
-class ModbusDevice;
-class ModbusController;
+class Device;
+class Controller;
 
-class ModbusRequest : public IORequest
+class Request : public IO::Request
 {
-	friend ModbusController;
+	friend Controller;
 
 public:
-	ModbusRequest(ModbusDevice& device) : IORequest(reinterpret_cast<IODevice&>(device))
+	Request(Device& device) : IO::Request(reinterpret_cast<IO::Device&>(device))
 	{
 	}
 
-	const ModbusDevice& device() const
+	const Device& device() const
 	{
-		return reinterpret_cast<const ModbusDevice&>(m_device);
+		return reinterpret_cast<const Device&>(m_device);
 	}
 
 	void getJson(JsonObject json) const;
@@ -62,10 +64,10 @@ struct modbus_slave_config_t {
  *  callback()
  *  fillRequestData()
  */
-class ModbusDevice : public IODevice
+class Device : public IO::Device
 {
 public:
-	ModbusDevice(ModbusController& controller) : IODevice(reinterpret_cast<IOController&>(controller))
+	Device(Controller& controller) : IO::Device(reinterpret_cast<IO::Controller&>(controller))
 	{
 	}
 
@@ -80,22 +82,22 @@ public:
 	}
 
 protected:
-	ioerror_t init(JsonObjectConst config);
+	IO::Error init(JsonObjectConst config);
 
 private:
 	modbus_slave_config_t m_config;
 };
 
-class ModbusController : public IOController
+class Controller : public IO::Controller
 {
 public:
-	ModbusController(uint8_t instance) : IOController(instance)
+	Controller(uint8_t instance) : IO::Controller(instance)
 	{
 	}
 
 	String classname()
 	{
-		return MODBUS_CONTROLLER_CLASSNAME;
+		return CONTROLLER_CLASSNAME;
 	}
 
 	void start();
@@ -103,14 +105,16 @@ public:
 
 	bool busy() const
 	{
-		return m_modbus.busy();
+		return m_driver.busy();
 	}
 
 private:
 	void modbusCallback(ModbusTransaction& mbt);
-	void execute(IORequest& request);
+	void execute(IO::Request& request);
 
 private:
-	Modbus m_modbus;
+	ModbusDriver m_driver;
 	ModbusTransaction m_mbt;
 };
+
+} // namespace Modbus

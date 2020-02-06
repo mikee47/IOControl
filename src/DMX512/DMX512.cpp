@@ -5,20 +5,23 @@
  *      Author: mikee47
  */
 
-#include "IODMX512.h"
+#include <IO/DMX512/DMX512.h>
 #include "HardwareSerial.h"
 #include "Clock.h"
 #include "Digital.h"
-#include "ledtable.h"
+//#include "ledtable.h"
 
+namespace DMX512
+{
 // Device configuration
-DEFINE_FSTR(DMX512_CONTROLLER_CLASSNAME, "DMX")
+DEFINE_FSTR(CONTROLLER_CLASSNAME, "DMX")
 
 // Our device name
 DEFINE_FSTR(DMX512_DEVICE_NAME, "dmx")
 
 //
 DEFINE_FSTR_LOCAL(ATTR_ADDRESS, "address")
+DEFINE_FSTR_LOCAL(ATTR_CODE, "code")
 
 // Pin to switch  MAX485 between receive (low) and transmit (high)
 #define MBPIN_TX_EN 12
@@ -50,7 +53,7 @@ static void dmxStart()
 /*
  * Inherited classes call this after their own start() code.
  */
-void DMX512Controller::start()
+void Controller::start()
 {
 	Serial.end();
 	Serial.setUartCallback(nullptr);
@@ -68,27 +71,27 @@ void DMX512Controller::start()
 	digitalWrite(MBPIN_TX_EN, 0);
 	pinMode(MBPIN_TX_EN, OUTPUT);
 
-	Serial.onTransmitComplete(TransmitCompleteDelegate(&DMX512Controller::transmitComplete, this));
+	Serial.onTransmitComplete(TransmitCompleteDelegate(&Controller::transmitComplete, this));
 
 	m_timer.setCallback(
 		[](void* arg) {
-			auto ctrl = static_cast<DMX512Controller*>(arg);
+			auto ctrl = static_cast<Controller*>(arg);
 			ctrl->updateSlaves();
 		},
 		this);
 
-	IOController::start();
+	IO::Controller::start();
 }
 
 /*
  * Inherited classes call this before their own stop() code.
  */
-void DMX512Controller::stop()
+void Controller::stop()
 {
 	m_timer.stop();
 	Serial.onTransmitComplete(nullptr);
 	Serial.end();
-	IOController::stop();
+	IO::Controller::stop();
 }
 
 /*
@@ -117,32 +120,32 @@ void DMX512Controller::stop()
  * We do have two serial ports though, so simplest solution would be to switch to debug port for release build as we don't need RX. That would
  * require a second RS485 interface, of course.
  */
-void DMX512Controller::execute(IORequest& request)
+void Controller::execute(IO::Request& request)
 {
 	// Apply request to owning device and pend
-	auto req = reinterpret_cast<DMX512Request&>(request);
+	auto req = reinterpret_cast<Request&>(request);
 	auto err = req.device().execute(req);
-	if(err < 0) {
-		debug_e("Request failed, %s", ioerrorString(err).c_str());
-		request.complete(status_error);
+	if(!!err) {
+		debug_e("Request failed, %s", IO::toString(err).c_str());
+		request.complete(IO::Status::error);
 	} else {
 		// Request will be completed when next update cycle completes
 		m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
 		m_timer.startOnce();
 		m_changed = true;
-		request.complete(status_success);
+		request.complete(IO::Status::success);
 	}
 }
 
-void DMX512Controller::updateSlaves()
+void Controller::updateSlaves()
 {
-	//	debug_i("DMX512Controller::updateSlaves()");
+	//	debug_i("Controller::updateSlaves()");
 
 	/*
 	// Determine how many slots we need
 	uint16_t maxAddr = 0;
 	for (unsigned i = 0; i < m_devices.count(); ++i) {
-		auto dev = reinterpret_cast<DMX512Device*>(m_devices[i]);
+		auto dev = reinterpret_cast<Device*>(m_devices[i]);
 		uint16_t addr = dev->address() + dev->nodeIdMax();
 		maxAddr = max(maxAddr, addr);
 	}
@@ -161,7 +164,7 @@ void DMX512Controller::updateSlaves()
 	memset(data, 0, dataSize);
 	data[0] = 0x00; // Lighting start code
 	for(unsigned i = 0; i < m_devices.count(); ++i) {
-		auto dev = reinterpret_cast<DMX512Device*>(m_devices[i]);
+		auto dev = reinterpret_cast<Device*>(m_devices[i]);
 		if(dev->update()) {
 			m_changed = true;
 		}
@@ -169,7 +172,8 @@ void DMX512Controller::updateSlaves()
 			auto& nodeData = dev->getNodeData(node);
 			unsigned addr = dev->address() + node;
 			assert(addr > 0 && addr <= maxAddr);
-			data[addr] = led(nodeData.value);
+			//			data[addr] = led(nodeData.value);
+			data[addr] = nodeData.value;
 		}
 	}
 
@@ -182,11 +186,11 @@ void DMX512Controller::updateSlaves()
 	m_updating = true;
 }
 
-void DMX512Controller::transmitComplete(HardwareSerial& serial)
+void Controller::transmitComplete(HardwareSerial& serial)
 {
 	digitalWrite(MBPIN_TX_EN, 0);
 
-	//	debug_i("DMX512Controller::transmitComplete()");
+	//	debug_i("Controller::transmitComplete()");
 
 	/* We schedule next periodic update now, rather than in the callback,
 	 * because additional requests may come in before then which set the
@@ -202,62 +206,62 @@ void DMX512Controller::transmitComplete(HardwareSerial& serial)
 	m_updating = false;
 }
 
-/* DMX512Request */
+/* Request */
 
-ioerror_t DMX512Request::parseJson(JsonObjectConst json)
+IO::Error Request::parseJson(JsonObjectConst json)
 {
-	ioerror_t err = IORequest::parseJson(json);
-	if(err) {
+	IO::Error err = IO::Request::parseJson(json);
+	if(!!err) {
 		return err;
 	}
 	const char* s = json[ATTR_CODE];
 	m_code = s ? strtoul(s, nullptr, 10) : 0;
-	return ioe_success;
+	return IO::Error::success;
 }
 
-void DMX512Request::getJson(JsonObject json) const
+void Request::getJson(JsonObject json) const
 {
-	IORequest::getJson(json);
-	json[ATTR_NODE] = m_node;
+	IO::Request::getJson(json);
+	json[IO::ATTR_NODE] = m_node;
 	json[ATTR_CODE] = String(m_code);
 }
 
-/* DMX512Device */
+/* Device */
 
-static ioerror_t createDevice(IOController& controller, IODevice*& device)
+static IO::Error createDevice(IO::Controller& controller, IO::Device*& device)
 {
-	if(!controller.verifyClass(DMX512_CONTROLLER_CLASSNAME)) {
-		return ioe_bad_controller_class;
+	if(!controller.verifyClass(CONTROLLER_CLASSNAME)) {
+		return IO::Error::bad_controller_class;
 	}
 
-	device = new DMX512Device(reinterpret_cast<DMX512Controller&>(controller));
-	return device ? ioe_success : ioe_nomem;
+	device = new Device(reinterpret_cast<Controller&>(controller));
+	return device ? IO::Error::success : IO::Error::nomem;
 }
 
-const device_class_info_t DMX512Device::deviceClass()
+const IO::DeviceClassInfo Device::deviceClass()
 {
 	return {DMX512_DEVICE_NAME, createDevice};
 }
 
-ioerror_t DMX512Device::init(JsonObjectConst config)
+IO::Error Device::init(JsonObjectConst config)
 {
-	ioerror_t err = IODevice::init(config);
-	if(err) {
+	IO::Error err = IO::Device::init(config);
+	if(!!err) {
 		return err;
 	}
 
 	m_address = config[ATTR_ADDRESS];
-	m_nodeCount = config[ATTR_COUNT];
+	m_nodeCount = config[IO::ATTR_COUNT];
 	if(m_nodeCount == 0) {
 		m_nodeCount = 1;
 	}
 	m_nodeData = new DmxNodeData[m_nodeCount];
 	memset(m_nodeData, 0, sizeof(DmxNodeData) * m_nodeCount);
 
-	return ioe_success;
+	return IO::Error::success;
 }
 
-bool DMX512Device::update()
+bool Device::update()
 {
 	bool res = false;
 	for(unsigned i = 0; i < m_nodeCount; ++i) {
@@ -269,35 +273,37 @@ bool DMX512Device::update()
 	return res;
 }
 
-ioerror_t DMX512Device::execute(DMX512Request& request)
+IO::Error Device::execute(Request& request)
 {
 	unsigned node = request.node();
 	if(node >= m_nodeCount) {
-		return ioe_bad_node;
+		return IO::Error::bad_node;
 	}
 
 	// Apply request to device data
 	auto& nodeData = m_nodeData[node];
 	switch(request.command()) {
-	case ioc_off:
+	case IO::Command::off:
 		nodeData.disable();
 		break;
-	case ioc_on:
+	case IO::Command::on:
 		if(nodeData.target == 0) {
 			nodeData.target = 100; // Default brightness
 		}
 		nodeData.enable();
 		break;
-	case ioc_adjust: {
+	case IO::Command::adjust: {
 		nodeData.setTarget(nodeData.target + request.code());
 		nodeData.enable();
 		break;
 	}
-	case ioc_send:
+	case IO::Command::send:
 		nodeData.setValue(request.code());
 		break;
 	default:
-		return ioe_bad_command;
+		return IO::Error::bad_command;
 	}
-	return ioe_success;
+	return IO::Error::success;
 }
+
+} // namespace DMX512
