@@ -52,11 +52,6 @@ private:
 	ModbusExceptionCode m_exception = MBE_Success;
 };
 
-struct modbus_slave_config_t {
-	uint8_t address;
-	unsigned baudrate;
-};
-
 /*
  * A virtual device, represents a modbus slave device.
  * Actual devices must implement
@@ -67,9 +62,20 @@ struct modbus_slave_config_t {
 class Device : public IO::Device
 {
 public:
+	struct SlaveConfig {
+		uint8_t address;
+		unsigned baudrate;
+	};
+
+	struct Config : public IO::Device::Config {
+		SlaveConfig slave;
+	};
+
 	Device(Controller& controller) : IO::Device(reinterpret_cast<IO::Controller&>(controller))
 	{
 	}
+
+	IO::Error init(const Config& config);
 
 	uint16_t address() const override
 	{
@@ -85,7 +91,7 @@ protected:
 	IO::Error init(JsonObjectConst config);
 
 private:
-	modbus_slave_config_t m_config;
+	SlaveConfig m_config;
 };
 
 class Controller : public IO::Controller

@@ -255,7 +255,7 @@ void Device::requestComplete(IO::Request& request)
 	 */
 	if(request.status() == IO::Status::success) {
 		auto& req = reinterpret_cast<Request&>(request);
-		r421_response_t& rsp = req.response();
+		auto& rsp = req.response();
 		m_states.channelMask |= rsp.channelMask;
 		m_states.channelStates &= ~rsp.channelMask;
 		m_states.channelStates |= (rsp.channelStates & rsp.channelMask);

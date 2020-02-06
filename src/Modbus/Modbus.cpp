@@ -62,9 +62,28 @@ void Controller::modbusCallback(ModbusTransaction& mbt)
 
 /* Device */
 
+IO::Error Device::init(const Config& config)
+{
+	auto err = IO::Device::init(config);
+	if(!!err) {
+		return err;
+	}
+
+	if(config.slave.address == 0) {
+		return IO::Error::no_address;
+	}
+
+	if(config.slave.baudrate == 0) {
+		return IO::Error::no_baudrate;
+	}
+
+	m_config = config.slave;
+	return IO::Error::success;
+}
+
 IO::Error Device::init(JsonObjectConst config)
 {
-	IO::Error err = IO::Device::init(config);
+	auto err = IO::Device::init(config);
 	if(!!err) {
 		return err;
 	}

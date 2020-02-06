@@ -125,6 +125,13 @@ String Request::caption()
 
 /* Device */
 
+Error Device::init(const Config& config)
+{
+	m_name = config.name;
+	m_id = config.id;
+	return m_id ? Error::success : Error::no_device_id;
+}
+
 Error Device::init(JsonObjectConst config)
 {
 	m_name = config[ATTR_NAME].as<const char*>();
@@ -406,15 +413,15 @@ Error DeviceManager::begin(JsonObjectConst config)
 	JsonArrayConst devices = config[JS_DEVICES];
 	for(auto dev : devices) {
 		String ctrl = dev[ATTR_CONTROLLER];
-		int i = m_controllers.indexOf(ctrl);
-		if(i < 0) {
+		auto controller = findController(ctrl);
+		if(controller == nullptr) {
 			// Not a fatal error - keep going as other devices might be OK
 			err = Error::bad_controller;
 			debug_err(err, ctrl);
 			continue;
 		}
 
-		m_controllers.valueAt(i)->createDevice(dev);
+		controller->createDevice(dev);
 	}
 
 	start();

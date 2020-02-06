@@ -106,9 +106,9 @@ struct DeviceClassInfo {
 	DeviceConstructor constructor;
 };
 
-using DeviceClass = const DeviceClassInfo (*)();
+using GetDeviceClass = const DeviceClassInfo (*)();
 
-using DeviceClassMap = HashMap<String, DeviceClass>;
+using DeviceClassMap = HashMap<String, GetDeviceClass>;
 using IODeviceList = Vector<Device*>;
 
 /*
@@ -129,7 +129,7 @@ public:
 		stopTimer();
 	}
 
-	static void registerDeviceClass(const DeviceClass devclass)
+	static void registerDeviceClass(const GetDeviceClass devclass)
 	{
 		String classname = devclass().name;
 		m_deviceClasses[classname] = devclass;
@@ -150,6 +150,8 @@ public:
 
 	void freeDevices();
 	Error createDevice(JsonObjectConst config);
+
+	template <class DeviceClass> Error createDevice(DeviceClass* device, const typename DeviceClass::Config& config);
 
 	Device* findDevice(const String& id);
 
@@ -264,11 +266,15 @@ class Device
 	friend Controller;
 
 public:
+	struct Config {
+		String id;
+		String name;
+	};
+
 	/*
 	 * Inherited classes should implement this method.
 	 * User code then registers required device classes
 	 */
-	// static void registerClass()
 	Device(Controller& controller) : m_controller(controller)
 	{
 	}
@@ -276,6 +282,8 @@ public:
 	virtual ~Device()
 	{
 	}
+
+	Error init(const Config& config);
 
 	virtual Request* createRequest() = 0;
 
@@ -346,6 +354,35 @@ protected:
 	Controller& m_controller;
 	device_state_t m_state = devstate_stopped;
 };
+
+template <class DeviceClass>
+Error Controller::createDevice(DeviceClass* device, const typename DeviceClass::Config& config)
+{
+	DeviceClassInfo cls = DeviceClass::deviceClass();
+	assert(cls.constructor);
+
+	Device* dev = nullptr;
+	dev = nullptr;
+	Error err = cls.constructor(*this, dev);
+	if(!!err) {
+		debug_err(err, String(cls.name));
+		return err;
+	}
+	assert(dev != nullptr);
+	err = reinterpret_cast<DeviceClass*>(dev)->init(config);
+	if(!!err) {
+		delete dev;
+		debug_err(err, String(cls.name));
+		return err;
+	}
+
+	m_devices.addElement(dev);
+	debug_d("Device %s created, class %s", dev->caption().c_str(), String(cls.name).c_str());
+
+	device = reinterpret_cast<DeviceClass*>(dev);
+
+	return err;
+}
 
 /** @brief Request represents a single user request/response over a bus.
  *
@@ -513,11 +550,11 @@ public:
 	/**
 	 * @brief Device classes call this to register themselves
 	 */
-	void registerDeviceClass(DeviceClass devclass);
+	void registerDeviceClass(GetDeviceClass devclass);
 
-	ControllerMap& controllers()
+	Controller* findController(const String& name) const
 	{
-		return m_controllers;
+		return m_controllers[name];
 	}
 
 	/**

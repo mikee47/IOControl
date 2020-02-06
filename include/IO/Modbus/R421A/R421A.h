@@ -45,7 +45,7 @@
 
 namespace R421A
 {
-struct r421_response_t {
+struct Response {
 	// Response data
 	uint32_t channelMask;
 	uint32_t channelStates;
@@ -55,24 +55,9 @@ class Device;
 
 class Request : public Modbus::Request
 {
-private:
-	// Associated command data
-	struct {
-		uint32_t channelMask;
-		uint8_t delay;
-	} m_data = {0, 0};
-
-	r421_response_t m_response = {0, 0};
-
-protected:
-	void fillRequestData(ModbusTransaction& mbt);
-	void callback(const ModbusTransaction& mbt);
-
 public:
 	Request(Modbus::Device& device) : Modbus::Request(device)
 	{
-		m_data = {};
-		m_response = {};
 	}
 
 	IO::Error parseJson(JsonObjectConst json) override;
@@ -119,37 +104,44 @@ public:
 		return true;
 	}
 
-	r421_response_t& response()
+	Response& response()
 	{
 		return m_response;
 	}
+
+protected:
+	void fillRequestData(ModbusTransaction& mbt);
+	void callback(const ModbusTransaction& mbt);
+
+private:
+	// Associated command data
+	struct Data {
+		uint32_t channelMask;
+		uint8_t delay;
+	};
+
+	Data m_data{};
+	Response m_response{};
 };
 
 class Device : public Modbus::Device
 {
-private:
-	// Tracks current output states as far as possible
-	r421_response_t m_states = {0, 0};
-	// Depends on device variant (e.g. 8, 4)
-	uint8_t m_channelCount;
-
-protected:
-	IO::Error init(JsonObjectConst config);
-
-	// We use this to track states
-	void requestComplete(IO::Request& request);
-
 public:
+	struct Config : public Modbus::Device::Config {
+	};
+
 	Device(Modbus::Controller& controller) : Modbus::Device(controller)
 	{
 	}
+
+	using Modbus::Device::init;
 
 	IO::Request* createRequest() override
 	{
 		return new Request(*this);
 	}
 
-	const r421_response_t& states() const
+	const Response& states() const
 	{
 		return m_states;
 	}
@@ -177,6 +169,18 @@ public:
 	IO::devnode_state_t getNodeState(IO::DevNode node) const override;
 
 	static const IO::DeviceClassInfo deviceClass();
+
+protected:
+	IO::Error init(JsonObjectConst config);
+
+	// We use this to track states
+	void requestComplete(IO::Request& request);
+
+private:
+	// Tracks current output states as far as possible
+	Response m_states{};
+	// Depends on device variant (e.g. 8, 4)
+	uint8_t m_channelCount{0};
 };
 
 } // namespace R421A

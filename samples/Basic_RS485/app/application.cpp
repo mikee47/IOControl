@@ -7,7 +7,7 @@ static Modbus::Controller modbus0(0);
 //#include <DMX512/IODMX512.h>
 //static DMX512Controller DMX0(0);
 
-IMPORT_FSTR_LOCAL(DEVMGR_CONFIG, PROJECT_DIR "/config/devmgr.json")
+IMPORT_FSTR_LOCAL(DEVMGR_CONFIG, PROJECT_DIR "/config/devices.json")
 
 //
 static HardwareSerial dbgser(UART_ID_1);
@@ -54,12 +54,16 @@ static IO::Error devmgrInit()
 #endif
 
 	IO::devmgr.setCallback(devmgrCallback);
+	IO::devmgr.start();
 
-	DynamicJsonDocument doc(2048);
+//	R421A::Device* dev{nullptr};
+//	R421A::Device::Config cfg;
+//	auto err = modbus0.createDevice(dev, cfg);
 
+	StaticJsonDocument<1024> doc;
 	FSTR::Stream str(DEVMGR_CONFIG);
 	if(!Json::deserialize(doc, str)) {
-		debug_e("%s: Config load failed", __PRETTY_FUNCTION__);
+		debug_e("Device config load failed");
 		return IO::Error::bad_config;
 	}
 

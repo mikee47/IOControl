@@ -17,7 +17,7 @@ namespace DMX512
 DEFINE_FSTR(CONTROLLER_CLASSNAME, "DMX")
 
 // Our device name
-DEFINE_FSTR(DMX512_DEVICE_NAME, "dmx")
+DEFINE_FSTR(DEVICE_NAME, "dmx")
 
 //
 DEFINE_FSTR_LOCAL(ATTR_ADDRESS, "address")
@@ -240,7 +240,7 @@ static IO::Error createDevice(IO::Controller& controller, IO::Device*& device)
 
 const IO::DeviceClassInfo Device::deviceClass()
 {
-	return {DMX512_DEVICE_NAME, createDevice};
+	return {DEVICE_NAME, createDevice};
 }
 
 IO::Error Device::init(JsonObjectConst config)
