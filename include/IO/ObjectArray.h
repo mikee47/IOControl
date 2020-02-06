@@ -35,22 +35,22 @@ public:
 
 	const T& operator[](unsigned i) const
 	{
-	  if(i < count) {
-	    return elements[i];
-	  } else {
-	    abort();
-	    return *static_cast<T*>(nullptr);
-	  }
+		if(i < count) {
+			return elements[i];
+		}
+
+		abort();
+		return *static_cast<T*>(nullptr);
 	}
 
 	T& operator[](unsigned i)
 	{
-	  if(i < count) {
-	    return elements[i];
-	  } else {
-	    abort();
-	    return *static_cast<T*>(nullptr);
-	  }
+		if(i < count) {
+			return elements[i];
+		}
+
+		abort();
+		return *static_cast<T*>(nullptr);
 	}
 
 protected:

@@ -34,7 +34,9 @@
 #endif
 
 // Maximum queued requests per controller
-#define MAX_REQUESTS 16
+#ifndef IOCONTROL_MAX_REQUESTS
+#define IOCONTROL_MAX_REQUESTS 16
+#endif
 
 // Controller attempts device restart on error at this interval
 #define DEVICECHECK_INTERVAL 10000
@@ -119,6 +121,8 @@ class Controller
 	friend Device;
 
 public:
+	using RequestQueue = FIFO<Request*, IOCONTROL_MAX_REQUESTS>;
+
 	Controller(uint8_t instance) : m_devices(4, 4), m_instance(instance)
 	{
 	}
@@ -196,7 +200,7 @@ protected:
 
 protected:
 	IODeviceList m_devices;
-	FIFO<Request*, MAX_REQUESTS> m_queue;
+	RequestQueue m_queue;
 
 private:
 	void executeNext();
@@ -283,7 +287,10 @@ public:
 	{
 	}
 
-	Error init(const Config& config);
+	//	template <class DeviceClass> bool isInstanceOf()
+	//	{
+	//		return deviceClass() == DeviceClass::deviceClass();
+	//	}
 
 	virtual Request* createRequest() = 0;
 
@@ -337,7 +344,10 @@ public:
 	}
 
 protected:
-	virtual Error init(JsonObjectConst config);
+	Error init(const Config& config);
+	virtual Error init(JsonObjectConst config) = 0;
+	void parseJson(JsonObjectConst json, Config& cfg);
+
 	virtual Error start();
 	virtual Error stop();
 
@@ -348,7 +358,7 @@ protected:
 
 	virtual void requestComplete(Request& request);
 
-protected:
+private:
 	String m_id;
 	String m_name;
 	Controller& m_controller;
@@ -444,7 +454,7 @@ public:
 	 */
 	virtual void getJson(JsonObject json) const;
 
-	void setID(const String value)
+	void setID(const String& value)
 	{
 		m_id = value;
 	}

@@ -83,21 +83,16 @@ IO::Error Device::init(const Config& config)
 
 IO::Error Device::init(JsonObjectConst config)
 {
-	auto err = IO::Device::init(config);
-	if(!!err) {
-		return err;
-	}
+	Config cfg{};
+	parseJson(config, cfg);
+	return init(cfg);
+}
 
-	m_config.address = config[ATTR_ADDRESS];
-	m_config.baudrate = config[ATTR_BAUDRATE];
-	if(m_config.address == 0) {
-		return IO::Error::no_address;
-	}
-	if(m_config.baudrate == 0) {
-		return IO::Error::no_baudrate;
-	}
-
-	return IO::Error::success;
+void Device::parseJson(JsonObjectConst json, Config& cfg)
+{
+	IO::Device::parseJson(json, cfg);
+	cfg.slave.address = json[ATTR_ADDRESS];
+	cfg.slave.baudrate = json[ATTR_BAUDRATE];
 }
 
 /* Request */

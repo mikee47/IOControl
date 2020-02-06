@@ -2,19 +2,29 @@
 #include <FlashString/Stream.hpp>
 
 #include <IO/Modbus/R421A/R421A.h>
+//#include <DMX512/IODMX512.h>
+
+namespace
+{
 static Modbus::Controller modbus0(0);
 
-//#include <DMX512/IODMX512.h>
 //static DMX512Controller DMX0(0);
 
 IMPORT_FSTR_LOCAL(DEVMGR_CONFIG, PROJECT_DIR "/config/devices.json")
 
 //
-static HardwareSerial dbgser(UART_ID_1);
+HardwareSerial dbgser(UART_ID_1);
 
 // Called for execute or complete
-static void devmgrCallback(IO::Request& request)
+void devmgrCallback(IO::Request& request)
 {
+	//	request.device().
+	if(request.device().id() == "mb1") {
+		auto req = reinterpret_cast<R421A::Request&>(request);
+		auto& response = req.response();
+		debug_i("%s: %08x / %08x", __FUNCTION__, response.channelMask, response.channelStates);
+	}
+
 	auto status = request.status();
 
 	auto& controller = request.device().controller();
@@ -34,7 +44,7 @@ static void devmgrCallback(IO::Request& request)
 	//	}
 }
 
-static IO::Error devmgrInit()
+IO::Error devmgrInit()
 {
 	// Setup modbus stack
 	modbus0.registerDeviceClass(R421A::Device::deviceClass);
@@ -54,11 +64,11 @@ static IO::Error devmgrInit()
 #endif
 
 	IO::devmgr.setCallback(devmgrCallback);
-	IO::devmgr.start();
+	//	IO::devmgr.start();
 
-//	R421A::Device* dev{nullptr};
-//	R421A::Device::Config cfg;
-//	auto err = modbus0.createDevice(dev, cfg);
+	//	R421A::Device* dev{nullptr};
+	//	R421A::Device::Config cfg{};
+	//	auto err = modbus0.createDevice(dev, cfg);
 
 	StaticJsonDocument<1024> doc;
 	FSTR::Stream str(DEVMGR_CONFIG);
@@ -70,10 +80,28 @@ static IO::Error devmgrInit()
 	return IO::devmgr.begin(doc.as<JsonObjectConst>());
 }
 
-static void systemReady()
+Timer testTimer;
+
+void systemReady()
 {
-	devmgrInit();
+	auto err = devmgrInit();
+	if(!err) {
+		testTimer
+			.initializeMs<2000>(InterruptCallback([]() {
+				IO::Request* req;
+				auto err = IO::devmgr.createRequest("mb1", req);
+				if(!err) {
+					req->setID("Toggle output #1");
+					req->setCommand(IO::Command::toggle);
+					req->setNode(1);
+					req->submit();
+				}
+			}))
+			.start();
+	}
 }
+
+} // namespace
 
 void init()
 {

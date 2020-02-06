@@ -38,10 +38,10 @@
 /*
  * R421 devices don't respond to channel numbers greater than 16.
  */
-#define R421A_MAX_CHANNELS 16
+constexpr uint8_t R421A_MAX_CHANNELS = 16;
 
 // Channels start with 1
-#define R421_CHANNEL_MIN 1
+constexpr uint8_t R421_CHANNEL_MIN = 1;
 
 namespace R421A
 {
@@ -128,13 +128,12 @@ class Device : public Modbus::Device
 {
 public:
 	struct Config : public Modbus::Device::Config {
+		uint8_t channels;
 	};
 
 	Device(Modbus::Controller& controller) : Modbus::Device(controller)
 	{
 	}
-
-	using Modbus::Device::init;
 
 	IO::Request* createRequest() override
 	{
@@ -171,7 +170,9 @@ public:
 	static const IO::DeviceClassInfo deviceClass();
 
 protected:
-	IO::Error init(JsonObjectConst config);
+	IO::Error init(const Config& config);
+	IO::Error init(JsonObjectConst config) override;
+	void parseJson(JsonObjectConst json, Config& cfg);
 
 	// We use this to track states
 	void requestComplete(IO::Request& request);

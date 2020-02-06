@@ -219,18 +219,31 @@ void Request::getJson(JsonObject json) const
 
 /* CModbusR421ADevice */
 
-IO::Error Device::init(JsonObjectConst config)
+IO::Error Device::init(const Config& config)
 {
 	IO::Error err = Modbus::Device::init(config);
 	if(!!err) {
 		return err;
 	}
 
-	m_channelCount = std::min(config[ATTR_CHANNELS].as<int>(), R421A_MAX_CHANNELS);
+	m_channelCount = std::min(config.channels, R421A_MAX_CHANNELS);
 
-	debug_d("Device %s has %u channels", m_id.c_str(), m_channelCount);
+	debug_d("Device %s has %u channels", id().c_str(), m_channelCount);
 
 	return IO::Error::success;
+}
+
+void Device::parseJson(JsonObjectConst json, Config& cfg)
+{
+	Modbus::Device::parseJson(json, cfg);
+	cfg.channels = json[ATTR_CHANNELS].as<unsigned>();
+}
+
+IO::Error Device::init(JsonObjectConst json)
+{
+	Config cfg{};
+	parseJson(json, cfg);
+	return init(cfg);
 }
 
 static IO::Error createDevice(IO::Controller& controller, IO::Device*& device)

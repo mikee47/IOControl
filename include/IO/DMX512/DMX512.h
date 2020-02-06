@@ -145,6 +145,11 @@ class Device : public IO::Device
 	friend Controller;
 
 public:
+	struct Config: public IO::Device::Config {
+		uint16_t address;
+		uint8_t nodeCount;
+	};
+
 	Device(Controller& controller) : IO::Device(reinterpret_cast<IO::Controller&>(controller))
 	{
 	}
@@ -183,12 +188,16 @@ public:
 	}
 
 protected:
-	IO::Error init(JsonObjectConst config);
+	IO::Error init(const Config& config);
+	IO::Error init(JsonObjectConst config) override;
+	void parseJson(JsonObjectConst json, Config& cfg);
+
 	/** @brief controller calls this before performing an update,
 	 *  typically for effects processing.
 	 *  Return true if value changed.
 	 */
 	bool update();
+
 	IO::Error execute(Request& request);
 
 private:

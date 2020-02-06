@@ -127,15 +127,19 @@ String Request::caption()
 
 Error Device::init(const Config& config)
 {
-	m_name = config.name;
+	if(!config.id) {
+		return Error::no_device_id;
+	}
+
 	m_id = config.id;
-	return m_id ? Error::success : Error::no_device_id;
+	m_name = config.name;
+	return Error::success;
 }
 
-Error Device::init(JsonObjectConst config)
+void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
-	m_name = config[ATTR_NAME].as<const char*>();
-	return Json::getValue(config[ATTR_ID], m_id) ? Error::success : Error::no_device_id;
+	cfg.id = json[ATTR_ID].as<const char*>();
+	cfg.name = json[ATTR_NAME].as<const char*>();
 }
 
 /*
@@ -176,8 +180,7 @@ Error Device::start()
 }
 
 /*
- * Inherited classes might override this method to place device in a
- * low-power state.
+ * Inherited classes might override this method to place device in a low-power state.
  */
 Error Device::stop()
 {
@@ -200,10 +203,10 @@ String Device::caption()
 	return m_controller.id() + '/' + m_id;
 }
 
-/* CController */
+/* Controller */
 
 /*
- * Before constructing a device instance, verify the class names match
+ * Before constructing a device instance, verify the controller class
  */
 bool Controller::verifyClass(const String& classname)
 {
@@ -533,14 +536,14 @@ Error DeviceManager::handleMessage(JsonObject json, void* param)
 		}
 
 		JsonArray arr = json[isDevnode ? ATTR_DEVNODES : ATTR_DEVICES];
-		if(arr.size() > MAX_REQUESTS) {
+		if(arr.size() > IOCONTROL_MAX_REQUESTS) {
 			return setError(json, Error::queue_full);
 		}
 
 		String requestId = json[ATTR_ID];
 
 		// Build requests then submit together
-		FIFO<Request*, MAX_REQUESTS> queue;
+		Controller::RequestQueue queue;
 
 		Error err = Error::success;
 		for(auto obj : arr) {

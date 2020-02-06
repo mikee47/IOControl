@@ -243,22 +243,33 @@ const IO::DeviceClassInfo Device::deviceClass()
 	return {DEVICE_NAME, createDevice};
 }
 
-IO::Error Device::init(JsonObjectConst config)
+IO::Error Device::init(const Config& config)
 {
 	IO::Error err = IO::Device::init(config);
 	if(!!err) {
 		return err;
 	}
-
-	m_address = config[ATTR_ADDRESS];
-	m_nodeCount = config[IO::ATTR_COUNT];
-	if(m_nodeCount == 0) {
-		m_nodeCount = 1;
-	}
+	m_address = config.address;
+	m_nodeCount = config.nodeCount ?: 1;
+	assert(m_nodeData == nullptr);
 	m_nodeData = new DmxNodeData[m_nodeCount];
 	memset(m_nodeData, 0, sizeof(DmxNodeData) * m_nodeCount);
 
 	return IO::Error::success;
+}
+
+void Device::parseJson(JsonObjectConst json, Config& cfg)
+{
+	IO::Device::parseJson(json, cfg);
+	cfg.address = json[ATTR_ADDRESS] | 0x01;
+	cfg.nodeCount = json[IO::ATTR_COUNT] | 1;
+}
+
+IO::Error Device::init(JsonObjectConst config)
+{
+	Config cfg{};
+	parseJson(config, cfg);
+	return init(cfg);
 }
 
 bool Device::update()

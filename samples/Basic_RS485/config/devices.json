@@ -7,22 +7,6 @@
 			"address": 1,
 			"baudrate": 9600,
 			"channels": 8
-		},
-		{
-			"controller": "modbus0",
-			"class": "r421a",
-			"id": "mb2",
-			"address": 2,
-			"baudrate": 9600,
-			"channels": 4
-		},
-		{
-			"controller": "modbus0",
-			"class": "r421a",
-			"id": "mb3",
-			"address": 3,
-			"baudrate": 9600,
-			"channels": 4
 		}
 	]
 }

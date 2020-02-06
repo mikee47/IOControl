@@ -75,8 +75,6 @@ public:
 	{
 	}
 
-	IO::Error init(const Config& config);
-
 	uint16_t address() const override
 	{
 		return m_config.address;
@@ -88,7 +86,9 @@ public:
 	}
 
 protected:
-	IO::Error init(JsonObjectConst config);
+	IO::Error init(const Config& config);
+	IO::Error init(JsonObjectConst config) override;
+	void parseJson(JsonObjectConst json, Config& cfg);
 
 private:
 	SlaveConfig m_config;
@@ -101,15 +101,15 @@ public:
 	{
 	}
 
-	String classname()
+	String classname() override
 	{
 		return CONTROLLER_CLASSNAME;
 	}
 
-	void start();
-	void stop();
+	void start() override;
+	void stop() override;
 
-	bool busy() const
+	bool busy() const override
 	{
 		return m_driver.busy();
 	}
