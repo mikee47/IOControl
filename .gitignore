@@ -1,0 +1,8 @@
+# generated binaries
+out
+
+# dev tools, editors, etc.
+language.settings.xml
+.settings
+
+.metadata
