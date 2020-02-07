@@ -158,8 +158,8 @@ void Controller::uartCallback(uart_t* uart, uint32_t status)
 		System.queueCallback(
 			[](void* param) {
 				auto controller = static_cast<Controller*>(param);
-				auto status = controller->processResponse();
-				controller->completeTransaction(status);
+				controller->processResponse();
+				controller->completeTransaction();
 			},
 			controller);
 	}
@@ -234,7 +234,7 @@ void Controller::execute(IO::Request& request)
 	uart_write(uart, &footer, sizeof(footer));
 
 	// Now prepare for response
-	m_trans.status = Exception::ResponseTimedOut;
+	m_trans.exception = Exception::ResponseTimedOut;
 	m_trans.dataSize = 0;
 	Serial.setUartCallback(uartCallback, this);
 
@@ -246,13 +246,14 @@ void Controller::execute(IO::Request& request)
 	timer.initializeMs<MODBUS_TRANSACTION_TIMEOUT_MS>(
 		[](void* param) {
 			Serial.setUartCallback(nullptr);
-			static_cast<Controller*>(param)->completeTransaction(Exception::ResponseTimedOut);
+			auto controller = static_cast<Controller*>(param);
+			controller->completeTransaction();
 		},
 		this);
 	timer.startOnce();
 }
 
-Exception Controller::processResponse()
+void Controller::processResponse()
 {
 	auto uart = Serial.getUart();
 	auto avail = uart_rx_available(uart);
@@ -269,7 +270,8 @@ Exception Controller::processResponse()
 		/*
 		 * todo: Fail, but could retry
 		 */
-		return Exception::ResponseTimedOut;
+		m_trans.exception = Exception::ResponseTimedOut;
+		return;
 	}
 
 	// Read data from serial buffer update CRC
@@ -387,35 +389,29 @@ Exception Controller::processResponse()
 
 	// verify response is for correct Modbus slave
 	if(buf.slaveId != request->device().address()) {
-		return Exception::InvalidSlaveID;
+		m_trans.exception = Exception::InvalidSlaveID;
 	}
-
 	// verify response is for correct Modbus function code (mask exception bit 7)
-	if((buf.function & 0x7F) != m_trans.function) {
-		return Exception::InvalidFunction;
+	else if(Function(buf.function & 0x7F) != m_trans.function) {
+		m_trans.exception = Exception::InvalidFunction;
 	}
-
 	// check whether Modbus exception occurred; return Modbus Exception Code
-	if(buf.function & 0x80) {
-		return Exception(m_trans.data[0]);
+	else if(buf.function & 0x80) {
+		m_trans.exception = Exception(m_trans.data[0]);
+	} else if(crc != 0) {
+		m_trans.exception = Exception::InvalidCRC;
+	} else {
+		m_trans.exception = Exception::Success;
 	}
-
-	if(crc != 0) {
-		return Exception::InvalidCRC;
-	}
-
-	// OK
-	return Exception::Success;
 }
 
 /*
  * Called by serial ISR when transaction has completed, or by expiry timer.
  */
-void Controller::completeTransaction(Exception status)
+void Controller::completeTransaction()
 {
-	debug_d("Modbus: completeTransaction(): %s", toString(status).c_str());
+	debug_d("Modbus: completeTransaction(): %s", toString(m_trans.exception).c_str());
 
-	m_trans.status = status;
 	auto req = request;
 	assert(req != nullptr);
 	request = nullptr;
@@ -466,14 +462,14 @@ void Request::callback(Transaction& mbt)
 
 bool Request::checkStatus(const Transaction& mbt)
 {
-	if(mbt.status == Exception::Success) {
+	if(mbt.exception == Exception::Success) {
 		return true;
 	}
 
-	m_exception = mbt.status;
+	m_exception = mbt.exception;
 
-	String statusStr = toString(mbt.status);
-	debug_e("modbus error %02X (%s)", mbt.status, statusStr.c_str());
+	String statusStr = toString(mbt.exception);
+	debug_e("modbus error %02X (%s)", mbt.exception, statusStr.c_str());
 
 	return false;
 }

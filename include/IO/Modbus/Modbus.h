@@ -170,7 +170,7 @@ static inline uint16_t makeWord(const uint8_t* buffer)
  */
 struct Transaction {
 	Function function;
-	Exception status;
+	Exception exception;
 	uint8_t data[MODBUS_DATA_SIZE]; ///< command/response data
 	uint8_t dataSize;
 };
@@ -271,8 +271,8 @@ private:
 private:
 	static void IRAM_ATTR uartCallback(uart_t* uart, uint32_t status);
 	void IRAM_ATTR receiveComplete();
-	Exception processResponse();
-	void completeTransaction(Exception status);
+	void processResponse();
+	void completeTransaction();
 
 private:
 	Request* request{nullptr};
