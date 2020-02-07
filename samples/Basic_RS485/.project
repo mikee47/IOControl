@@ -4,6 +4,8 @@
 	<comment></comment>
 	<projects>
 		<project>SmingFramework</project>
+		<project>IOControl</project>
+		<project>Sming</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

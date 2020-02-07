@@ -3,9 +3,26 @@
  *
  *  Created on: 1 May 2018
  *      Author: mikee47
+ *
+ * Modbus uses UART0 via MAX485 chip with extra GPIO to control direction.
+ * We use custom serial port code because it's actually simpler and much more efficient
+ * than using the framework.
+ *
+ *  - Transactions will easily fit into hardware FIFO so no need for additional memory overhead;
+ *  - ISR set to trigger on completion of transmit/receive packets rather than individual bytes;
+ *
  */
 
 #include <IO/Modbus/Modbus.h>
+#include "Digital.h"
+#include "HardwareSerial.h"
+#include "Platform/System.h"
+#include <driver/uart.h>
+#include <espinc/uart_register.h>
+
+#if DEBUG_VERBOSE_LEVEL == DBG
+#define MODBUS_DEBUG
+#endif
 
 namespace IO
 {
@@ -21,7 +38,65 @@ DEFINE_FSTR_LOCAL(ATTR_ADDRESS, "address")
 DEFINE_FSTR_LOCAL(ATTR_BAUDRATE, "baudrate")
 
 // Pin to switch  MAX485 between receive (low) and transmit (high)
-#define MBPIN_TX_EN 12
+static constexpr uint8_t MBPIN_TX_EN = 12;
+
+// Default values
+static constexpr unsigned MODBUS_TRANSACTION_TIMEOUT_MS = 300;
+static constexpr unsigned MODBUS_DEFAULT_BAUDRATE = 9600;
+
+namespace
+{
+uint16_t crc16_update(uint16_t crc, uint8_t a)
+{
+	crc ^= a;
+
+	for(unsigned i = 0; i < 8; ++i) {
+		if(crc & 1)
+			crc = (crc >> 1) ^ 0xA001;
+		else
+			crc = (crc >> 1);
+	}
+
+	return crc;
+}
+
+uint16_t crc16_update(uint16_t crc, const void* data, size_t count)
+{
+	auto p = static_cast<const uint8_t*>(data);
+	while(count--) {
+		crc = crc16_update(crc, *p++);
+	}
+
+	return crc;
+}
+
+} // namespace
+
+String modbusExceptionString(ModbusExceptionCode status)
+{
+	switch(status) {
+	case MBE_Success:
+		return F("Success");
+	case MBE_IllegalFunction:
+		return F("IllegalFunction");
+	case MBE_IllegalDataAddress:
+		return F("IllegalDataAddress");
+	case MBE_IllegalDataValue:
+		return F("MBES_IllegalDataValue");
+	case MBE_SlaveDeviceFailure:
+		return F("SlaveDeviceFailure");
+	case MBE_InvalidSlaveID:
+		return F("InvalidSlaveID");
+	case MBE_InvalidFunction:
+		return F("InvalidFunction");
+	case MBE_ResponseTimedOut:
+		return F("ResponseTimedOut");
+	case MBE_InvalidCRC:
+		return F("InvalidCRC");
+	default:
+		return F("Unknown") + String(status);
+	}
+}
 
 /* Controller */
 
@@ -30,8 +105,25 @@ DEFINE_FSTR_LOCAL(ATTR_BAUDRATE, "baudrate")
  */
 void Controller::start()
 {
-	m_driver.begin(MBPIN_TX_EN, ModbusDelegate(&Controller::modbusCallback, this));
-	memset(&m_mbt, 0, sizeof(m_mbt));
+	this->txEnablePin = MBPIN_TX_EN;
+
+	Serial.end();
+	Serial.setUartCallback(nullptr);
+	Serial.setTxBufferSize(0);
+	Serial.setRxBufferSize(0);
+	Serial.begin(MODBUS_DEFAULT_BAUDRATE);
+
+	// Using alternate serial pins
+	Serial.swap();
+
+	// Put default serial pins in safe state
+	pinMode(1, INPUT_PULLUP);
+	pinMode(3, INPUT_PULLUP);
+
+	digitalWrite(txEnablePin, 0);
+	pinMode(txEnablePin, OUTPUT);
+
+	memset(&m_trans, 0, sizeof(m_trans));
 	IO::Controller::start();
 }
 
@@ -43,23 +135,291 @@ void Controller::stop()
 	IO::Controller::stop();
 }
 
-void Controller::execute(IO::Request& request)
+void Controller::uartCallback(uart_t* uart, uint32_t status)
 {
-	auto& req = reinterpret_cast<Request&>(request);
-	m_mbt.param = uint32_t(&req);
-	m_mbt.slaveId = req.device().address();
-	m_mbt.baudrate = req.device().baudrate();
-	req.fillRequestData(m_mbt);
-	if(!m_driver.execute(m_mbt)) {
-		debug_e("driver unexpectedly busy");
+	auto controller = static_cast<Controller*>(uart_get_callback_param(uart));
+	// Guard against spurious interrupts
+	if(controller == nullptr) {
+		return;
+	}
+
+	// Tx FIFO empty
+	if(status & UART_TXFIFO_EMPTY_INT_ST) {
+		// Set MAX485 back into read mode
+		digitalWrite(controller->txEnablePin, 0);
+	}
+
+	// Rx FIFO full or timeout
+	if(status & (UART_RXFIFO_FULL_INT_ST | UART_RXFIFO_TOUT_INT_ST)) {
+		Serial.setUartCallback(nullptr);
+		controller->timer.stop();
+
+		// Process the received data in task context
+		System.queueCallback(
+			[](void* param) {
+				auto controller = static_cast<Controller*>(param);
+				auto status = controller->processResponse();
+				controller->completeTransaction(status);
+			},
+			controller);
 	}
 }
 
-void Controller::modbusCallback(ModbusTransaction& mbt)
+/*
+ * Submit a modbus command.
+ *
+ * The ADU must be valid and contain two reserved bytes at the end for the checksum,
+ * which this method calculates.
+ *
+ * We write data into the hardware FIFO: no need for any software buffering.
+ *
+ */
+void Controller::execute(IO::Request& request)
 {
-	auto req = reinterpret_cast<Request*>(mbt.param);
+	// Fail if transaction already in progress
+	if(busy()) {
+		debug_e("Modbus unexpectedly busy");
+		return;
+	}
+
+	auto uart = Serial.getUart();
+
+	auto& req = reinterpret_cast<Request&>(request);
+	this->request = &req;
+	m_trans = Transaction{};
+	req.fillRequestData(m_trans);
+
+	struct Header {
+		uint8_t slaveId;
+		uint8_t function;
+	};
+	Header hdr{uint8_t(req.device().address()), m_trans.function};
+
+#ifdef MODBUS_DEBUG
+	m_printf(_F("> %02X %02X"), hdr.slaveId, hdr.function);
+	for(uint8_t i = 0; i < m_trans.dataSize; ++i) {
+		m_printf(_F(" %02X"), m_trans.data[i]);
+	}
+#endif
+
+	// Prepare UART for comms
+	auto baudrate = req.device().baudrate();
+	if(baudrate == 0) {
+		debug_w("Using default baudrate for request");
+		baudrate = MODBUS_DEFAULT_BAUDRATE;
+	}
+	Serial.setBaudRate(baudrate);
+	Serial.clear();
+
+	// Transmit request data whilst keeping TX_EN assserted
+	digitalWrite(txEnablePin, 1);
+
+	struct Footer {
+		// Sent in LSB, MSB order
+		uint8_t crc[2];
+		// Frame-end - tx interrupt occurs when last byte is removed from buffer so cannot be real data
+		uint8_t padding;
+	};
+
+	// Write value and update CRC
+	uint16_t crc{0xFFFF};
+	auto write = [&](const void* data, size_t len) {
+		uart_write(uart, data, len);
+		crc = crc16_update(crc, data, len);
+	};
+
+	write(&hdr, sizeof(hdr));
+	write(m_trans.data, m_trans.dataSize);
+	Footer footer{lowByte(crc), highByte(crc), 0};
+	uart_write(uart, &footer, sizeof(footer));
+
+	// Now prepare for response
+	m_trans.status = MBE_ResponseTimedOut;
+	m_trans.dataSize = 0;
+	Serial.setUartCallback(uartCallback, this);
+
+#ifdef MODBUS_DEBUG
+	m_printf(_F(" %02X %02X\n"), lowByte(crc), highByte(crc));
+#endif
+
+	// Put a timeout on the overall transaction
+	timer.initializeMs<MODBUS_TRANSACTION_TIMEOUT_MS>(
+		[](void* param) {
+			Serial.setUartCallback(nullptr);
+			static_cast<Controller*>(param)->completeTransaction(MBE_ResponseTimedOut);
+		},
+		this);
+	timer.startOnce();
+}
+
+ModbusExceptionCode Controller::processResponse()
+{
+	auto uart = Serial.getUart();
+	auto avail = uart_rx_available(uart);
+
+	// Smallest packet for initial read
+	struct {
+		uint8_t slaveId;
+		uint8_t function;
+		uint8_t tmp[3]; // CRC + 1 data byte
+	} buf;
+	static_assert(sizeof(buf) == 5, "alignment issue");
+
+	if(avail < sizeof(buf)) {
+		/*
+		 * todo: Fail, but could retry
+		 */
+		return MBE_ResponseTimedOut;
+	}
+
+	// Read data from serial buffer update CRC
+	uint16_t crc = 0xFFFF;
+	auto read = [&](void* buf, size_t len) {
+		uart_read(uart, buf, len);
+		crc = crc16_update(crc, buf, len);
+	};
+
+	read(&buf, sizeof(buf));
+
+	size_t dataSize = 0;
+	switch(buf.function) {
+	/*
+	 * 1 (read coils), 2 (read discrete inputs):
+	 * 	uint8_t valueCount;
+	 * 	uint8_t values[valueCount];
+	*/
+	case MB_ReadCoils:
+	case MB_ReadDiscreteInputs: {
+		auto bitCount = makeWord(buf.tmp);
+		dataSize = (bitCount + 7) / 8;
+		break;
+	}
+
+	/*
+	 * 4 (read input registers), 3 (read holding registers)
+	 *	uint8_t valueCount;
+	 *	uint16_t values[valueCount];
+	 *
+	*/
+	case MB_ReadInputRegisters:
+	case MB_ReadHoldingRegisters:
+	case MB_ReadWriteMultipleRegisters:
+		dataSize = 1 + (buf.tmp[0] * 2);
+		break;
+
+	case MB_ReadExceptionStatus:
+		dataSize = 1;
+		break;
+
+	/*
+	 * Exceptions (function | 0x80)
+	 * 	uint8_t exceptionCode;
+	 *
+	 */
+	case MB_ReportSlaveID:
+		dataSize = buf.tmp[0];
+		break;
+
+	case MB_MaskWriteRegister:
+		dataSize = 6;
+		break;
+
+	/*
+	 * 5 (force/write single coil)
+	 * 6 (preset/write single holding register)
+	 * 	uint16_t address;
+	 * 	uint16_t value;
+	 *
+	 * 15 (force/write multiple coils)
+	 * 16 (preset/write multiple holding registers)
+	 * 	uint16_t address;
+	 * 	uint16_t valueCount;
+	 *
+	 */
+	default:
+		dataSize = (buf.function & 0x80) ? 1 : 4;
+	}
+
+	// Fetch any remaining data and put CRC in tmp[1..2]
+	switch(dataSize) {
+	case 1:
+		m_trans.data[0] = buf.tmp[0];
+		break;
+	case 2:
+		m_trans.data[0] = buf.tmp[0];
+		m_trans.data[1] = buf.tmp[1];
+		buf.tmp[1] = buf.tmp[2];
+		read(&buf.tmp[2], 1);
+		break;
+	default:
+		m_trans.data[0] = buf.tmp[0];
+		m_trans.data[1] = buf.tmp[1];
+		m_trans.data[2] = buf.tmp[2];
+		if(dataSize > 3) {
+			if(dataSize > MODBUS_DATA_SIZE) {
+#ifdef MODBUS_DEBUG
+				debug_e("MODBUS: Packet contains %u bytes - too big for buffer", dataSize);
+#endif
+				dataSize = MODBUS_DATA_SIZE;
+			}
+			read(&m_trans.data[3], dataSize - 3);
+		}
+		read(&buf.tmp[1], 2);
+	}
+
+	// deduct header and CRC to obtain data size
+	if(avail > 4 + dataSize) {
+#ifdef MODBUS_DEBUG
+		debug_w("Too much data - %u in FIFO", avail);
+#endif
+		uart_flush(uart, UART_RX_ONLY);
+	}
+
+	m_trans.dataSize = dataSize;
+
+#ifdef MODBUS_DEBUG
+	m_printf(_F("< %02X %02X"), buf.slaveId, buf.function);
+	for(unsigned i = 0; i < dataSize; ++i) {
+		m_printf(" %02X", m_trans.data[i]);
+	}
+	m_printf(_F(" %02X %02X\n"), buf.tmp[1], buf.tmp[2]);
+#endif
+
+	// verify response is for correct Modbus slave
+	if(buf.slaveId != request->device().address()) {
+		return MBE_InvalidSlaveID;
+	}
+
+	// verify response is for correct Modbus function code (mask exception bit 7)
+	if((buf.function & 0x7F) != m_trans.function) {
+		return MBE_InvalidFunction;
+	}
+
+	// check whether Modbus exception occurred; return Modbus Exception Code
+	if(buf.function & 0x80) {
+		return ModbusExceptionCode(m_trans.data[0]);
+	}
+
+	if(crc != 0) {
+		return MBE_InvalidCRC;
+	}
+
+	// OK
+	return MBE_Success;
+}
+
+/*
+ * Called by serial ISR when transaction has completed, or by expiry timer.
+ */
+void Controller::completeTransaction(ModbusExceptionCode status)
+{
+	debug_d("Modbus: completeTransaction(): %s", modbusExceptionString(status).c_str());
+
+	m_trans.status = status;
+	auto req = request;
 	assert(req != nullptr);
-	req->callback(m_mbt);
+	request = nullptr;
+	req->callback(m_trans);
 }
 
 /* Device */
@@ -99,12 +459,12 @@ void Device::parseJson(JsonObjectConst json, Config& cfg)
 
 /* Request */
 
-void Request::callback(const ModbusTransaction& mbt)
+void Request::callback(Transaction& mbt)
 {
 	complete(checkStatus(mbt) ? IO::Status::success : IO::Status::error);
 }
 
-bool Request::checkStatus(const ModbusTransaction& mbt)
+bool Request::checkStatus(const Transaction& mbt)
 {
 	if(mbt.status == MBE_Success) {
 		return true;

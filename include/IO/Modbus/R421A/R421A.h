@@ -114,8 +114,8 @@ public:
 	}
 
 protected:
-	void fillRequestData(ModbusTransaction& mbt);
-	void callback(const ModbusTransaction& mbt);
+	void fillRequestData(Transaction& mbt);
+	void callback(Transaction& mbt);
 
 private:
 	// Associated command data

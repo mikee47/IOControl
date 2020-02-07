@@ -3,6 +3,7 @@
 	<name>IOControl</name>
 	<comment></comment>
 	<projects>
+		<project>Sming</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

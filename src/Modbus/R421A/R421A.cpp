@@ -31,7 +31,10 @@ enum __attribute__((packed)) r421a_command_t {
 	r421_send = r421_undefined
 };
 
-enum __attribute__((packed)) a421_relay_state { relay_open = 0x0000, relay_closed = 0x0001 };
+enum __attribute__((packed)) a421_relay_state {
+	relay_open = 0x0000,
+	relay_closed = 0x0001,
+};
 
 #define ATTR_CHANNELS _F("channels")
 DEFINE_FSTR_LOCAL(DEVICE_NAME, "r421a")
@@ -67,7 +70,7 @@ static r421a_command_t map(IO::Command cmd)
  *  [1, 2, 3, 7, 8] == 0b11000111 == 0xC7
  * We'll use 32 bits for this.
  */
-void Request::fillRequestData(ModbusTransaction& mbt)
+void Request::fillRequestData(Transaction& mbt)
 {
 	if(m_command == IO::Command::query) {
 		// Query all channels
@@ -101,7 +104,7 @@ void Request::fillRequestData(ModbusTransaction& mbt)
 	mbt.dataSize = 0;
 }
 
-void Request::callback(const ModbusTransaction& mbt)
+void Request::callback(Transaction& mbt)
 {
 	if(!checkStatus(mbt)) {
 		complete(IO::Status::error);
@@ -113,7 +116,7 @@ void Request::callback(const ModbusTransaction& mbt)
 		// data[0] is response size, in bytes: should correspond with mbt.dataSize + 1
 		for(unsigned i = 1; i < mbt.dataSize; i += sizeof(uint16_t)) {
 			uint8_t ch = device().nodeIdMin() + (i / sizeof(uint16_t));
-			uint16_t val = modbus_makeword(&mbt.data[i]);
+			uint16_t val = makeWord(&mbt.data[i]);
 			if(val != relay_open && val != relay_closed)
 				continue; // Erroneous response - ignore
 
