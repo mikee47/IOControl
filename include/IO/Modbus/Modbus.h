@@ -128,34 +128,34 @@ enum class Exception {
 String toString(Exception exception);
 
 // Modbus function codes
-enum __attribute__((packed)) Function {
-	MB_None = 0x00,
+enum class Function {
+	None = 0x00,
 
 	// Bit-wise access
-	MB_ReadCoils = 0x01,
-	MB_ReadDiscreteInputs = 0x02,
-	MB_WriteSingleCoil = 0x05,
-	MB_WriteMultipleCoils = 0x0f,
+	ReadCoils = 0x01,
+	ReadDiscreteInputs = 0x02,
+	WriteSingleCoil = 0x05,
+	WriteMultipleCoils = 0x0f,
 
 	// 16-bit access
-	MB_ReadHoldingRegisters = 0x03,
-	MB_ReadInputRegisters = 0x04,
-	MB_WriteSingleRegister = 0x06,
-	MB_WriteMultipleRegisters = 0x10,
-	MB_MaskWriteRegister = 0x16,
-	MB_ReadWriteMultipleRegisters = 0x17,
+	ReadHoldingRegisters = 0x03,
+	ReadInputRegisters = 0x04,
+	WriteSingleRegister = 0x06,
+	WriteMultipleRegisters = 0x10,
+	MaskWriteRegister = 0x16,
+	ReadWriteMultipleRegisters = 0x17,
 
 	// File record access
-	MB_ReadFileRecord = 0x14,
-	MB_WriteFileRecord = 0x15,
+	ReadFileRecord = 0x14,
+	WriteFileRecord = 0x15,
 
 	// Diagnostics
-	MB_ReadExceptionStatus = 0x07,
-	MB_Diagnostic = 0x08,
-	MB_GetComEventCounter = 0x0b,
-	MB_GetComEventLog = 0x0c,
-	MB_ReportSlaveID = 0x11,
-	MB_ReadDeviceIdentification = 0x2b,
+	ReadExceptionStatus = 0x07,
+	Diagnostic = 0x08,
+	GetComEventCounter = 0x0b,
+	GetComEventLog = 0x0c,
+	ReportSlaveID = 0x11,
+	ReadDeviceIdentification = 0x2b,
 };
 
 // 16-bit words are stored big-endian; use this macro to pull them from response buffer

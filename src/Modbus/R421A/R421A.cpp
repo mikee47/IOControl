@@ -74,7 +74,7 @@ void Request::fillRequestData(Transaction& mbt)
 {
 	if(m_command == IO::Command::query) {
 		// Query all channels
-		mbt.function = MB_ReadHoldingRegisters;
+		mbt.function = Function::ReadHoldingRegisters;
 		mbt.data[0] = 0x00;
 		mbt.data[1] = device().nodeIdMin();
 		mbt.data[2] = 0x00;
@@ -86,7 +86,7 @@ void Request::fillRequestData(Transaction& mbt)
 	// others
 	for(unsigned ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch)
 		if(bitRead(m_data.channelMask, ch)) {
-			mbt.function = MB_WriteSingleRegister;
+			mbt.function = Function::WriteSingleRegister;
 			mbt.data[0] = 0x00;
 			mbt.data[1] = ch;
 			mbt.data[2] = map(command());
@@ -100,7 +100,7 @@ void Request::fillRequestData(Transaction& mbt)
 
 	// Send an invalid instruction
 	debug_e("fillRequestData() - UNEXPECTED");
-	mbt.function = MB_None;
+	mbt.function = Function::None;
 	mbt.dataSize = 0;
 }
 

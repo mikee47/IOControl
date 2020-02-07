@@ -193,7 +193,7 @@ void Controller::execute(IO::Request& request)
 		uint8_t slaveId;
 		uint8_t function;
 	};
-	Header hdr{uint8_t(req.device().address()), m_trans.function};
+	Header hdr{uint8_t(req.device().address()), uint8_t(m_trans.function)};
 
 #ifdef MODBUS_DEBUG
 	m_printf(_F("> %02X %02X"), hdr.slaveId, hdr.function);
@@ -282,14 +282,14 @@ Exception Controller::processResponse()
 	read(&buf, sizeof(buf));
 
 	size_t dataSize = 0;
-	switch(buf.function) {
+	switch(Function(buf.function)) {
 	/*
 	 * 1 (read coils), 2 (read discrete inputs):
 	 * 	uint8_t valueCount;
 	 * 	uint8_t values[valueCount];
 	*/
-	case MB_ReadCoils:
-	case MB_ReadDiscreteInputs: {
+	case Function::ReadCoils:
+	case Function::ReadDiscreteInputs: {
 		auto bitCount = makeWord(buf.tmp);
 		dataSize = (bitCount + 7) / 8;
 		break;
@@ -301,13 +301,13 @@ Exception Controller::processResponse()
 	 *	uint16_t values[valueCount];
 	 *
 	*/
-	case MB_ReadInputRegisters:
-	case MB_ReadHoldingRegisters:
-	case MB_ReadWriteMultipleRegisters:
+	case Function::ReadInputRegisters:
+	case Function::ReadHoldingRegisters:
+	case Function::ReadWriteMultipleRegisters:
 		dataSize = 1 + (buf.tmp[0] * 2);
 		break;
 
-	case MB_ReadExceptionStatus:
+	case Function::ReadExceptionStatus:
 		dataSize = 1;
 		break;
 
@@ -316,11 +316,11 @@ Exception Controller::processResponse()
 	 * 	uint8_t exceptionCode;
 	 *
 	 */
-	case MB_ReportSlaveID:
+	case Function::ReportSlaveID:
 		dataSize = buf.tmp[0];
 		break;
 
-	case MB_MaskWriteRegister:
+	case Function::MaskWriteRegister:
 		dataSize = 6;
 		break;
 
