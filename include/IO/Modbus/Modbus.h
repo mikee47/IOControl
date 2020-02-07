@@ -34,7 +34,7 @@ class Controller;
 /**
  * @brief Modbus exception codes
  */
-enum __attribute__((packed)) ModbusExceptionCode {
+enum class Exception {
 	/**
 	 * @brief Protocol illegal function exception
 	 *
@@ -44,7 +44,7 @@ enum __attribute__((packed)) ModbusExceptionCode {
 	 * It could also indicate that the server (or slave) is in the wrong state to process a request of this
 	 * type, for example because it is unconfigured and is being asked to return register values.
 	 */
-	MBE_IllegalFunction = 0x01,
+	IllegalFunction = 0x01,
 
 	/**
 	 * @brief Protocol illegal data address exception
@@ -60,7 +60,7 @@ enum __attribute__((packed)) ModbusExceptionCode {
 	 * then this request will fail with Exception Code 0x02 "Illegal Data Address" since it attempts to operate
 	 * on registers 96, 97, 98, 99 and 100, and there is no register with address 100.
 	 */
-	MBE_IllegalDataAddress = 0x02,
+	IllegalDataAddress = 0x02,
 
 	/**
 	 * @brief Protocol illegal data value exception
@@ -72,14 +72,14 @@ enum __attribute__((packed)) ModbusExceptionCode {
 	 * storage in a register has a value outside the expectation of the application program, since the
 	 * MODBUS protocol is unaware of the significance of any particular value of any particular register.
 	 */
-	MBE_IllegalDataValue = 0x03,
+	IllegalDataValue = 0x03,
 
 	/**
 	 * @brief Protocol slave device failure exception
 	 *
 	 * An unrecoverable error occurred while the server (or slave) was attempting to perform the requested action.
 	 */
-	MBE_SlaveDeviceFailure = 0x04,
+	SlaveDeviceFailure = 0x04,
 
 	/* Class-defined success/exception codes */
 
@@ -94,38 +94,38 @@ enum __attribute__((packed)) ModbusExceptionCode {
 	 * 	- data
 	 * 	- CRC
 	 */
-	MBE_Success = 0x00,
+	Success = 0x00,
 
 	/**
 	 * @brief Invalid response slave ID
 	 *
 	 * The slave ID in the response does not match that of the request.
 	 */
-	MBE_InvalidSlaveID = 0xE0,
+	InvalidSlaveID = 0xE0,
 
 	/**
 	 * @brief Invalid response function
 	 *
 	 * The function code in the response does not match that of the request.
 	 */
-	MBE_InvalidFunction = 0xE1,
+	InvalidFunction = 0xE1,
 
 	/**
 	 * @brief Response timed-out
 	 *
 	 * The entire response was not received within the timeout period
 	 */
-	MBE_ResponseTimedOut = 0xE2,
+	ResponseTimedOut = 0xE2,
 
 	/**
 	 * @brief Invalid response CRC
 	 *
 	 * The CRC in the response does not match the one calculated.
 	 */
-	MBE_InvalidCRC = 0xE3,
+	InvalidCRC = 0xE3,
 };
 
-String modbusExceptionString(ModbusExceptionCode status);
+String toString(Exception exception);
 
 // Modbus function codes
 enum __attribute__((packed)) Function {
@@ -170,7 +170,7 @@ static inline uint16_t makeWord(const uint8_t* buffer)
  */
 struct Transaction {
 	Function function;
-	ModbusExceptionCode status;
+	Exception status;
 	uint8_t data[MODBUS_DATA_SIZE]; ///< command/response data
 	uint8_t dataSize;
 };
@@ -199,7 +199,7 @@ protected:
 	bool checkStatus(const Transaction& mbt);
 
 private:
-	ModbusExceptionCode m_exception = MBE_Success;
+	Exception m_exception = Exception::Success;
 };
 
 /*
@@ -271,8 +271,8 @@ private:
 private:
 	static void IRAM_ATTR uartCallback(uart_t* uart, uint32_t status);
 	void IRAM_ATTR receiveComplete();
-	ModbusExceptionCode processResponse();
-	void completeTransaction(ModbusExceptionCode status);
+	Exception processResponse();
+	void completeTransaction(Exception status);
 
 private:
 	Request* request{nullptr};

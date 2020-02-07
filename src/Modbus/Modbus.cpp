@@ -72,29 +72,29 @@ uint16_t crc16_update(uint16_t crc, const void* data, size_t count)
 
 } // namespace
 
-String modbusExceptionString(ModbusExceptionCode status)
+String toString(Exception exception)
 {
-	switch(status) {
-	case MBE_Success:
+	switch(exception) {
+	case Exception::Success:
 		return F("Success");
-	case MBE_IllegalFunction:
+	case Exception::IllegalFunction:
 		return F("IllegalFunction");
-	case MBE_IllegalDataAddress:
+	case Exception::IllegalDataAddress:
 		return F("IllegalDataAddress");
-	case MBE_IllegalDataValue:
-		return F("MBES_IllegalDataValue");
-	case MBE_SlaveDeviceFailure:
+	case Exception::IllegalDataValue:
+		return F("IllegalDataValue");
+	case Exception::SlaveDeviceFailure:
 		return F("SlaveDeviceFailure");
-	case MBE_InvalidSlaveID:
+	case Exception::InvalidSlaveID:
 		return F("InvalidSlaveID");
-	case MBE_InvalidFunction:
+	case Exception::InvalidFunction:
 		return F("InvalidFunction");
-	case MBE_ResponseTimedOut:
+	case Exception::ResponseTimedOut:
 		return F("ResponseTimedOut");
-	case MBE_InvalidCRC:
+	case Exception::InvalidCRC:
 		return F("InvalidCRC");
 	default:
-		return F("Unknown") + String(status);
+		return F("Unknown") + String(unsigned(exception));
 	}
 }
 
@@ -234,7 +234,7 @@ void Controller::execute(IO::Request& request)
 	uart_write(uart, &footer, sizeof(footer));
 
 	// Now prepare for response
-	m_trans.status = MBE_ResponseTimedOut;
+	m_trans.status = Exception::ResponseTimedOut;
 	m_trans.dataSize = 0;
 	Serial.setUartCallback(uartCallback, this);
 
@@ -246,13 +246,13 @@ void Controller::execute(IO::Request& request)
 	timer.initializeMs<MODBUS_TRANSACTION_TIMEOUT_MS>(
 		[](void* param) {
 			Serial.setUartCallback(nullptr);
-			static_cast<Controller*>(param)->completeTransaction(MBE_ResponseTimedOut);
+			static_cast<Controller*>(param)->completeTransaction(Exception::ResponseTimedOut);
 		},
 		this);
 	timer.startOnce();
 }
 
-ModbusExceptionCode Controller::processResponse()
+Exception Controller::processResponse()
 {
 	auto uart = Serial.getUart();
 	auto avail = uart_rx_available(uart);
@@ -269,7 +269,7 @@ ModbusExceptionCode Controller::processResponse()
 		/*
 		 * todo: Fail, but could retry
 		 */
-		return MBE_ResponseTimedOut;
+		return Exception::ResponseTimedOut;
 	}
 
 	// Read data from serial buffer update CRC
@@ -387,33 +387,33 @@ ModbusExceptionCode Controller::processResponse()
 
 	// verify response is for correct Modbus slave
 	if(buf.slaveId != request->device().address()) {
-		return MBE_InvalidSlaveID;
+		return Exception::InvalidSlaveID;
 	}
 
 	// verify response is for correct Modbus function code (mask exception bit 7)
 	if((buf.function & 0x7F) != m_trans.function) {
-		return MBE_InvalidFunction;
+		return Exception::InvalidFunction;
 	}
 
 	// check whether Modbus exception occurred; return Modbus Exception Code
 	if(buf.function & 0x80) {
-		return ModbusExceptionCode(m_trans.data[0]);
+		return Exception(m_trans.data[0]);
 	}
 
 	if(crc != 0) {
-		return MBE_InvalidCRC;
+		return Exception::InvalidCRC;
 	}
 
 	// OK
-	return MBE_Success;
+	return Exception::Success;
 }
 
 /*
  * Called by serial ISR when transaction has completed, or by expiry timer.
  */
-void Controller::completeTransaction(ModbusExceptionCode status)
+void Controller::completeTransaction(Exception status)
 {
-	debug_d("Modbus: completeTransaction(): %s", modbusExceptionString(status).c_str());
+	debug_d("Modbus: completeTransaction(): %s", toString(status).c_str());
 
 	m_trans.status = status;
 	auto req = request;
@@ -466,13 +466,13 @@ void Request::callback(Transaction& mbt)
 
 bool Request::checkStatus(const Transaction& mbt)
 {
-	if(mbt.status == MBE_Success) {
+	if(mbt.status == Exception::Success) {
 		return true;
 	}
 
 	m_exception = mbt.status;
 
-	String statusStr = modbusExceptionString(mbt.status);
+	String statusStr = toString(mbt.status);
 	debug_e("modbus error %02X (%s)", mbt.status, statusStr.c_str());
 
 	return false;
@@ -483,7 +483,7 @@ void Request::getJson(JsonObject json) const
 	IO::Request::getJson(json);
 
 	if(m_status == IO::Status::error) {
-		IO::setError(json, m_exception, modbusExceptionString(m_exception));
+		IO::setError(json, unsigned(m_exception), toString(m_exception));
 	}
 }
 
