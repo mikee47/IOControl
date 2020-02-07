@@ -10,6 +10,10 @@
 #define MB_RELAY_ON 0x0100
 #define MB_RELAY_OFF 0x0200
 
+namespace IO
+{
+namespace Modbus
+{
 namespace R421A
 {
 enum __attribute__((packed)) r421a_command_t {
@@ -302,3 +306,5 @@ IO::devnode_state_t Device::getNodeState(IO::DevNode node) const
 }
 
 } // namespace R421A
+} // namespace Modbus
+} // namespace IO

@@ -6,7 +6,7 @@
 
 namespace
 {
-static Modbus::Controller modbus0(0);
+static IO::Modbus::Controller modbus0(0);
 
 //static DMX512Controller DMX0(0);
 
@@ -18,9 +18,13 @@ HardwareSerial dbgser(UART_ID_1);
 // Called for execute or complete
 void devmgrCallback(IO::Request& request)
 {
+	//	if(request.device().isInstanceOf(R421A::Device)) {
+	//aaa
+	//	}
+
 	//	request.device().
 	if(request.device().id() == "mb1") {
-		auto req = reinterpret_cast<R421A::Request&>(request);
+		auto req = reinterpret_cast<IO::Modbus::R421A::Request&>(request);
 		auto& response = req.response();
 		debug_i("%s: %08x / %08x", __FUNCTION__, response.channelMask, response.channelStates);
 	}
@@ -47,7 +51,7 @@ void devmgrCallback(IO::Request& request)
 IO::Error devmgrInit()
 {
 	// Setup modbus stack
-	modbus0.registerDeviceClass(R421A::Device::deviceClass);
+	modbus0.registerDeviceClass(IO::Modbus::R421A::Device::deviceClass);
 	IO::devmgr.registerController(modbus0);
 
 	// Setup RF switch stack
@@ -91,9 +95,11 @@ void systemReady()
 				IO::Request* req;
 				auto err = IO::devmgr.createRequest("mb1", req);
 				if(!err) {
-					req->setID("Toggle output #1");
 					req->setCommand(IO::Command::toggle);
-					req->setNode(1);
+					req->setID("Toggle all outputs");
+					req->setNode(IO::NODES_ALL);
+					//					req->setID("Toggle output #1");
+					//					req->setNode(1);
 					req->submit();
 				}
 			}))

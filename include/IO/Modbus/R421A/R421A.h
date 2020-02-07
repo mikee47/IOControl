@@ -43,6 +43,10 @@ constexpr uint8_t R421A_MAX_CHANNELS = 16;
 // Channels start with 1
 constexpr uint8_t R421_CHANNEL_MIN = 1;
 
+namespace IO
+{
+namespace Modbus
+{
 namespace R421A
 {
 struct Response {
@@ -185,3 +189,5 @@ private:
 };
 
 } // namespace R421A
+} // namespace Modbus
+} // namespace IO

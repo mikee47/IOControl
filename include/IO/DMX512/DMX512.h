@@ -13,6 +13,8 @@
 
 class HardwareSerial;
 
+namespace IO
+{
 namespace DMX512
 {
 // Device configuration
@@ -245,3 +247,4 @@ private:
 };
 
 } // namespace DMX512
+} // namespace IO

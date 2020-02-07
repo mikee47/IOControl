@@ -11,6 +11,8 @@
 #include "Digital.h"
 //#include "ledtable.h"
 
+namespace IO
+{
 namespace DMX512
 {
 // Device configuration
@@ -319,3 +321,4 @@ IO::Error Device::execute(Request& request)
 }
 
 } // namespace DMX512
+} // namespace IO

@@ -7,6 +7,8 @@
 
 #include <IO/Modbus/Modbus.h>
 
+namespace IO
+{
 namespace Modbus
 {
 // Device configuration
@@ -126,3 +128,4 @@ void Request::getJson(JsonObject json) const
 }
 
 } // namespace Modbus
+} // namespace IO

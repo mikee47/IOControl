@@ -14,6 +14,8 @@
 #include <IO/Control.h>
 #include "driver.h"
 
+namespace IO
+{
 namespace Modbus
 {
 // Device configuration
@@ -124,3 +126,4 @@ private:
 };
 
 } // namespace Modbus
+} // namespace IO
