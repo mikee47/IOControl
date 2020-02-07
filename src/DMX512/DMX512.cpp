@@ -104,10 +104,10 @@ void Controller::stop()
  *
  *  There is the question of how Modbus and DMX can co-exist:
  *
- *  	- Move ModbusController into a new module and rename IORS485
- *  	- Incorporate multi-protocol support (presently Modbus and DMX512), using code from modbus.cpp
- *  	- Merge remaining code from modbus.cpp into ModbusDevice / Request classes
- *  	- Delete modbus.cpp, modbus.h
+ *  	- Move ModbusController into a new module and rename IORS485 (or use base IO::Serial::Controller)
+ *  	- Incorporate multi-protocol support (presently Modbus and DMX512), using code from modbus driver
+ *  	- Merge remaining code from modbus driver into ModbusDevice / Request classes
+ *  	- Delete modbus driver
  *  	- DMXDevice will maintain state information for itself (address plus data for each node)
  *  	- DMX requests are executed immediately by the device, which notifies the controller that a DMX update is required
  *  	- RS485Controller builds its output packet from the data in each device, so serial driver handles all buffering
@@ -172,6 +172,7 @@ void Controller::updateSlaves()
 			auto& nodeData = dev->getNodeData(node);
 			unsigned addr = dev->address() + node;
 			assert(addr > 0 && addr <= maxAddr);
+			// @todo: Device should perform any necessary translation
 			//			data[addr] = led(nodeData.value);
 			data[addr] = nodeData.value;
 		}
@@ -252,8 +253,8 @@ IO::Error Device::init(const Config& config)
 	m_address = config.address;
 	m_nodeCount = config.nodeCount ?: 1;
 	assert(m_nodeData == nullptr);
-	m_nodeData = new DmxNodeData[m_nodeCount];
-	memset(m_nodeData, 0, sizeof(DmxNodeData) * m_nodeCount);
+	m_nodeData = new NodeData[m_nodeCount];
+	memset(m_nodeData, 0, sizeof(NodeData) * m_nodeCount);
 
 	return IO::Error::success;
 }

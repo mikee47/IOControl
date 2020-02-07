@@ -45,6 +45,11 @@ public:
 		return true;
 	}
 
+	void setCode(int code)
+	{
+		m_code = code;
+	}
+
 	uint8_t node() const
 	{
 		return m_node;
@@ -63,30 +68,34 @@ private:
 	int m_code = 0;
 };
 
-// Bit values
-enum DmxNodeState { DMXNF_disabled, DMXNF_enabling, DMXNF_enabled, DMXNF_disabling };
+struct NodeData {
+	enum class State {
+		disabled,
+		enabling,
+		enabled,
+		disabling,
+	};
 
-struct DmxNodeData {
 	uint8_t target;
 	uint8_t value;
-	DmxNodeState state;
+	State state;
 
 	bool changed() const
 	{
-		return (state == DMXNF_enabling) || (state == DMXNF_disabling) || (target != value);
+		return (state == State::enabling) || (state == State::disabling) || (target != value);
 	}
 
 	void enable()
 	{
-		if(state != DMXNF_enabled) {
-			state = DMXNF_enabling;
+		if(state != State::enabled) {
+			state = State::enabling;
 		}
 	}
 
 	void disable()
 	{
-		if(state != DMXNF_disabled) {
-			state = DMXNF_disabling;
+		if(state != State::disabled) {
+			state = State::disabling;
 		}
 	}
 
@@ -105,27 +114,27 @@ struct DmxNodeData {
 	{
 		value = newValue;
 		target = value;
-		state = newValue ? DMXNF_enabling : DMXNF_disabling;
+		state = newValue ? State::enabling : State::disabling;
 	}
 
 	bool adjust()
 	{
-		if(state == DMXNF_disabled) {
+		if(state == State::disabled) {
 			return false;
 		}
 
-		uint8_t adjustTarget = (state == DMXNF_disabling) ? 0 : target;
+		uint8_t adjustTarget = (state == State::disabling) ? 0 : target;
 
 		if(value == adjustTarget) {
-			if(state == DMXNF_disabling) {
-				state = DMXNF_disabled;
-			} else if(state == DMXNF_enabling) {
-				state = DMXNF_enabled;
+			if(state == State::disabling) {
+				state = State::disabled;
+			} else if(state == State::enabling) {
+				state = State::enabled;
 			}
 			return false;
 		}
 
-		int step = (state == DMXNF_enabled) ? 1 : 4;
+		int step = (state == State::enabled) ? 1 : 4;
 		int newValue = value + ((value < adjustTarget) ? step : -step);
 		value = (newValue <= 0) ? 0 : (newValue >= 0xFF) ? 0xFF : newValue;
 		return true;
@@ -141,11 +150,10 @@ struct DmxNodeData {
  */
 class Device : public IO::Device
 {
-	//	friend DMX512Request;
 	friend Controller;
 
 public:
-	struct Config: public IO::Device::Config {
+	struct Config : public IO::Device::Config {
 		uint16_t address;
 		uint8_t nodeCount;
 	};
@@ -181,7 +189,7 @@ public:
 		return m_nodeCount;
 	}
 
-	const DmxNodeData& getNodeData(IO::DevNode node) const
+	const NodeData& getNodeData(IO::DevNode node) const
 	{
 		assert(node < m_nodeCount);
 		return m_nodeData[node];
@@ -201,9 +209,9 @@ protected:
 	IO::Error execute(Request& request);
 
 private:
-	uint16_t m_address = 0x01;		   ///< Start address for this device, may occupy more than one slot
-	uint8_t m_nodeCount = 1;		   ///< Number of DMX slots managed by this device
-	DmxNodeData* m_nodeData = nullptr; ///< Data for each slot, starting at address
+	uint16_t m_address = 0x01;		///< Start address for this device, may occupy more than one slot
+	uint8_t m_nodeCount = 1;		///< Number of DMX slots managed by this device
+	NodeData* m_nodeData = nullptr; ///< Data for each slot, starting at `address`
 };
 
 class Controller : public IO::Controller
