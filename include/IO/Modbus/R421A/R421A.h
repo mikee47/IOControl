@@ -179,7 +179,7 @@ protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 	// We use this to track states
-	void requestComplete(IO::Request& request);
+	void requestComplete(IO::Request& request) override;
 
 private:
 	// Tracks current output states as far as possible

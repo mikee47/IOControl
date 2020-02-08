@@ -266,7 +266,7 @@ public:
 	}
 
 private:
-	void execute(IO::Request& request);
+	void execute(IO::Request& request) override;
 
 private:
 	static void IRAM_ATTR uartCallback(uart_t* uart, uint32_t status);
