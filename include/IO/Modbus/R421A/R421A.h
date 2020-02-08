@@ -128,6 +128,8 @@ private:
 	Response m_response{};
 };
 
+const IO::DeviceClassInfo deviceClass();
+
 class Device : public Modbus::Device
 {
 public:
@@ -138,6 +140,14 @@ public:
 	Device(Modbus::Controller& controller) : Modbus::Device(controller)
 	{
 	}
+
+	const IO::DeviceClassInfo getClass() const override
+	{
+		return deviceClass();
+	}
+
+	Error init(const Config& config);
+	Error init(JsonObjectConst config) override;
 
 	IO::Request* createRequest() override
 	{
@@ -172,8 +182,6 @@ public:
 	DevNode::States getNodeStates(DevNode node) const override;
 
 protected:
-	Error init(const Config& config);
-	Error init(JsonObjectConst config) override;
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 	// We use this to track states
@@ -185,8 +193,6 @@ private:
 	// Depends on device variant (e.g. 8, 4)
 	uint8_t m_channelCount{0};
 };
-
-const IO::DeviceClassInfo deviceClass();
 
 } // namespace R421A
 } // namespace Modbus

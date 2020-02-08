@@ -107,6 +107,11 @@ using DeviceConstructor = Error (&)(Controller& controller, Device*& device);
 struct DeviceClassInfo {
 	const FlashString& name;
 	DeviceConstructor constructor;
+
+	bool operator==(const DeviceClassInfo& other) const
+	{
+		return &name == &other.name;
+	}
 };
 
 using GetDeviceClass = const DeviceClassInfo (*)();
@@ -294,10 +299,10 @@ public:
 	{
 	}
 
-	//	template <class DeviceClass> bool isInstanceOf()
-	//	{
-	//		return deviceClass() == DeviceClass::deviceClass();
-	//	}
+	virtual const IO::DeviceClassInfo getClass() const = 0;
+
+	Error init(const Config& config);
+	virtual Error init(JsonObjectConst config) = 0;
 
 	virtual Request* createRequest() = 0;
 
@@ -351,8 +356,6 @@ public:
 	}
 
 protected:
-	Error init(const Config& config);
-	virtual Error init(JsonObjectConst config) = 0;
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 	virtual Error start();
@@ -518,6 +521,11 @@ public:
 		return setNode(node);
 	}
 
+	virtual bool nodeAdjust(DevNode node, int value)
+	{
+		return false;
+	}
+
 	virtual bool setNode(DevNode node)
 	{
 		return false;
@@ -607,6 +615,24 @@ public:
 	Device* findDevice(const String& id);
 
 	Error createRequest(const String& devid, Request*& request);
+
+	/*
+	 * Generally, requests should fit into the general model so that IO::Request can be used.
+	 * If more custom behviour is required then this method can be used to up-cast to the appropriate
+	 * Request object.
+	 * NOTE: At present there is no type checking on this, so use care.
+	 */
+	template <class RequestClass> Error createRequest(const String& devid, RequestClass*& request)
+	{
+		Request* req;
+		auto err = createRequest(devid, req);
+		if(!err) {
+			request = reinterpret_cast<RequestClass*>(req);
+		} else {
+			debug_w("createRequest('%s'): %s", devid.c_str(), IO::toString(err).c_str());
+		}
+		return err;
+	}
 
 	/**
 	 * @brief set the callback handler function for all I/O requests

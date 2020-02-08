@@ -41,35 +41,35 @@ public:
 
 	void getJson(JsonObject json) const override;
 
-	bool setNode(DevNode node) override
+	bool setNode(DevNode node) override;
+
+	DevNode node() const
 	{
-		m_nodeId = node.id;
-		return m_nodeId == node.id;
+		return m_node;
 	}
 
-	void setCode(int code)
+	bool nodeAdjust(DevNode node, int value) override
 	{
-		m_code = code;
+		setCommand(Command::adjust);
+		setValue(value);
+		return setNode(node);
 	}
 
-	uint8_t nodeId() const
+	void setValue(int code)
 	{
-		return m_nodeId;
+		m_value = code;
 	}
 
-	int code() const
+	int value() const
 	{
-		return m_code;
+		return m_value;
 	}
 
 	Error submit() override;
 
-protected:
-	void execute();
-
 private:
-	int m_code = 0;
-	uint8_t m_nodeId = 0;
+	int m_value{};
+	DevNode m_node{};
 };
 
 struct NodeData {
@@ -145,6 +145,8 @@ struct NodeData {
 	}
 };
 
+const DeviceClassInfo deviceClass();
+
 /*
  * A virtual device, represents a DMX512 slave device.
  * Actual devices must implement
@@ -171,10 +173,18 @@ public:
 		delete m_nodeData;
 	}
 
+	const IO::DeviceClassInfo getClass() const override
+	{
+		return deviceClass();
+	}
+
 	Controller& controller() const
 	{
 		return reinterpret_cast<Controller&>(IO::Device::controller());
 	}
+
+	Error init(const Config& config);
+	Error init(JsonObjectConst config) override;
 
 	IO::Request* createRequest() override
 	{
@@ -202,9 +212,12 @@ public:
 		return m_nodeData[nodeId];
 	}
 
+	bool isValid(DevNode node) const
+	{
+		return node == DevNode_ALL || node.id < m_nodeCount;
+	}
+
 protected:
-	Error init(const Config& config);
-	Error init(JsonObjectConst config) override;
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 	/** @brief controller calls this before performing an update,
@@ -255,8 +268,6 @@ private:
 	bool m_changed = false;  ///< Data has changed
 	SimpleTimer m_timer;	 ///< For slave update cycle timing
 };
-
-const DeviceClassInfo deviceClass();
 
 } // namespace DMX512
 } // namespace IO

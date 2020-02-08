@@ -11,9 +11,9 @@
 		{
 			"controller": "dmx0",
 			"class": "dmx",
-			"id": "dmx",
+			"id": "dmx1",
 			"address": 1,
-			"channels": 4
+			"count": 10
 		}
 	]
 }

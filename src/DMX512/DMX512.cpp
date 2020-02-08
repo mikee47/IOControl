@@ -21,7 +21,7 @@ DEFINE_FSTR(DEVICE_CLASSNAME, "dmx")
 
 //
 DEFINE_FSTR_LOCAL(ATTR_ADDRESS, "address")
-DEFINE_FSTR_LOCAL(ATTR_CODE, "code")
+DEFINE_FSTR_LOCAL(ATTR_VALUE, "value")
 
 // Pin to switch  MAX485 between receive (low) and transmit (high)
 #define MBPIN_TX_EN 12
@@ -229,16 +229,25 @@ Error Request::parseJson(JsonObjectConst json)
 	if(!!err) {
 		return err;
 	}
-	const char* s = json[ATTR_CODE];
-	m_code = s ? strtoul(s, nullptr, 10) : 0;
+	m_value = json[ATTR_VALUE].as<unsigned>();
 	return Error::success;
 }
 
 void Request::getJson(JsonObject json) const
 {
 	IO::Request::getJson(json);
-	json[IO::ATTR_NODE] = m_nodeId;
-	json[ATTR_CODE] = String(m_code);
+	json[IO::ATTR_NODE] = m_node.id;
+	json[ATTR_VALUE] = m_value;
+}
+
+bool Request::setNode(DevNode node)
+{
+	if(!device().isValid(node)) {
+		return false;
+	}
+
+	m_node = node;
+	return true;
 }
 
 /* Device */
@@ -301,38 +310,50 @@ bool Device::update()
 
 Error Device::execute(Request& request)
 {
-	auto nodeId = request.nodeId();
-	if(nodeId >= m_nodeCount) {
+	auto node = request.node();
+	if(!isValid(node)) {
 		return Error::bad_node;
 	}
 
+	Error err{};
+
 	// Apply request to device data
-	auto& data = m_nodeData[nodeId];
-	switch(request.command()) {
-	case Command::off:
-		data.disable();
-		break;
-	case Command::on:
-		if(data.target == 0) {
-			data.target = 100; // Default brightness
+	auto apply = [&](unsigned nodeId) {
+		auto& data = m_nodeData[nodeId];
+		switch(request.command()) {
+		case Command::off:
+			data.disable();
+			break;
+		case Command::on:
+			if(data.target == 0) {
+				data.target = 100; // Default brightness
+			}
+			data.enable();
+			break;
+		case Command::adjust: {
+			data.setTarget(data.target + request.value());
+			data.enable();
+			break;
 		}
-		data.enable();
-		break;
-	case Command::adjust: {
-		data.setTarget(data.target + request.code());
-		data.enable();
-		break;
-	}
-	case Command::send:
-		data.setValue(request.code());
-		break;
-	default:
-		return Error::bad_command;
+		case Command::send:
+			data.setValue(request.value());
+			break;
+		default:
+			err = Error::bad_command;
+		}
+	};
+
+	if(node == DevNode_ALL) {
+		for(unsigned id = 0; id < m_nodeCount; ++id) {
+			apply(id);
+		}
+	} else {
+		apply(node.id);
 	}
 
 	controller().deviceChanged();
 
-	return Error::success;
+	return err;
 }
 
 } // namespace DMX512

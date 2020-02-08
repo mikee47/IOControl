@@ -226,6 +226,9 @@ public:
 	{
 	}
 
+	Error init(const Config& config);
+	Error init(JsonObjectConst config) override;
+
 	uint16_t address() const override
 	{
 		return m_config.address;
@@ -237,8 +240,6 @@ public:
 	}
 
 protected:
-	Error init(const Config& config);
-	Error init(JsonObjectConst config) override;
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 private:
