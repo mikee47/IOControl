@@ -48,11 +48,27 @@ static void dmxStart()
 	}
 }
 
-/* CDMX512Controller */
+/* Request */
 
 /*
- * Inherited classes call this after their own start() code.
+ * We don't need to use the queue as requests do not perform any I/O.
+ * Instead, device state is updated and echoed on next slave update.
  */
+Error Request::submit()
+{
+	auto err = device().execute(*this);
+	if(!!err) {
+		debug_e("Request failed, %s", toString(err).c_str());
+		complete(Status::error);
+	} else {
+		complete(Status::success);
+	}
+
+	return err;
+}
+
+/* Controller */
+
 void Controller::start()
 {
 	Serial.end();
@@ -122,18 +138,16 @@ void Controller::stop()
  */
 void Controller::execute(IO::Request& request)
 {
-	// Apply request to owning device and pend
-	auto& req = reinterpret_cast<Request&>(request);
-	auto err = req.device().execute(req);
-	if(!!err) {
-		debug_e("Request failed, %s", toString(err).c_str());
-		request.complete(Status::error);
-	} else {
-		// Request will be completed when next update cycle completes
+	debug_e("DMX512 requests are not queued!");
+	assert(false);
+}
+
+void Controller::deviceChanged()
+{
+	if(!m_changed) {
 		m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
 		m_timer.startOnce();
 		m_changed = true;
-		request.complete(Status::success);
 	}
 }
 
@@ -315,6 +329,9 @@ Error Device::execute(Request& request)
 	default:
 		return Error::bad_command;
 	}
+
+	controller().deviceChanged();
+
 	return Error::success;
 }
 

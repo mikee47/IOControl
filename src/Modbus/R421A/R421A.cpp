@@ -142,7 +142,7 @@ void Request::callback(Transaction& mbt)
 		m_response.channelStates += ch;
 	}
 
-	// Submit request for next channel, if any, otherwise we're done
+	// Re-submit request for next channel, if any, otherwise we're done
 	if(m_data.channelMask.any()) {
 		submit();
 	} else {
@@ -268,14 +268,13 @@ const DeviceClassInfo deviceClass()
 	return {DEVICE_CLASSNAME, createDevice};
 }
 
-void Device::requestComplete(IO::Request& request)
+void Device::requestComplete(IO::Request* request)
 {
 	/*
 	 * Keep track of channel states
 	 */
-	if(request.status() == Status::success) {
-		auto& req = reinterpret_cast<Request&>(request);
-		auto& rsp = req.response();
+	if(request->status() == Status::success) {
+		auto& rsp = reinterpret_cast<Request*>(request)->response();
 		m_states.channelMask += rsp.channelMask;
 		m_states.channelStates -= rsp.channelMask;
 		m_states.channelStates += rsp.channelStates;

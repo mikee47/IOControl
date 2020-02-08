@@ -100,11 +100,6 @@ void Request::getJson(JsonObject json) const
 	setStatus(json, m_status);
 }
 
-Error Request::submit()
-{
-	return m_device.submit(*this);
-}
-
 /*
  * Request has completed. Device will destroy Notify originator then destroy this request.
  */
@@ -112,7 +107,7 @@ void Request::complete(Status status)
 {
 	debug_i("Request %p (%s) complete", this, m_id.c_str());
 	m_status = status;
-	m_device.requestComplete(*this);
+	m_device.requestComplete(this);
 }
 
 String Request::caption()
@@ -172,14 +167,12 @@ Error Device::start()
 		return Error::success;
 	}
 
-	Error err = req->submit();
-	if(!!err) {
-		delete req;
-		return err;
+	auto err = req->submit();
+	if(!err) {
+		m_state = devstate_starting;
 	}
 
-	m_state = devstate_starting;
-	return Error::success;
+	return err;
 }
 
 /*
@@ -190,12 +183,12 @@ Error Device::stop()
 	return Error::success;
 }
 
-void Device::requestComplete(Request& request)
+void Device::requestComplete(Request* request)
 {
-	if(request.status() == Status::error) {
+	if(request->status() == Status::error) {
 		m_state = devstate_fault;
 		m_controller.deviceError(*this);
-	} else if(request.status() == Status::success && m_state == devstate_starting) {
+	} else if(request->status() == Status::success && m_state == devstate_starting) {
 		m_state = devstate_normal;
 	}
 	m_controller.requestComplete(request);
@@ -346,9 +339,10 @@ void Controller::deviceError(Device& device)
 	startTimer();
 }
 
-Error Controller::submit(Request& request)
+Error Controller::submit(Request* request)
 {
-	if(request.command() == Command::undefined) {
+	if(request->command() == Command::undefined) {
+		delete request;
 		return Error::no_command;
 	}
 
@@ -358,15 +352,16 @@ Error Controller::submit(Request& request)
 	 * Callback is invoked only at initial execution.
 	 */
 	// Same request might be submitted multiple times before completing
-	if(m_queue.count() && m_queue.peek() == &request) {
-		debug_d("Re-submitting request %s", request.caption().c_str());
+	if(m_queue.count() && m_queue.peek() == request) {
+		debug_d("Re-submitting request %s", request->caption().c_str());
 		// Execute directly, don't invoke callback
-		execute(request);
+		execute(*request);
 		return Error::success;
 	}
 
-	debug_d("Queueing request %s", request.caption().c_str());
-	if(!m_queue.enqueue(&request)) {
+	debug_d("Queueing request %s", request->caption().c_str());
+	if(!m_queue.enqueue(request)) {
+		delete request;
 		return Error::queue_full;
 	}
 
@@ -374,14 +369,16 @@ Error Controller::submit(Request& request)
 	return Error::success;
 }
 
-void Controller::requestComplete(Request& request)
+void Controller::requestComplete(Request* request)
 {
-	devmgr.callback(request);
+	devmgr.callback(*request);
 
-	// Check queue is in sync
-	assert(m_queue.peek() == &request);
+	// If this was a queued request, remove it
+	if(m_queue.peek() == request) {
+		m_queue.dequeue();
+	}
 
-	delete m_queue.dequeue();
+	delete request;
 
 	executeNext();
 }

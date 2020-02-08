@@ -190,11 +190,11 @@ protected:
 	 * Returns false if request could not be queued. Caller may then either
 	 * delete the request or try again later.
 	 */
-	Error submit(Request& request);
+	Error submit(Request* request);
 
 	virtual void execute(Request& request) = 0;
 
-	void requestComplete(Request& request);
+	void requestComplete(Request* request);
 
 	void startTimer();
 	void stopTimer();
@@ -358,12 +358,12 @@ protected:
 	virtual Error start();
 	virtual Error stop();
 
-	Error submit(Request& request)
+	Error submit(Request* request)
 	{
 		return m_controller.submit(request);
 	}
 
-	virtual void requestComplete(Request& request);
+	virtual void requestComplete(Request* request);
 
 private:
 	String m_id;
@@ -450,7 +450,21 @@ public:
 
 	virtual Error parseJson(JsonObjectConst json);
 
-	Error submit();
+	/**
+	 * @brief Submit a request
+	 *
+	 * If the request cannot be submitted (invalid, queue full) then it is destroyed
+	 * immediately and an error returned; the completion routines is not called.
+	 *
+	 * The request may be executed immediately or queued as appropriate. In either case
+	 * the result of the request is posted to the callback routine.
+	 *
+	 * @retval Error Indicates whether the request was accepted.
+	 */
+	virtual Error submit()
+	{
+		return m_device.submit(this);
+	}
 
 	/*
 	 * Usually called by device or controller, but can also be used to

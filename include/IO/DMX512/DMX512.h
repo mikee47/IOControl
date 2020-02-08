@@ -62,6 +62,8 @@ public:
 		return m_code;
 	}
 
+	Error submit() override;
+
 protected:
 	void execute();
 
@@ -169,6 +171,11 @@ public:
 		delete m_nodeData;
 	}
 
+	Controller& controller() const
+	{
+		return reinterpret_cast<Controller&>(IO::Device::controller());
+	}
+
 	IO::Request* createRequest() override
 	{
 		return new Request(*this);
@@ -206,9 +213,10 @@ protected:
 	 */
 	bool update();
 
+private:
+	friend Request;
 	Error execute(Request& request);
 
-private:
 	uint16_t m_address = 0x01;		///< Start address for this device, may occupy more than one slot
 	uint8_t m_nodeCount = 1;		///< Number of DMX slots managed by this device
 	NodeData* m_nodeData = nullptr; ///< Data for each slot, starting at `address`
@@ -233,6 +241,8 @@ public:
 	{
 		return m_updating;
 	}
+
+	void deviceChanged();
 
 protected:
 	void execute(IO::Request& request) override;
