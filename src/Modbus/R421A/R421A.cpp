@@ -133,7 +133,7 @@ void Request::callback(Transaction& mbt)
 	uint8_t channel = mbt.data[1];
 	// We've handled this channel, clear command mask bit
 	bitClear(m_data.channelMask, channel);
-	//  debug_i("Channel = %u, mask = %08X", channel, m_data.channelMask);
+	//  debug_i("Channel = %u, mask = %08x", channel, m_data.channelMask);
 	// Report back which bits were affected
 	bitSet(m_response.channelMask, channel);
 	if(m_command == IO::Command::toggle) {
@@ -215,7 +215,7 @@ void Request::getJson(JsonObject json) const
 	if(m_response.channelMask) {
 		JsonArray states = json.createNestedArray(Modbus::ATTR_STATES);
 
-		debug_d("Channel mask = %08X, states = %08X", m_response.channelMask, m_response.channelStates);
+		debug_d("Channel mask = 0x%08x, states = 0x%08x", m_response.channelMask, m_response.channelStates);
 		for(unsigned ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
 			if(bitRead(m_response.channelMask, ch)) {
 				states.add(bitRead(m_response.channelStates, ch));

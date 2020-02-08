@@ -24,7 +24,7 @@ void devmgrCallback(IO::Request& request)
 
 	//	request.device().
 	if(request.device().id() == "mb1") {
-		auto req = reinterpret_cast<IO::Modbus::R421A::Request&>(request);
+		auto& req = reinterpret_cast<IO::Modbus::R421A::Request&>(request);
 		auto& response = req.response();
 		debug_i("%s: %08x / %08x", __FUNCTION__, response.channelMask, response.channelStates);
 	}

@@ -418,12 +418,15 @@ class Request
 public:
 	Request(Device& device) : m_device(device)
 	{
-		debug_d("Request 0x%08X created", (uint32_t)this);
+		debug_d("Request %p created", this);
 	}
+
+	// Prevent copying; if required, add `virtual clone()`
+	Request(const Request&) = delete;
 
 	virtual ~Request()
 	{
-		debug_d("Request 0x%08X (%s) destroyed", (uint32_t)this, m_id.c_str());
+		debug_d("Request %p (%s) destroyed", this, m_id.c_str());
 	}
 
 	Device& device() const
@@ -461,7 +464,7 @@ public:
 
 	void setCommand(Command cmd)
 	{
-		debug_d("setCommand(0x%08X: %s)", cmd, toString(cmd).c_str());
+		debug_d("setCommand(0x%08x: %s)", cmd, toString(cmd).c_str());
 		m_command = cmd;
 	}
 

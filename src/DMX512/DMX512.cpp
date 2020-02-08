@@ -125,7 +125,7 @@ void Controller::stop()
 void Controller::execute(IO::Request& request)
 {
 	// Apply request to owning device and pend
-	auto req = reinterpret_cast<Request&>(request);
+	auto& req = reinterpret_cast<Request&>(request);
 	auto err = req.device().execute(req);
 	if(!!err) {
 		debug_e("Request failed, %s", IO::toString(err).c_str());

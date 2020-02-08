@@ -107,7 +107,7 @@ Error Request::submit()
  */
 void Request::complete(Status status)
 {
-	debug_i("Request 0x%08X (%s) complete", this, m_id.c_str());
+	debug_i("Request %p (%s) complete", this, m_id.c_str());
 	m_status = status;
 	m_device.requestComplete(*this);
 }
@@ -391,7 +391,7 @@ void Controller::executeNext()
 	// If we're busy, we'll get called again when current transaction has completed
 	if(!busy() && m_queue.count()) {
 		Request* req = m_queue.peek();
-		debug_i("Executing request 0x%08X, %s: %s", req, req->id().c_str(), toString(req->command()).c_str());
+		debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->command()).c_str());
 		devmgr.callback(*req);
 		execute(*req);
 	}
