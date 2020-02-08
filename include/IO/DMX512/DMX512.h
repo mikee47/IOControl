@@ -37,14 +37,14 @@ public:
 		return reinterpret_cast<Device&>(m_device);
 	}
 
-	IO::Error parseJson(JsonObjectConst json) override;
+	Error parseJson(JsonObjectConst json) override;
 
 	void getJson(JsonObject json) const override;
 
-	bool setNode(IO::DevNode node) override
+	bool setNode(DevNode node) override
 	{
-		m_node = node;
-		return true;
+		m_nodeId = node.id;
+		return m_nodeId == node.id;
 	}
 
 	void setCode(int code)
@@ -52,9 +52,9 @@ public:
 		m_code = code;
 	}
 
-	uint8_t node() const
+	uint8_t nodeId() const
 	{
-		return m_node;
+		return m_nodeId;
 	}
 
 	int code() const
@@ -66,8 +66,8 @@ protected:
 	void execute();
 
 private:
-	uint8_t m_node = 0;
 	int m_code = 0;
+	uint8_t m_nodeId = 0;
 };
 
 struct NodeData {
@@ -169,8 +169,6 @@ public:
 		delete m_nodeData;
 	}
 
-	static const IO::DeviceClassInfo deviceClass();
-
 	IO::Request* createRequest() override
 	{
 		return new Request(*this);
@@ -181,7 +179,7 @@ public:
 		return m_address;
 	}
 
-	IO::DevNode nodeIdMax() const override
+	DevNode::ID nodeIdMax() const override
 	{
 		return m_nodeCount - 1;
 	}
@@ -191,15 +189,15 @@ public:
 		return m_nodeCount;
 	}
 
-	const NodeData& getNodeData(IO::DevNode node) const
+	const NodeData& getNodeData(uint8_t nodeId) const
 	{
-		assert(node < m_nodeCount);
-		return m_nodeData[node];
+		assert(nodeId < m_nodeCount);
+		return m_nodeData[nodeId];
 	}
 
 protected:
-	IO::Error init(const Config& config);
-	IO::Error init(JsonObjectConst config) override;
+	Error init(const Config& config);
+	Error init(JsonObjectConst config) override;
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 	/** @brief controller calls this before performing an update,
@@ -208,7 +206,7 @@ protected:
 	 */
 	bool update();
 
-	IO::Error execute(Request& request);
+	Error execute(Request& request);
 
 private:
 	uint16_t m_address = 0x01;		///< Start address for this device, may occupy more than one slot
@@ -245,6 +243,8 @@ private:
 	bool m_changed = false;  ///< Data has changed
 	SimpleTimer m_timer;	 ///< For slave update cycle timing
 };
+
+const DeviceClassInfo deviceClass();
 
 } // namespace DMX512
 } // namespace IO

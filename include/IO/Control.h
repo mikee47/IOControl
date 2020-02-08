@@ -16,6 +16,7 @@
 #include <WHashMap.h>
 #include <ArduinoJson.h>
 #include <Data/CStringArray.h>
+#include "BitSet.h"
 #include "Status.h"
 
 #ifdef ENABLE_HEAP_PRINTING
@@ -216,25 +217,31 @@ private:
 	uint8_t m_instance = 0;
 };
 
-// Identifies a device node
-typedef uint16_t DevNode;
-// Special value to indicate all nodes
-constexpr DevNode NODES_ALL = 0xFFFF;
+/**
+ * @brief Identifies a device node
+ */
+struct DevNode {
+	using ID = uint16_t;
+	ID id;
 
-// For a normal on/off output node
-enum __attribute__((packed)) devnode_state_t {
-	state_none = 0, // No state information available (i.e. no nodes)
-	state_off = _BV(0),
-	state_on = _BV(1),
-	state_someon = _BV(2),
-	state_unknown = _BV(3)
+	// For a normal on/off output node
+	enum class State {
+		off,
+		on,
+		someon,
+		unknown,
+	};
+
+	using States = BitSet<uint8_t, State>;
+
+	bool operator==(const DevNode& other) const
+	{
+		return id == other.id;
+	}
 };
 
-static inline devnode_state_t operator|=(devnode_state_t& lhs, const devnode_state_t rhs)
-{
-	lhs = static_cast<devnode_state_t>(lhs | rhs);
-	return lhs;
-}
+// Special value to indicate all nodes
+static constexpr DevNode DevNode_ALL{0xFFFF};
 
 /*
  * Device state is used to automate initialisation and fault recovery.
@@ -322,12 +329,12 @@ public:
 	}
 
 	// Typically devices have a contiguous valid range of node IDs
-	virtual DevNode nodeIdMin() const
+	virtual DevNode::ID nodeIdMin() const
 	{
 		return 0;
 	}
 
-	virtual DevNode nodeIdMax() const
+	virtual DevNode::ID nodeIdMax() const
 	{
 		return 0;
 	}
@@ -338,9 +345,9 @@ public:
 		return 0;
 	}
 
-	virtual devnode_state_t getNodeState(DevNode node) const
+	virtual DevNode::States getNodeStates(DevNode node) const
 	{
-		return state_none;
+		return DevNode::States{};
 	}
 
 protected:
@@ -502,20 +509,20 @@ public:
 		return false;
 	}
 
-	virtual devnode_state_t getNodeState(DevNode node)
+	virtual DevNode::States getNodeStates(DevNode node)
 	{
-		return state_unknown;
+		return DevNode::State::unknown;
 	}
 
 	/*
 	 * Generic set state command. 0 is off, otherwise on.
 	 * Dimmable nodes use percentage level 0 - 100.
 	 */
-	virtual bool setNodeState(DevNode node, devnode_state_t state)
+	virtual bool setNodeState(DevNode node, DevNode::State state)
 	{
-		if(state == state_on) {
+		if(state == DevNode::State::on) {
 			setCommand(Command::on);
-		} else if(state == state_off) {
+		} else if(state == DevNode::State::off) {
 			setCommand(Command::off);
 		} else {
 			return false;

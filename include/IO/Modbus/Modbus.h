@@ -237,8 +237,8 @@ public:
 	}
 
 protected:
-	IO::Error init(const Config& config);
-	IO::Error init(JsonObjectConst config) override;
+	Error init(const Config& config);
+	Error init(JsonObjectConst config) override;
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 private:

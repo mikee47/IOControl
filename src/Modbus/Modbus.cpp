@@ -420,7 +420,7 @@ void Controller::completeTransaction()
 
 /* Device */
 
-IO::Error Device::init(const Config& config)
+Error Device::init(const Config& config)
 {
 	auto err = IO::Device::init(config);
 	if(!!err) {
@@ -428,18 +428,18 @@ IO::Error Device::init(const Config& config)
 	}
 
 	if(config.slave.address == 0) {
-		return IO::Error::no_address;
+		return Error::no_address;
 	}
 
 	if(config.slave.baudrate == 0) {
-		return IO::Error::no_baudrate;
+		return Error::no_baudrate;
 	}
 
 	m_config = config.slave;
-	return IO::Error::success;
+	return Error::success;
 }
 
-IO::Error Device::init(JsonObjectConst config)
+Error Device::init(JsonObjectConst config)
 {
 	Config cfg{};
 	parseJson(config, cfg);
@@ -457,7 +457,7 @@ void Device::parseJson(JsonObjectConst json, Config& cfg)
 
 void Request::callback(Transaction& mbt)
 {
-	complete(checkStatus(mbt) ? IO::Status::success : IO::Status::error);
+	complete(checkStatus(mbt) ? Status::success : Status::error);
 }
 
 bool Request::checkStatus(const Transaction& mbt)
@@ -478,8 +478,8 @@ void Request::getJson(JsonObject json) const
 {
 	IO::Request::getJson(json);
 
-	if(m_status == IO::Status::error) {
-		IO::setError(json, unsigned(m_exception), toString(m_exception));
+	if(m_status == Status::error) {
+		setError(json, unsigned(m_exception), toString(m_exception));
 	}
 }
 

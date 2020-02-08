@@ -51,8 +51,8 @@ namespace R421A
 {
 struct Response {
 	// Response data
-	uint32_t channelMask;
-	uint32_t channelStates;
+	BitSet32 channelMask;
+	BitSet32 channelStates;
 };
 
 class Device;
@@ -64,7 +64,7 @@ public:
 	{
 	}
 
-	IO::Error parseJson(JsonObjectConst json) override;
+	Error parseJson(JsonObjectConst json) override;
 
 	void getJson(JsonObject json) const override;
 
@@ -73,34 +73,34 @@ public:
 		return reinterpret_cast<Device&>(m_device);
 	}
 
-	bool setNode(IO::DevNode node) override;
+	bool setNode(DevNode node) override;
 
-	bool nodeLatch(IO::DevNode node)
+	bool nodeLatch(DevNode node)
 	{
-		setCommand(IO::Command::latch);
+		setCommand(Command::latch);
 		return setNode(node);
 	}
 
-	bool nodeMomentary(IO::DevNode node)
+	bool nodeMomentary(DevNode node)
 	{
-		setCommand(IO::Command::momentary);
+		setCommand(Command::momentary);
 		return setNode(node);
 	}
 
-	bool nodeDelay(IO::DevNode node, uint8_t secs)
+	bool nodeDelay(DevNode node, uint8_t secs)
 	{
-		setCommand(IO::Command::delay);
+		setCommand(Command::delay);
 		m_data.delay = secs;
 		return setNode(node);
 	}
 
-	IO::devnode_state_t getNodeState(IO::DevNode node) override;
+	DevNode::States getNodeStates(DevNode node) override;
 
-	bool setNodeState(IO::DevNode node, IO::devnode_state_t state) override
+	bool setNodeState(DevNode node, DevNode::State state) override
 	{
-		if(state == IO::state_on) {
+		if(state == DevNode::State::on) {
 			nodeOn(node);
-		} else if(state == IO::state_off) {
+		} else if(state == DevNode::State::off) {
 			nodeOff(node);
 		} else {
 			return false;
@@ -120,7 +120,7 @@ protected:
 private:
 	// Associated command data
 	struct Data {
-		uint32_t channelMask;
+		BitSet32 channelMask;
 		uint8_t delay;
 	};
 
@@ -149,12 +149,12 @@ public:
 		return m_states;
 	}
 
-	IO::DevNode nodeIdMin() const override
+	DevNode::ID nodeIdMin() const override
 	{
 		return R421_CHANNEL_MIN;
 	}
 
-	IO::DevNode nodeIdMax() const override
+	DevNode::ID nodeIdMax() const override
 	{
 		return R421_CHANNEL_MIN + m_channelCount - 1;
 	}
@@ -164,18 +164,16 @@ public:
 		return m_channelCount;
 	}
 
-	bool isValid(IO::DevNode node) const
+	bool isValid(DevNode node) const
 	{
-		return node >= nodeIdMin() && node <= nodeIdMax();
+		return node.id >= nodeIdMin() && node.id <= nodeIdMax();
 	}
 
-	IO::devnode_state_t getNodeState(IO::DevNode node) const override;
-
-	static const IO::DeviceClassInfo deviceClass();
+	DevNode::States getNodeStates(DevNode node) const override;
 
 protected:
-	IO::Error init(const Config& config);
-	IO::Error init(JsonObjectConst config) override;
+	Error init(const Config& config);
+	Error init(JsonObjectConst config) override;
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 	// We use this to track states
@@ -187,6 +185,8 @@ private:
 	// Depends on device variant (e.g. 8, 4)
 	uint8_t m_channelCount{0};
 };
+
+const IO::DeviceClassInfo deviceClass();
 
 } // namespace R421A
 } // namespace Modbus

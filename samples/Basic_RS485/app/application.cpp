@@ -2,13 +2,12 @@
 #include <FlashString/Stream.hpp>
 
 #include <IO/Modbus/R421A/R421A.h>
-//#include <DMX512/IODMX512.h>
+//#include <IO/DMX512/DMX512.h>
 
 namespace
 {
 static IO::Modbus::Controller modbus0(0);
-
-//static DMX512Controller DMX0(0);
+//static IO::DMX512::Controller dmx0(0);
 
 IMPORT_FSTR_LOCAL(DEVMGR_CONFIG, PROJECT_DIR "/config/devices.json")
 
@@ -51,7 +50,7 @@ void devmgrCallback(IO::Request& request)
 IO::Error devmgrInit()
 {
 	// Setup modbus stack
-	modbus0.registerDeviceClass(IO::Modbus::R421A::Device::deviceClass);
+	modbus0.registerDeviceClass(IO::Modbus::R421A::deviceClass);
 	IO::devmgr.registerController(modbus0);
 
 	// Setup RF switch stack
@@ -59,8 +58,8 @@ IO::Error devmgrInit()
 	//	devmgr.registerController(rfswitch0);
 
 	// At present conflicts with modbus0 - needs work to allow modbus and DMX to co-exist on same segment
-	//	DMX512Controller::registerDeviceClass(DMX512Device::deviceClass);
-	//	devmgr.registerController(DMX0);
+	//	dmx0.registerDeviceClass(IO::DMX512::deviceClass);
+	//	IO::devmgr.registerController(dmx0);
 
 #ifndef ARCH_HOST
 //	pixel0.registerDeviceClass(PixelDevice::deviceClass);
@@ -89,22 +88,21 @@ Timer testTimer;
 void systemReady()
 {
 	auto err = devmgrInit();
-	if(!err) {
-		testTimer
-			.initializeMs<2000>(InterruptCallback([]() {
-				IO::Request* req;
-				auto err = IO::devmgr.createRequest("mb1", req);
-				if(!err) {
-					req->setCommand(IO::Command::toggle);
-					req->setID("Toggle all outputs");
-					req->setNode(IO::NODES_ALL);
-					//					req->setID("Toggle output #1");
-					//					req->setNode(1);
-					req->submit();
-				}
-			}))
-			.start();
-	}
+
+	testTimer
+		.initializeMs<2000>(InterruptCallback([]() {
+			IO::Request* req;
+			auto err = IO::devmgr.createRequest("mb1", req);
+			if(!err) {
+				req->setCommand(IO::Command::toggle);
+				req->setID("Toggle all outputs");
+				req->setNode(IO::DevNode_ALL);
+				//					req->setID("Toggle output #1");
+				//					req->setNode(1);
+				req->submit();
+			}
+		}))
+		.start();
 }
 
 } // namespace

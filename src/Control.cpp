@@ -65,22 +65,25 @@ Error Request::parseJson(JsonObjectConst json)
 		return Error::bad_command;
 	}
 
-	DevNode id;
+	DevNode node;
 	JsonArrayConst arr;
-	if(Json::getValue(json[ATTR_NODE], id)) {
+	if(Json::getValue(json[ATTR_NODE], node.id)) {
 		unsigned count = json[ATTR_COUNT] | 1;
 		while(count--) {
-			if(!setNode(id++)) {
+			if(!setNode(node)) {
+				return Error::bad_node;
+			}
+			node.id++;
+		}
+	} else if(Json::getValue(json[ATTR_NODES], arr)) {
+		for(DevNode::ID id : arr) {
+			if(!setNode(DevNode{id})) {
 				return Error::bad_node;
 			}
 		}
-	} else if(Json::getValue(json[ATTR_NODES], arr)) {
-		for(unsigned id : arr)
-			if(!setNode(id))
-				return Error::bad_node;
 	}
 	// all nodes
-	else if(!setNode(NODES_ALL)) {
+	else if(!setNode(DevNode_ALL)) {
 		return Error::bad_node;
 	}
 
@@ -163,7 +166,7 @@ Error Device::start()
 	}
 
 	// This fails if device doesn't have any nodes
-	if(!req->nodeQuery(NODES_ALL)) {
+	if(!req->nodeQuery(DevNode_ALL)) {
 		delete req;
 		m_state = devstate_normal;
 		return Error::success;
@@ -575,7 +578,7 @@ Error DeviceManager::handleMessage(JsonObject json, void* param)
 				req->setID(requestId);
 				req->setParam(param);
 				req->setCommand(cmd);
-				req->setNode(NODES_ALL);
+				req->setNode(DevNode_ALL);
 			}
 
 			queue.enqueue(req);
@@ -585,12 +588,12 @@ Error DeviceManager::handleMessage(JsonObject json, void* param)
 			if(cmd == Command::toggle) {
 				// Change request to an explicit on or off command
 				// For toggle command, first node gives state
-				devnode_state_t state = state_none;
+				DevNode::States states{};
 				for(unsigned i = 0; i < queue.count(); ++i) {
-					state |= queue[i]->getNodeState(NODES_ALL);
+					states += queue[i]->getNodeStates(DevNode_ALL);
 				}
 				for(unsigned i = 0; i < queue.count(); ++i) {
-					queue[i]->setCommand((state & state_on) ? Command::off : Command::on);
+					queue[i]->setCommand(states[DevNode::State::on] ? Command::off : Command::on);
 				}
 			}
 		}

@@ -16,10 +16,8 @@ namespace IO
 namespace DMX512
 {
 // Device configuration
-DEFINE_FSTR(CONTROLLER_CLASSNAME, "DMX")
-
-// Our device name
-DEFINE_FSTR(DEVICE_NAME, "dmx")
+DEFINE_FSTR(CONTROLLER_CLASSNAME, "dmx")
+DEFINE_FSTR(DEVICE_CLASSNAME, "dmx")
 
 //
 DEFINE_FSTR_LOCAL(ATTR_ADDRESS, "address")
@@ -128,14 +126,14 @@ void Controller::execute(IO::Request& request)
 	auto& req = reinterpret_cast<Request&>(request);
 	auto err = req.device().execute(req);
 	if(!!err) {
-		debug_e("Request failed, %s", IO::toString(err).c_str());
-		request.complete(IO::Status::error);
+		debug_e("Request failed, %s", toString(err).c_str());
+		request.complete(Status::error);
 	} else {
 		// Request will be completed when next update cycle completes
 		m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
 		m_timer.startOnce();
 		m_changed = true;
-		request.complete(IO::Status::success);
+		request.complete(Status::success);
 	}
 }
 
@@ -170,9 +168,9 @@ void Controller::updateSlaves()
 		if(dev->update()) {
 			m_changed = true;
 		}
-		for(unsigned node = dev->nodeIdMin(); node <= dev->nodeIdMax(); ++node) {
-			auto& nodeData = dev->getNodeData(node);
-			unsigned addr = dev->address() + node;
+		for(unsigned nodeId = dev->nodeIdMin(); nodeId <= dev->nodeIdMax(); ++nodeId) {
+			auto& nodeData = dev->getNodeData(nodeId);
+			unsigned addr = dev->address() + nodeId;
 			assert(addr > 0 && addr <= maxAddr);
 			// @todo: Device should perform any necessary translation
 			//			data[addr] = led(nodeData.value);
@@ -211,44 +209,44 @@ void Controller::transmitComplete(HardwareSerial& serial)
 
 /* Request */
 
-IO::Error Request::parseJson(JsonObjectConst json)
+Error Request::parseJson(JsonObjectConst json)
 {
-	IO::Error err = IO::Request::parseJson(json);
+	Error err = IO::Request::parseJson(json);
 	if(!!err) {
 		return err;
 	}
 	const char* s = json[ATTR_CODE];
 	m_code = s ? strtoul(s, nullptr, 10) : 0;
-	return IO::Error::success;
+	return Error::success;
 }
 
 void Request::getJson(JsonObject json) const
 {
 	IO::Request::getJson(json);
-	json[IO::ATTR_NODE] = m_node;
+	json[IO::ATTR_NODE] = m_nodeId;
 	json[ATTR_CODE] = String(m_code);
 }
 
 /* Device */
 
-static IO::Error createDevice(IO::Controller& controller, IO::Device*& device)
+static Error createDevice(IO::Controller& controller, IO::Device*& device)
 {
 	if(!controller.verifyClass(CONTROLLER_CLASSNAME)) {
-		return IO::Error::bad_controller_class;
+		return Error::bad_controller_class;
 	}
 
 	device = new Device(reinterpret_cast<Controller&>(controller));
-	return device ? IO::Error::success : IO::Error::nomem;
+	return device ? Error::success : Error::nomem;
 }
 
-const IO::DeviceClassInfo Device::deviceClass()
+const DeviceClassInfo deviceClass()
 {
-	return {DEVICE_NAME, createDevice};
+	return {DEVICE_CLASSNAME, createDevice};
 }
 
-IO::Error Device::init(const Config& config)
+Error Device::init(const Config& config)
 {
-	IO::Error err = IO::Device::init(config);
+	Error err = IO::Device::init(config);
 	if(!!err) {
 		return err;
 	}
@@ -258,17 +256,17 @@ IO::Error Device::init(const Config& config)
 	m_nodeData = new NodeData[m_nodeCount];
 	memset(m_nodeData, 0, sizeof(NodeData) * m_nodeCount);
 
-	return IO::Error::success;
+	return Error::success;
 }
 
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
 	IO::Device::parseJson(json, cfg);
 	cfg.address = json[ATTR_ADDRESS] | 0x01;
-	cfg.nodeCount = json[IO::ATTR_COUNT] | 1;
+	cfg.nodeCount = json[ATTR_COUNT] | 1;
 }
 
-IO::Error Device::init(JsonObjectConst config)
+Error Device::init(JsonObjectConst config)
 {
 	Config cfg{};
 	parseJson(config, cfg);
@@ -287,37 +285,37 @@ bool Device::update()
 	return res;
 }
 
-IO::Error Device::execute(Request& request)
+Error Device::execute(Request& request)
 {
-	unsigned node = request.node();
-	if(node >= m_nodeCount) {
-		return IO::Error::bad_node;
+	auto nodeId = request.nodeId();
+	if(nodeId >= m_nodeCount) {
+		return Error::bad_node;
 	}
 
 	// Apply request to device data
-	auto& nodeData = m_nodeData[node];
+	auto& data = m_nodeData[nodeId];
 	switch(request.command()) {
-	case IO::Command::off:
-		nodeData.disable();
+	case Command::off:
+		data.disable();
 		break;
-	case IO::Command::on:
-		if(nodeData.target == 0) {
-			nodeData.target = 100; // Default brightness
+	case Command::on:
+		if(data.target == 0) {
+			data.target = 100; // Default brightness
 		}
-		nodeData.enable();
+		data.enable();
 		break;
-	case IO::Command::adjust: {
-		nodeData.setTarget(nodeData.target + request.code());
-		nodeData.enable();
+	case Command::adjust: {
+		data.setTarget(data.target + request.code());
+		data.enable();
 		break;
 	}
-	case IO::Command::send:
-		nodeData.setValue(request.code());
+	case Command::send:
+		data.setValue(request.code());
 		break;
 	default:
-		return IO::Error::bad_command;
+		return Error::bad_command;
 	}
-	return IO::Error::success;
+	return Error::success;
 }
 
 } // namespace DMX512
