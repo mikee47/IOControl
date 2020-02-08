@@ -234,8 +234,10 @@ public:
 		return m_updating;
 	}
 
-private:
+protected:
 	void execute(IO::Request& request) override;
+
+private:
 	void updateSlaves();
 	void transmitComplete(HardwareSerial& serial);
 

@@ -387,16 +387,14 @@ void Controller::processResponse()
 	m_printf(_F(" %02X %02X\n"), buf.tmp[1], buf.tmp[2]);
 #endif
 
-	// verify response is for correct Modbus slave
 	if(buf.slaveId != request->device().address()) {
+		// Mismatch with command slave ID
 		m_trans.exception = Exception::InvalidSlaveID;
-	}
-	// verify response is for correct Modbus function code (mask exception bit 7)
-	else if(Function(buf.function & 0x7F) != m_trans.function) {
+	} else if(Function(buf.function & 0x7F) != m_trans.function) {
+		// Mismatch with command function
 		m_trans.exception = Exception::InvalidFunction;
-	}
-	// check whether Modbus exception occurred; return Modbus Exception Code
-	else if(buf.function & 0x80) {
+	} else if(buf.function & 0x80) {
+		// Modbus exception occurred
 		m_trans.exception = Exception(m_trans.data[0]);
 	} else if(crc != 0) {
 		m_trans.exception = Exception::InvalidCRC;
