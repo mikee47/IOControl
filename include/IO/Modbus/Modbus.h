@@ -145,17 +145,12 @@ enum class Function {
 	MaskWriteRegister = 0x16,
 	ReadWriteMultipleRegisters = 0x17,
 
-	// File record access
-	ReadFileRecord = 0x14,
-	WriteFileRecord = 0x15,
-
 	// Diagnostics
 	ReadExceptionStatus = 0x07,
 	Diagnostic = 0x08,
 	GetComEventCounter = 0x0b,
 	GetComEventLog = 0x0c,
-	ReportSlaveID = 0x11,
-	ReadDeviceIdentification = 0x2b,
+	ReportSlaveID = 0x11, // Also known as 'report server ID'
 };
 
 // 16-bit words are stored big-endian; use this macro to pull them from response buffer
@@ -175,6 +170,249 @@ struct Transaction {
 	uint8_t dataSize;
 };
 
+/*
+ * Packing necessary as some fields are misaligned
+ */
+struct __attribute__((packed)) PDU {
+	union Data {
+		// ReadCoils = 0x01
+		union ReadCoils {
+			static constexpr uint16_t MaxCoils = 2000;
+			struct Request {
+				uint16_t startAddress;
+				uint16_t quantityOfCoils;
+			};
+			struct Response {
+				uint8_t byteCount;
+				uint8_t coilStatus[MaxCoils / 8];
+			};
+
+			Request request;
+			Response response;
+		};
+		ReadCoils readCoils;
+
+		// ReadDiscreteInputs = 0x02
+		union ReadDiscreteInputs {
+			static constexpr uint16_t MaxInputs = 2000;
+			struct Request {
+				uint16_t startAddress;
+				uint16_t quantityOfInputs;
+			};
+			struct Response {
+				uint8_t byteCount;
+				uint8_t inputStatus[MaxInputs / 8];
+			};
+
+			Request request;
+			Response response;
+		};
+		ReadDiscreteInputs readDiscreteInputs;
+
+		// 16-bit access
+		// ReadHoldingRegisters = 0x03,
+		union ReadHoldingRegisters {
+			struct Request {
+				uint16_t startAddress;
+				uint16_t quantityOfRegisters;
+			};
+			struct Response {
+				uint8_t byteCount;
+				uint16_t values;
+			};
+
+			Request request;
+			Response response;
+		};
+		ReadHoldingRegisters readHoldingRegisters;
+
+		// ReadInputRegisters = 0x04,
+		union ReadInputRegisters {
+			static constexpr uint16_t MaxRegisters = 125;
+			struct Request {
+				uint16_t startAddress;
+				uint16_t quantityOfRegisters;
+			};
+			struct Response {
+				uint8_t byteCount;
+				uint16_t values[MaxRegisters];
+			};
+
+			Request request;
+			Response response;
+		};
+		ReadInputRegisters readInputRegisters;
+
+		// WriteSingleCoil = 0x05,
+		union WriteSingleCoil {
+			struct Request {
+				uint16_t outputAddress;
+				uint16_t outputValue;
+			};
+			using Response = Request;
+
+			Request request;
+			Response response;
+		};
+		WriteSingleCoil writeSingleCoil;
+
+		// WriteSingleRegister = 0x06,
+		union WriteSingleRegister {
+			struct Request {
+				uint16_t address;
+				uint16_t value;
+			};
+			using Response = Request;
+
+			Request request;
+			Response response;
+		};
+		WriteSingleRegister writeSingleRegister;
+
+		// ReadExceptionStatus = 0x07,
+		union ReadExceptionStatus {
+			struct Response {
+				uint8_t outputData;
+			};
+
+			Response response;
+		};
+		ReadExceptionStatus readExceptionStatus;
+
+		// Diagnostic = 0x08,
+		union Diagnostic {
+			// Both request and response data length is dictated by overall packet size
+			static constexpr uint16_t MaxData = 252;
+			struct Request {
+				uint16_t subFunction;
+				uint16_t data[MaxData];
+			};
+			struct Response {
+				uint16_t subFunction;
+				uint16_t data[MaxData];
+			};
+
+			Request request;
+			Response response;
+		};
+		Diagnostic diagnostic;
+
+		// GetComEventCounter = 0x0b,
+		union GetComEventCounter {
+			struct Response {
+				uint16_t status;
+				uint16_t eventCount;
+			};
+
+			Response response;
+		};
+		GetComEventCounter getComEventCounter;
+
+		// GetComEventLog = 0x0c,
+		union GetComEventLog {
+			static constexpr uint8_t MaxEvents{64};
+			struct Response {
+				uint8_t byteCount;
+				uint16_t status;
+				uint16_t eventCount;
+				uint16_t messageCount;
+				uint8_t events[MaxEvents];
+			};
+
+			Response response;
+		};
+		GetComEventLog getComEventLog;
+
+		// WriteMultipleCoils = 0x0f,
+		union WriteMultipleCoils {
+			static constexpr uint16_t MaxCoils{246 * 8};
+			struct Request {
+				uint16_t startAddress;
+				uint16_t quantityOfOutputs;
+				uint8_t byteCount;
+				uint8_t values[MaxCoils];
+			};
+			struct Response {
+				uint16_t startAddress;
+				uint16_t quantityOfOutputs;
+			};
+
+			Request request;
+			Response response;
+		};
+		WriteMultipleCoils writeMultipleCoils;
+
+		// WriteMultipleRegisters = 0x10,
+		union WriteMultipleRegisters {
+			static constexpr uint16_t MaxRegisters{123};
+			struct Request {
+				uint16_t startAddress;
+				uint16_t quantityOfRegisters;
+				uint8_t byteCount;
+				uint16_t values[MaxRegisters];
+			};
+			struct Response {
+				uint16_t startAddress;
+				uint16_t quantityOfRegisters;
+			};
+
+			Request request;
+			Response response;
+		};
+		WriteMultipleRegisters writeMultipleRegisters;
+
+		// ReportSlaveID = 0x11,
+		union ReportSlaveID {
+			struct Response {
+				uint8_t byteCount;
+				uint8_t data[250]; ///< Content is specific to slave device
+			};
+
+			Response response;
+		};
+		ReportSlaveID reportSlaveID;
+
+		// MaskWriteRegister = 0x16,
+		union MaskWriteRegister {
+			struct Request {
+				uint16_t address;
+				uint16_t andMask;
+				uint16_t orMask;
+			};
+			using Response = Request;
+
+			Request request;
+			Response response;
+		};
+		MaskWriteRegister maskWriteRegister;
+
+		// ReadWriteMultipleRegisters = 0x17,
+		union ReadWriteMultipleRegisters {
+			static constexpr uint16_t MaxReadRegisters{125};
+			static constexpr uint16_t MaxWriteRegisters{121};
+			struct Request {
+				uint16_t readAddress;
+				uint16_t quantityToRead;
+				uint16_t writeAddress;
+				uint16_t quantityToWrite;
+				uint8_t writeByteCount;
+				uint16_t writeValues[MaxWriteRegisters];
+			};
+			struct Response {
+				uint8_t byteCount;
+				uint16_t values[MaxReadRegisters];
+			};
+
+			Request request;
+			Response response;
+		};
+		ReadWriteMultipleRegisters readWriteMultipleRegisters;
+	};
+
+	Function function;
+	Data data;
+};
+
 class Request : public IO::Request
 {
 	friend Controller;
@@ -192,7 +430,7 @@ public:
 	void getJson(JsonObject json) const;
 
 protected:
-	virtual void fillRequestData(Transaction& mbt) = 0;
+	virtual Function fillRequestData(PDU::Data& data) = 0;
 	virtual void callback(Transaction& mbt) = 0;
 
 	// Return true if handled
@@ -277,7 +515,7 @@ private:
 
 private:
 	Request* request{nullptr};
-	Transaction m_trans{};
+	PDU m_pdu{};
 	uint8_t txEnablePin{0};
 	SimpleTimer timer; ///< Use to schedule callback and timeout
 };
