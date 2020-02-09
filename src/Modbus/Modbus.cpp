@@ -70,6 +70,15 @@ uint16_t crc16_update(uint16_t crc, const void* data, size_t count)
 	return crc;
 }
 
+// Perform unaligned byteswap on array of uint16_t
+auto bswap = [](void* values, unsigned count) {
+	auto p = static_cast<uint8_t*>(values);
+	while(count--) {
+		std::swap(p[0], p[1]);
+		p += 2;
+	}
+};
+
 } // namespace
 
 String toString(Exception exception)
@@ -85,16 +94,177 @@ String toString(Exception exception)
 		return F("IllegalDataValue");
 	case Exception::SlaveDeviceFailure:
 		return F("SlaveDeviceFailure");
-	case Exception::InvalidSlaveID:
-		return F("InvalidSlaveID");
-	case Exception::InvalidFunction:
-		return F("InvalidFunction");
-	case Exception::ResponseTimedOut:
-		return F("ResponseTimedOut");
-	case Exception::InvalidCRC:
-		return F("InvalidCRC");
 	default:
 		return F("Unknown") + String(unsigned(exception));
+	}
+}
+
+/**
+ * @brief Get size (in bytes) of PDU Data for request packet
+ */
+size_t PDU::getRequestDataSize() const
+{
+	switch(function()) {
+	case Function::ReadCoils:
+		return 2 + (data.readCoils.request.quantityOfCoils + 7) / 8;
+	case Function::ReadDiscreteInputs:
+		return 2 + (data.readDiscreteInputs.request.quantityOfInputs + 7) / 8;
+	case Function::ReadHoldingRegisters:
+		return sizeof(data.readHoldingRegisters.request);
+	case Function::ReadInputRegisters:
+		return sizeof(data.readInputRegisters.request);
+	case Function::WriteSingleCoil:
+		return sizeof(data.writeSingleCoil.request);
+	case Function::WriteSingleRegister:
+		return sizeof(data.writeSingleRegister.request);
+	case Function::ReadExceptionStatus:
+		return 0;
+	case Function::GetComEventCounter:
+		return 0;
+	case Function::GetComEventLog:
+		return 0;
+	case Function::WriteMultipleCoils:
+		return 5 + data.writeMultipleCoils.request.byteCount;
+	case Function::WriteMultipleRegisters:
+		return 5 + data.writeMultipleRegisters.request.byteCount;
+	case Function::ReportSlaveID:
+		return 0;
+	case Function::MaskWriteRegister:
+		return sizeof(data.maskWriteRegister.request);
+	case Function::ReadWriteMultipleRegisters:
+		return 9 + data.readWriteMultipleRegisters.request.writeByteCount;
+	default:
+		return 0;
+	}
+}
+
+/**
+ * @brief Get size (in bytes) of PDU Data in received response packet
+ */
+size_t PDU::getResponseDataSize() const
+{
+	if(exceptionFlag()) {
+		return 1;
+	}
+
+	switch(function()) {
+	case Function::ReadCoils:
+		return 1 + data.readCoils.response.byteCount;
+	case Function::ReadDiscreteInputs:
+		return 1 + data.readDiscreteInputs.response.byteCount;
+	case Function::ReadHoldingRegisters:
+		return 1 + data.readHoldingRegisters.response.byteCount;
+	case Function::ReadInputRegisters:
+		return 1 + data.readInputRegisters.response.byteCount;
+	case Function::WriteSingleCoil:
+		return sizeof(data.writeSingleCoil.response);
+	case Function::WriteSingleRegister:
+		return sizeof(data.writeSingleRegister.response);
+	case Function::ReadExceptionStatus:
+		return sizeof(data.readExceptionStatus.response);
+	case Function::GetComEventCounter:
+		return sizeof(data.getComEventCounter.response);
+	case Function::GetComEventLog:
+		return sizeof(data.getComEventLog.response.byteCount);
+	case Function::WriteMultipleCoils:
+		return sizeof(data.writeMultipleCoils.response);
+	case Function::WriteMultipleRegisters:
+		return sizeof(data.writeMultipleRegisters.response);
+	case Function::ReportSlaveID:
+		return 1 + data.reportSlaveID.response.byteCount;
+	case Function::MaskWriteRegister:
+		return sizeof(data.maskWriteRegister.response);
+	case Function::ReadWriteMultipleRegisters:
+		return 1 + data.readWriteMultipleRegisters.response.byteCount;
+	default:
+		return 0;
+	}
+}
+
+void PDU::swapRequestByteOrder(bool incoming)
+{
+	if(exceptionFlag()) {
+		return;
+	}
+
+	switch(function()) {
+	case Function::None:
+	case Function::GetComEventLog:
+	case Function::ReadExceptionStatus:
+	case Function::ReportSlaveID:
+		break;
+
+	case Function::ReadCoils:
+	case Function::ReadDiscreteInputs:
+	case Function::ReadHoldingRegisters:
+	case Function::ReadInputRegisters:
+	case Function::WriteSingleCoil:
+	case Function::WriteSingleRegister:
+	case Function::GetComEventCounter:
+	case Function::WriteMultipleCoils:
+		bswap(&data.readCoils.request.startAddress, 2);
+		break;
+
+	case Function::WriteMultipleRegisters: {
+		auto& req{data.writeMultipleRegisters.request};
+		auto count = req.quantityOfRegisters;
+		bswap(&req.startAddress, 2);
+		bswap(req.values, incoming ? req.quantityOfRegisters : count);
+		break;
+	}
+
+	case Function::MaskWriteRegister: {
+		bswap(&data.maskWriteRegister.request.address, 3);
+		break;
+	}
+
+	case Function::ReadWriteMultipleRegisters: {
+		auto& req = data.readWriteMultipleRegisters.request;
+		auto count = req.writeByteCount;
+		bswap(&req.readAddress, 3);
+		bswap(&req.writeValues, (incoming ? req.writeByteCount : count) / 2);
+		break;
+	}
+	}
+}
+
+void PDU::swapResponseByteOrder(bool incoming)
+{
+	if(exceptionFlag()) {
+		return;
+	}
+
+	switch(function()) {
+	case Function::None:
+	case Function::ReadCoils:
+	case Function::ReadDiscreteInputs:
+	case Function::ReadExceptionStatus:
+	case Function::ReportSlaveID:
+		break;
+
+	case Function::ReadHoldingRegisters: {
+	case Function::ReadInputRegisters:
+	case Function::ReadWriteMultipleRegisters:
+		auto& req = data.readHoldingRegisters.response;
+		bswap(req.values, req.byteCount / 2);
+		break;
+	}
+
+	case Function::WriteSingleCoil:
+	case Function::WriteSingleRegister:
+	case Function::GetComEventCounter:
+	case Function::WriteMultipleCoils:
+	case Function::WriteMultipleRegisters:
+		bswap(&data.writeSingleCoil.response.outputAddress, 2);
+		break;
+
+	case Function::GetComEventLog:
+		bswap(&data.getComEventLog.response.status, 3);
+		break;
+
+	case Function::MaskWriteRegister:
+		bswap(&data.maskWriteRegister.response.address, 3);
+		break;
 	}
 }
 
@@ -123,7 +293,7 @@ void Controller::start()
 	digitalWrite(txEnablePin, 0);
 	pinMode(txEnablePin, OUTPUT);
 
-	memset(&m_trans, 0, sizeof(m_trans));
+	requestFunction = Function::None;
 	IO::Controller::start();
 }
 
@@ -158,7 +328,6 @@ void Controller::uartCallback(uart_t* uart, uint32_t status)
 		System.queueCallback(
 			[](void* param) {
 				auto controller = static_cast<Controller*>(param);
-				controller->processResponse();
 				controller->completeTransaction();
 			},
 			controller);
@@ -186,21 +355,18 @@ void Controller::execute(IO::Request& request)
 
 	auto& req = reinterpret_cast<Request&>(request);
 	this->request = &req;
-	m_trans = Transaction{};
-	req.fillRequestData(m_trans);
 
-	struct Header {
-		uint8_t slaveId;
-		uint8_t function;
-	};
-	Header hdr{uint8_t(req.device().address()), uint8_t(m_trans.function)};
+	ADU adu;
+	adu.slaveId = req.device().address();
+	requestFunction = req.fillRequestData(adu.pdu.data);
+	adu.pdu.functionCode = uint8_t(requestFunction);
+	auto aduSize = 2 + adu.pdu.getRequestDataSize(); // SlaveID + function + data
+	adu.pdu.swapRequestByteOrder(false);
+	auto crc = crc16_update(0xFFFF, &adu, aduSize);
+	adu.buffer[aduSize++] = uint8_t(crc);
+	adu.buffer[aduSize++] = uint8_t(crc >> 8);
 
-#ifdef MODBUS_DEBUG
-	m_printf(_F("> %02X %02X"), hdr.slaveId, hdr.function);
-	for(uint8_t i = 0; i < m_trans.dataSize; ++i) {
-		m_printf(_F(" %02X"), m_trans.data[i]);
-	}
-#endif
+	debug_hex(DBG, ">", adu.buffer, aduSize);
 
 	// Prepare UART for comms
 	auto baudrate = req.device().baudrate();
@@ -213,207 +379,100 @@ void Controller::execute(IO::Request& request)
 
 	// Transmit request data whilst keeping TX_EN assserted
 	digitalWrite(txEnablePin, 1);
+	uart_write(uart, adu.buffer, aduSize + 1);
 
-	struct Footer {
-		// Sent in LSB, MSB order
-		uint8_t crc[2];
-		// Frame-end - tx interrupt occurs when last byte is removed from buffer so cannot be real data
-		uint8_t padding;
-	};
-
-	// Write value and update CRC
-	uint16_t crc{0xFFFF};
-	auto write = [&](const void* data, size_t len) {
-		uart_write(uart, data, len);
-		crc = crc16_update(crc, data, len);
-	};
-
-	write(&hdr, sizeof(hdr));
-	write(m_trans.data, m_trans.dataSize);
-	Footer footer{lowByte(crc), highByte(crc), 0};
-	uart_write(uart, &footer, sizeof(footer));
-
-	// Now prepare for response
-	m_trans.exception = Exception::ResponseTimedOut;
-	m_trans.dataSize = 0;
+	// Prepare for response
 	Serial.setUartCallback(uartCallback, this);
-
-#ifdef MODBUS_DEBUG
-	m_printf(_F(" %02X %02X\n"), lowByte(crc), highByte(crc));
-#endif
 
 	// Put a timeout on the overall transaction
 	timer.initializeMs<MODBUS_TRANSACTION_TIMEOUT_MS>(
 		[](void* param) {
 			Serial.setUartCallback(nullptr);
 			auto controller = static_cast<Controller*>(param);
-			controller->completeTransaction();
+			controller->transactionTimeout();
 		},
 		this);
 	timer.startOnce();
 }
 
-void Controller::processResponse()
+Error Controller::readResponse(ADU& adu)
 {
 	auto uart = Serial.getUart();
 	auto avail = uart_rx_available(uart);
 
-	// Smallest packet for initial read
-	struct {
-		uint8_t slaveId;
-		uint8_t function;
-		uint8_t tmp[3]; // CRC + 1 data byte
-	} buf;
-	static_assert(sizeof(buf) == 5, "alignment issue");
-
-	if(avail < sizeof(buf)) {
+	if(avail < 5) {
 		/*
 		 * todo: Fail, but could retry
 		 */
-		m_trans.exception = Exception::ResponseTimedOut;
-		return;
+		return Error::timeout;
 	}
 
-	// Read data from serial buffer update CRC
-	uint16_t crc = 0xFFFF;
-	auto read = [&](void* buf, size_t len) {
-		uart_read(uart, buf, len);
-		crc = crc16_update(crc, buf, len);
-	};
+	// Read packet
+	auto received = uart_read(uart, adu.buffer, sizeof(adu.buffer));
 
-	read(&buf, sizeof(buf));
+	// Compute the expected response size
+	auto dataSize = adu.pdu.getResponseDataSize();
+	auto aduSize = 2 + dataSize + 2; // slaveId + function + data + CRC
 
-	size_t dataSize = 0;
-	switch(Function(buf.function)) {
-	/*
-	 * 1 (read coils), 2 (read discrete inputs):
-	 * 	uint8_t valueCount;
-	 * 	uint8_t values[valueCount];
-	*/
-	case Function::ReadCoils:
-	case Function::ReadDiscreteInputs: {
-		auto bitCount = makeWord(buf.tmp);
-		dataSize = (bitCount + 7) / 8;
-		break;
+	if(received < aduSize) {
+		debug_w("MB: Only %u bytes read, %u expected", received, aduSize);
+		return Error::timeout;
 	}
 
-	/*
-	 * 4 (read input registers), 3 (read holding registers)
-	 *	uint8_t valueCount;
-	 *	uint16_t values[valueCount];
-	 *
-	*/
-	case Function::ReadInputRegisters:
-	case Function::ReadHoldingRegisters:
-	case Function::ReadWriteMultipleRegisters:
-		dataSize = 1 + (buf.tmp[0] * 2);
-		break;
-
-	case Function::ReadExceptionStatus:
-		dataSize = 1;
-		break;
-
-	/*
-	 * Exceptions (function | 0x80)
-	 * 	uint8_t exceptionCode;
-	 *
-	 */
-	case Function::ReportSlaveID:
-		dataSize = buf.tmp[0];
-		break;
-
-	case Function::MaskWriteRegister:
-		dataSize = 6;
-		break;
-
-	/*
-	 * 5 (force/write single coil)
-	 * 6 (preset/write single holding register)
-	 * 	uint16_t address;
-	 * 	uint16_t value;
-	 *
-	 * 15 (force/write multiple coils)
-	 * 16 (preset/write multiple holding registers)
-	 * 	uint16_t address;
-	 * 	uint16_t valueCount;
-	 *
-	 */
-	default:
-		dataSize = (buf.function & 0x80) ? 1 : 4;
-	}
-
-	// Fetch any remaining data and put CRC in tmp[1..2]
-	switch(dataSize) {
-	case 1:
-		m_trans.data[0] = buf.tmp[0];
-		break;
-	case 2:
-		m_trans.data[0] = buf.tmp[0];
-		m_trans.data[1] = buf.tmp[1];
-		buf.tmp[1] = buf.tmp[2];
-		read(&buf.tmp[2], 1);
-		break;
-	default:
-		m_trans.data[0] = buf.tmp[0];
-		m_trans.data[1] = buf.tmp[1];
-		m_trans.data[2] = buf.tmp[2];
-		if(dataSize > 3) {
-			if(dataSize > MODBUS_DATA_SIZE) {
-#ifdef MODBUS_DEBUG
-				debug_e("MODBUS: Packet contains %u bytes - too big for buffer", dataSize);
-#endif
-				dataSize = MODBUS_DATA_SIZE;
-			}
-			read(&m_trans.data[3], dataSize - 3);
+	if(avail > aduSize) {
+		debug_w("MB: Too much data, %u bytes available but only %u required", avail, aduSize);
+		if(avail > received) {
+			uart_flush(uart, UART_RX_ONLY);
 		}
-		read(&buf.tmp[1], 2);
 	}
 
-	// deduct header and CRC to obtain data size
-	if(avail > 4 + dataSize) {
-#ifdef MODBUS_DEBUG
-		debug_w("Too much data - %u in FIFO", avail);
-#endif
-		uart_flush(uart, UART_RX_ONLY);
+	debug_hex(DBG, "<", adu.buffer, aduSize);
+
+	auto crc = crc16_update(0xFFFF, adu.buffer, aduSize);
+	if(crc != 0) {
+		return Error::bad_checksum;
 	}
 
-	m_trans.dataSize = dataSize;
-
-#ifdef MODBUS_DEBUG
-	m_printf(_F("< %02X %02X"), buf.slaveId, buf.function);
-	for(unsigned i = 0; i < dataSize; ++i) {
-		m_printf(" %02X", m_trans.data[i]);
-	}
-	m_printf(_F(" %02X %02X\n"), buf.tmp[1], buf.tmp[2]);
-#endif
-
-	if(buf.slaveId != request->device().address()) {
+	if(adu.slaveId != request->device().address()) {
 		// Mismatch with command slave ID
-		m_trans.exception = Exception::InvalidSlaveID;
-	} else if(Function(buf.function & 0x7F) != m_trans.function) {
-		// Mismatch with command function
-		m_trans.exception = Exception::InvalidFunction;
-	} else if(buf.function & 0x80) {
-		// Modbus exception occurred
-		m_trans.exception = Exception(m_trans.data[0]);
-	} else if(crc != 0) {
-		m_trans.exception = Exception::InvalidCRC;
-	} else {
-		m_trans.exception = Exception::Success;
+		return Error::bad_param;
 	}
+
+	if(adu.pdu.function() != requestFunction) {
+		// Mismatch with command function
+		return Error::bad_command;
+	}
+
+	adu.pdu.swapResponseByteOrder(true);
+	return Error::success;
 }
 
-/*
- * Called by serial ISR when transaction has completed, or by expiry timer.
- */
 void Controller::completeTransaction()
 {
-	debug_d("Modbus: completeTransaction(): %s", toString(m_trans.exception).c_str());
-
 	auto req = request;
 	assert(req != nullptr);
 	request = nullptr;
-	req->callback(m_trans);
+
+	ADU adu;
+	auto err = readResponse(adu);
+
+	if(!!err) {
+		debug_e("Modbus: %s", toString(err).c_str());
+		req->complete(Status::error);
+	} else {
+		debug_d("Modbus: completeTransaction(): %s", toString(adu.pdu.exception()).c_str());
+		req->callback(adu.pdu);
+	}
+}
+
+void Controller::transactionTimeout()
+{
+	auto req = request;
+	assert(req != nullptr);
+	request = nullptr;
+
+	debug_w("MB: Timeout");
+	req->complete(Status::error);
 }
 
 /* Device */
@@ -453,23 +512,9 @@ void Device::parseJson(JsonObjectConst json, Config& cfg)
 
 /* Request */
 
-void Request::callback(Transaction& mbt)
+void Request::callback(PDU& pdu)
 {
-	complete(checkStatus(mbt) ? Status::success : Status::error);
-}
-
-bool Request::checkStatus(const Transaction& mbt)
-{
-	if(mbt.exception == Exception::Success) {
-		return true;
-	}
-
-	m_exception = mbt.exception;
-
-	String statusStr = toString(mbt.exception);
-	debug_e("modbus error %02X (%s)", mbt.exception, statusStr.c_str());
-
-	return false;
+	complete(!m_exception ? Status::success : Status::error);
 }
 
 void Request::getJson(JsonObject json) const

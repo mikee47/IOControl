@@ -35,6 +35,8 @@ class Controller;
  * @brief Modbus exception codes
  */
 enum class Exception {
+	Success = 0x00,
+
 	/**
 	 * @brief Protocol illegal function exception
 	 *
@@ -81,76 +83,36 @@ enum class Exception {
 	 */
 	SlaveDeviceFailure = 0x04,
 
-	/* Class-defined success/exception codes */
-
-	/**
-	 * @brief Success code
-	 *
-	 * Modbus transaction was successful, the following checks were valid:
-	 *
-	 * 	- slave ID
-	 * 	- function code
-	 * 	- response code
-	 * 	- data
-	 * 	- CRC
-	 */
-	Success = 0x00,
-
-	/**
-	 * @brief Invalid response slave ID
-	 *
-	 * The slave ID in the response does not match that of the request.
-	 */
-	InvalidSlaveID = 0xE0,
-
-	/**
-	 * @brief Invalid response function
-	 *
-	 * The function code in the response does not match that of the request.
-	 */
-	InvalidFunction = 0xE1,
-
-	/**
-	 * @brief Response timed-out
-	 *
-	 * The entire response was not received within the timeout period
-	 */
-	ResponseTimedOut = 0xE2,
-
-	/**
-	 * @brief Invalid response CRC
-	 *
-	 * The CRC in the response does not match the one calculated.
-	 */
-	InvalidCRC = 0xE3,
+	//	InvalidSlaveID = 0xE0,
+	//	InvalidFunction = 0xE1,
+	//	ResponseTimedOut = 0xE2,
+	//	InvalidCRC = 0xE3,
 };
+
+inline bool operator!(Exception exception)
+{
+	return exception == Exception::Success;
+}
 
 String toString(Exception exception);
 
 // Modbus function codes
 enum class Function {
 	None = 0x00,
-
-	// Bit-wise access
 	ReadCoils = 0x01,
 	ReadDiscreteInputs = 0x02,
-	WriteSingleCoil = 0x05,
-	WriteMultipleCoils = 0x0f,
-
-	// 16-bit access
 	ReadHoldingRegisters = 0x03,
 	ReadInputRegisters = 0x04,
+	WriteSingleCoil = 0x05,
 	WriteSingleRegister = 0x06,
-	WriteMultipleRegisters = 0x10,
-	MaskWriteRegister = 0x16,
-	ReadWriteMultipleRegisters = 0x17,
-
-	// Diagnostics
 	ReadExceptionStatus = 0x07,
-	Diagnostic = 0x08,
 	GetComEventCounter = 0x0b,
 	GetComEventLog = 0x0c,
+	WriteMultipleCoils = 0x0f,
+	WriteMultipleRegisters = 0x10,
 	ReportSlaveID = 0x11, // Also known as 'report server ID'
+	MaskWriteRegister = 0x16,
+	ReadWriteMultipleRegisters = 0x17,
 };
 
 // 16-bit words are stored big-endian; use this macro to pull them from response buffer
@@ -159,33 +121,37 @@ static inline uint16_t makeWord(const uint8_t* buffer)
 	return (buffer[0] << 8) | buffer[1];
 }
 
-/** @brief Public details of a transaction
- *
- *
- */
-struct Transaction {
-	Function function;
-	Exception exception;
-	uint8_t data[MODBUS_DATA_SIZE]; ///< command/response data
-	uint8_t dataSize;
-};
+#define ATTR_PACKED __attribute__((aligned(1), packed))
 
-/*
- * Packing necessary as some fields are misaligned
+/**
+ * @brief Protocol Data Unit
+ *
+ * Content is independent of the communication layer.
+ * Structure does NOT represent over-the-wire format as packing issues make handling PDU::Data awkward.
+ * Therefore, the other fields are unaligned and adjusted as required when sent over the wire.
  */
-struct __attribute__((packed)) PDU {
+struct PDU {
+	/*
+	 * Data is packed as some fields are misaligned.
+	 *
+	 * MODBUS sends 16-bit values MSB first, so appropriate byte-swapping is handled by the driver.
+	 * Other than that, the data is un-modified.
+	 */
 	union Data {
+		// For exception response
+		uint8_t exceptionCode;
+
 		// ReadCoils = 0x01
 		union ReadCoils {
-			static constexpr uint16_t MaxCoils = 2000;
-			struct Request {
+			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfCoils;
 			};
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint8_t byteCount;
-				uint8_t coilStatus[MaxCoils / 8];
+				uint8_t coilStatus[250];
 			};
+			static constexpr uint16_t MaxCoils{sizeof(Response::coilStatus) * 8};
 
 			Request request;
 			Response response;
@@ -194,15 +160,15 @@ struct __attribute__((packed)) PDU {
 
 		// ReadDiscreteInputs = 0x02
 		union ReadDiscreteInputs {
-			static constexpr uint16_t MaxInputs = 2000;
-			struct Request {
+			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfInputs;
 			};
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint8_t byteCount;
-				uint8_t inputStatus[MaxInputs / 8];
+				uint8_t inputStatus[250];
 			};
+			static constexpr uint16_t MaxInputs{sizeof(Response::inputStatus) * 8};
 
 			Request request;
 			Response response;
@@ -212,13 +178,14 @@ struct __attribute__((packed)) PDU {
 		// 16-bit access
 		// ReadHoldingRegisters = 0x03,
 		union ReadHoldingRegisters {
-			struct Request {
+			static constexpr uint16_t MaxRegisters{250 / 2};
+			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
 			};
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint8_t byteCount;
-				uint16_t values;
+				uint16_t values[MaxRegisters];
 			};
 
 			Request request;
@@ -228,12 +195,12 @@ struct __attribute__((packed)) PDU {
 
 		// ReadInputRegisters = 0x04,
 		union ReadInputRegisters {
-			static constexpr uint16_t MaxRegisters = 125;
-			struct Request {
+			static constexpr uint16_t MaxRegisters{250 / 2};
+			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
 			};
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint8_t byteCount;
 				uint16_t values[MaxRegisters];
 			};
@@ -245,7 +212,7 @@ struct __attribute__((packed)) PDU {
 
 		// WriteSingleCoil = 0x05,
 		union WriteSingleCoil {
-			struct Request {
+			struct ATTR_PACKED Request {
 				uint16_t outputAddress;
 				uint16_t outputValue;
 			};
@@ -258,7 +225,7 @@ struct __attribute__((packed)) PDU {
 
 		// WriteSingleRegister = 0x06,
 		union WriteSingleRegister {
-			struct Request {
+			struct ATTR_PACKED Request {
 				uint16_t address;
 				uint16_t value;
 			};
@@ -271,7 +238,7 @@ struct __attribute__((packed)) PDU {
 
 		// ReadExceptionStatus = 0x07,
 		union ReadExceptionStatus {
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint8_t outputData;
 			};
 
@@ -279,27 +246,9 @@ struct __attribute__((packed)) PDU {
 		};
 		ReadExceptionStatus readExceptionStatus;
 
-		// Diagnostic = 0x08,
-		union Diagnostic {
-			// Both request and response data length is dictated by overall packet size
-			static constexpr uint16_t MaxData = 252;
-			struct Request {
-				uint16_t subFunction;
-				uint16_t data[MaxData];
-			};
-			struct Response {
-				uint16_t subFunction;
-				uint16_t data[MaxData];
-			};
-
-			Request request;
-			Response response;
-		};
-		Diagnostic diagnostic;
-
 		// GetComEventCounter = 0x0b,
 		union GetComEventCounter {
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint16_t status;
 				uint16_t eventCount;
 			};
@@ -311,7 +260,7 @@ struct __attribute__((packed)) PDU {
 		// GetComEventLog = 0x0c,
 		union GetComEventLog {
 			static constexpr uint8_t MaxEvents{64};
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint8_t byteCount;
 				uint16_t status;
 				uint16_t eventCount;
@@ -325,14 +274,14 @@ struct __attribute__((packed)) PDU {
 
 		// WriteMultipleCoils = 0x0f,
 		union WriteMultipleCoils {
-			static constexpr uint16_t MaxCoils{246 * 8};
-			struct Request {
+			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfOutputs;
 				uint8_t byteCount;
-				uint8_t values[MaxCoils];
+				uint8_t values[246];
 			};
-			struct Response {
+			static constexpr uint16_t MaxCoils{sizeof(Request::values) * 8};
+			struct ATTR_PACKED Response {
 				uint16_t startAddress;
 				uint16_t quantityOfOutputs;
 			};
@@ -345,13 +294,13 @@ struct __attribute__((packed)) PDU {
 		// WriteMultipleRegisters = 0x10,
 		union WriteMultipleRegisters {
 			static constexpr uint16_t MaxRegisters{123};
-			struct Request {
+			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
 				uint8_t byteCount;
 				uint16_t values[MaxRegisters];
 			};
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
 			};
@@ -363,7 +312,7 @@ struct __attribute__((packed)) PDU {
 
 		// ReportSlaveID = 0x11,
 		union ReportSlaveID {
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint8_t byteCount;
 				uint8_t data[250]; ///< Content is specific to slave device
 			};
@@ -374,7 +323,7 @@ struct __attribute__((packed)) PDU {
 
 		// MaskWriteRegister = 0x16,
 		union MaskWriteRegister {
-			struct Request {
+			struct ATTR_PACKED Request {
 				uint16_t address;
 				uint16_t andMask;
 				uint16_t orMask;
@@ -390,7 +339,7 @@ struct __attribute__((packed)) PDU {
 		union ReadWriteMultipleRegisters {
 			static constexpr uint16_t MaxReadRegisters{125};
 			static constexpr uint16_t MaxWriteRegisters{121};
-			struct Request {
+			struct ATTR_PACKED Request {
 				uint16_t readAddress;
 				uint16_t quantityToRead;
 				uint16_t writeAddress;
@@ -398,7 +347,7 @@ struct __attribute__((packed)) PDU {
 				uint8_t writeByteCount;
 				uint16_t writeValues[MaxWriteRegisters];
 			};
-			struct Response {
+			struct ATTR_PACKED Response {
 				uint8_t byteCount;
 				uint16_t values[MaxReadRegisters];
 			};
@@ -409,9 +358,42 @@ struct __attribute__((packed)) PDU {
 		ReadWriteMultipleRegisters readWriteMultipleRegisters;
 	};
 
-	Function function;
+	uint8_t functionCode;
 	Data data;
+
+	Function function() const
+	{
+		return Function(functionCode & 0x7f);
+	}
+
+	bool exceptionFlag() const
+	{
+		return functionCode & 0x80;
+	}
+
+	Exception exception() const
+	{
+		return exceptionFlag() ? Exception(data.exceptionCode) : Exception::Success;
+	}
+
+	size_t getRequestDataSize() const;
+	size_t getResponseDataSize() const;
+	void swapRequestByteOrder(bool incoming);
+	void swapResponseByteOrder(bool incoming);
 };
+
+static_assert(offsetof(PDU, data) == 1, "PDU alignment error");
+
+// Buffer to construct requests and process responses
+union ADU {
+	struct {
+		uint8_t slaveId;
+		PDU pdu;
+	};
+	uint8_t buffer[256];
+};
+
+static_assert(offsetof(ADU, pdu) == 1, "ADU alignment error");
 
 class Request : public IO::Request
 {
@@ -429,12 +411,12 @@ public:
 
 	void getJson(JsonObject json) const;
 
+	// Transaction result
+	Error error;
+
 protected:
 	virtual Function fillRequestData(PDU::Data& data) = 0;
-	virtual void callback(Transaction& mbt) = 0;
-
-	// Return true if handled
-	bool checkStatus(const Transaction& mbt);
+	virtual void callback(PDU& pdu) = 0;
 
 private:
 	Exception m_exception = Exception::Success;
@@ -506,18 +488,16 @@ public:
 
 private:
 	void execute(IO::Request& request) override;
-
-private:
 	static void IRAM_ATTR uartCallback(uart_t* uart, uint32_t status);
-	void IRAM_ATTR receiveComplete();
-	void processResponse();
+	Error readResponse(ADU& adu);
 	void completeTransaction();
+	void transactionTimeout();
 
 private:
 	Request* request{nullptr};
-	PDU m_pdu{};
-	uint8_t txEnablePin{0};
 	SimpleTimer timer; ///< Use to schedule callback and timeout
+	Function requestFunction{};
+	uint8_t txEnablePin{0};
 };
 
 } // namespace Modbus

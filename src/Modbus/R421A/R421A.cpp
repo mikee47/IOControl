@@ -70,84 +70,92 @@ static r421a_command_t map(Command cmd)
  *  [1, 2, 3, 7, 8] == 0b11000111 == 0xC7
  * We'll use 32 bits for this.
  */
-void Request::fillRequestData(Transaction& mbt)
+Function Request::fillRequestData(PDU::Data& data)
 {
 	if(m_command == Command::query) {
 		// Query all channels
-		mbt.function = Function::ReadHoldingRegisters;
-		mbt.data[0] = 0x00;
-		mbt.data[1] = device().nodeIdMin();
-		mbt.data[2] = 0x00;
-		mbt.data[3] = device().maxNodes();
-		mbt.dataSize = 4;
-		return;
+		auto& req = data.readHoldingRegisters.request;
+		req.startAddress = device().nodeIdMin();
+		req.quantityOfRegisters = device().maxNodes();
+		return Function::ReadHoldingRegisters;
 	}
 
 	// others
-	for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch)
+	for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
 		if(m_data.channelMask[ch]) {
-			mbt.function = Function::WriteSingleRegister;
-			mbt.data[0] = 0x00;
-			mbt.data[1] = ch;
-			mbt.data[2] = map(command());
-			mbt.data[3] = (m_command == Command::delay) ? m_data.delay : 0x00;
-			mbt.dataSize = 4;
+			PDU::Data::WriteSingleRegister::Request req;
+			req.address = ch;
+			req.value = map(command()) << 8;
+			if(m_command == Command::delay) {
+				req.value |= m_data.delay;
+			}
 
 			//      debug_i("fillRequestData() - channel %u, cmd %u", ch, m_cmd);
 
-			return;
+			data.writeSingleRegister.request = req;
+			return Function::WriteSingleRegister;
 		}
+	}
 
 	// Send an invalid instruction
 	debug_e("fillRequestData() - UNEXPECTED");
-	mbt.function = Function::None;
-	mbt.dataSize = 0;
+	return Function::None;
 }
 
-void Request::callback(Transaction& mbt)
+void Request::callback(PDU& pdu)
 {
-	if(!checkStatus(mbt)) {
-		complete(Status::error);
-		return;
-	}
+	//	if(m_command == Command::query) {
+	switch(pdu.function()) {
+	case Function::ReadHoldingRegisters: {
+		auto& rsp = pdu.data.readHoldingRegisters.response;
+		auto valueCount = rsp.byteCount /= 2;
 
-	if(m_command == Command::query) {
 		//    assert (mbt.function == MB_ReadHoldingRegisters);
 		// data[0] is response size, in bytes: should correspond with mbt.dataSize + 1
-		for(unsigned i = 1; i < mbt.dataSize; i += sizeof(uint16_t)) {
-			uint8_t ch = device().nodeIdMin() + (i / sizeof(uint16_t));
-			uint16_t val = makeWord(&mbt.data[i]);
+		for(unsigned i = 0; i < valueCount; ++i) {
+			auto val = rsp.values[i];
 			if(val != relay_open && val != relay_closed) {
 				continue; // Erroneous response - ignore
 			}
 
-			m_response.channelMask + ch;
+			auto ch = device().nodeIdMin() + i;
+			m_response.channelMask += ch;
 			m_response.channelStates[ch] = (val == relay_closed);
 		}
-		complete(Status::success);
-		return;
+
+		break;
 	}
 
-	// Other commands
-	uint8_t ch = mbt.data[1];
-	// We've handled this channel, clear command mask bit
-	m_data.channelMask[ch] = false;
-	//  debug_i("Channel = %u, mask = %08x", channel, m_data.channelMask);
-	// Report back which bits were affected
-	m_response.channelMask += ch;
-	if(m_command == Command::toggle) {
-		// Use current states held by IODevice to determine effect of toggle command
-		m_response.channelStates[ch] = !device().states().channelStates[ch];
-	} else if(m_command == Command::on) {
-		m_response.channelStates += ch;
+	case Function::WriteSingleRegister: {
+		// Other commands
+		auto& rsp = pdu.data.writeSingleRegister.response;
+		uint8_t ch = rsp.address;
+		// We've handled this channel, clear command mask bit
+		m_data.channelMask[ch] = false;
+		//  debug_i("Channel = %u, mask = %08x", channel, m_data.channelMask);
+		// Report back which bits were affected
+		m_response.channelMask += ch;
+		if(m_command == Command::toggle) {
+			// Use current states held by IODevice to determine effect of toggle command
+			m_response.channelStates[ch] = !device().states().channelStates[ch];
+		} else if(m_command == Command::on) {
+			m_response.channelStates += ch;
+		}
+
+		// Re-submit request for next channel, if any, otherwise we're done
+		if(m_data.channelMask.any()) {
+			submit();
+			return;
+		}
+
+		break;
 	}
 
-	// Re-submit request for next channel, if any, otherwise we're done
-	if(m_data.channelMask.any()) {
-		submit();
-	} else {
-		complete(Status::success);
+	default:
+		assert(false);
 	}
+
+	complete(Status::success);
 }
 
 bool Request::setNode(DevNode node)

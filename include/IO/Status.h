@@ -77,6 +77,7 @@ void setError(JsonObject json, int code, const String& text = nullptr, const Str
 	XX(bad_node, "Node ID not valid")                                                                                  \
 	XX(bad_command, "Invalid Command")                                                                                 \
 	XX(bad_param, "Invalid Parameter")                                                                                 \
+	XX(bad_checksum, "Checksum failed")                                                                                \
 	XX(busy, "Device or controller is busy")                                                                           \
 	XX(queue_full, "Request queue is full")                                                                            \
 	XX(nomem, "Out of memory")                                                                                         \
