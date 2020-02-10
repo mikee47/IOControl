@@ -1,4 +1,5 @@
 #include <IO/Modbus/PDU.h>
+#include <FlashString/Map.hpp>
 
 namespace IO
 {
@@ -36,21 +37,28 @@ String toString(Exception exception)
 	}
 }
 
+String toString(Function function)
+{
+#define XX(tag, value) DEFINE_FSTR_LOCAL(str_##tag, #tag)
+	MODBUS_FUNCTION_MAP(XX)
+#undef XX
+
+#define XX(tag, value) {Function::tag, &str_##tag},
+	DEFINE_FSTR_MAP_LOCAL(map, Function, FSTR::String, MODBUS_FUNCTION_MAP(XX))
+#undef XX
+
+	auto v = map[function];
+	return v ? String(v) : F("Unknown_") + String(unsigned(function));
+}
+
 /**
  * @brief Get size (in bytes) of PDU Data for request packet
  */
-size_t PDU::getRequestDataSize(Direction dir) const
+size_t PDU::getRequestDataSize() const
 {
 	switch(function()) {
-	case Function::ReadCoils: {
-	case Function::ReadDiscreteInputs: {
-		auto bitCount = data.readCoils.request.quantityOfCoils;
-		if(dir == Direction::Incoming) {
-			bitCount = __builtin_bswap16(bitCount);
-		}
-		return 2 + (bitCount + 7) / 8;
-	}
-
+	case Function::ReadCoils:
+	case Function::ReadDiscreteInputs:
 	case Function::ReadHoldingRegisters:
 	case Function::ReadInputRegisters:
 	case Function::WriteSingleCoil:
@@ -73,7 +81,6 @@ size_t PDU::getRequestDataSize(Direction dir) const
 	case Function::ReportSlaveID:
 	default:
 		return 0;
-	}
 	}
 }
 

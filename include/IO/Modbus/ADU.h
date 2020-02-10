@@ -25,7 +25,9 @@ union ADU {
 	 *
 	 * @retval size_t Size of ADU, 0 on error
 	 */
-	size_t initRequest();
+	size_t prepareRequest();
+
+	size_t prepareResponse();
 
 	/**
 	 * @brief Parse a received response packet
@@ -46,9 +48,9 @@ union ADU {
 		return 1 + pdu.getResponseSize() + 2; // slaveId + data + CRC
 	}
 
-	size_t getRequestSize(Direction dir) const
+	size_t getRequestSize() const
 	{
-		return 1 + pdu.getRequestSize(dir) + 2; // slaveId + data + CRC
+		return 1 + pdu.getRequestSize() + 2; // slaveId + data + CRC
 	}
 };
 

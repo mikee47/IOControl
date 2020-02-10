@@ -126,6 +126,7 @@ private:
 	void transactionTimeout();
 
 private:
+	uart_t* uart{nullptr};
 	Request* request{nullptr};
 	SimpleTimer timer; ///< Use to schedule callback and timeout
 	Function requestFunction{};

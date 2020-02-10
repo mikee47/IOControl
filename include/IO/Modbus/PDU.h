@@ -12,26 +12,24 @@ enum class Direction {
 };
 
 /**
- * @brief Modbus exception codes
+ * @brief Modbus exception codes returned in response packets
  */
 enum class Exception {
+	/**
+	 * @brief No exception, transaction completed normally
+	 */
 	Success = 0x00,
 
 	/**
-	 * @brief Protocol illegal function exception
+	 * @brief Function not allowed/supported/implemented, or device in wrong state to process request
 	 *
-	 * The function code received in the query is not an allowable action for the server (or slave).
-	 * This may be because the function code is only applicable to newer devices, and was not implemented
-	 * in the unit selected.
-	 * It could also indicate that the server (or slave) is in the wrong state to process a request of this
-	 * type, for example because it is unconfigured and is being asked to return register values.
+	 * For example, an unconfigured device may be unable to return register values.
 	 */
 	IllegalFunction = 0x01,
 
 	/**
-	 * @brief Protocol illegal data address exception
+	 * @brief Data address not allowed
 	 *
-	 * The data address received in the query is not an allowable address for the server (or slave).
 	 * More specifically, the combination of reference number and transfer length is invalid.
 	 * For a controller with 100 registers, the ADU addresses the first register as 0, and the last one as 99.
 	 *
@@ -45,9 +43,7 @@ enum class Exception {
 	IllegalDataAddress = 0x02,
 
 	/**
-	 * @brief Protocol illegal data value exception
-	 *
-	 * A value contained in the query data field is not an allowable value for server (or slave).
+	 * @brief Data value not allowed
 	 *
 	 * This indicates a fault in the structure of the remainder of a complex request, such as that
 	 * the implied length is incorrect. It specifically does NOT mean that a data item submitted for
@@ -62,11 +58,6 @@ enum class Exception {
 	 * An unrecoverable error occurred while the server (or slave) was attempting to perform the requested action.
 	 */
 	SlaveDeviceFailure = 0x04,
-
-	//	InvalidSlaveID = 0xE0,
-	//	InvalidFunction = 0xE1,
-	//	ResponseTimedOut = 0xE2,
-	//	InvalidCRC = 0xE3,
 };
 
 inline bool operator!(Exception exception)
@@ -77,23 +68,31 @@ inline bool operator!(Exception exception)
 String toString(Exception exception);
 
 // Modbus function codes
+#define MODBUS_FUNCTION_MAP(XX)                                                                                        \
+	XX(None, 0x00)                                                                                                     \
+	XX(ReadCoils, 0x01)                                                                                                \
+	XX(ReadDiscreteInputs, 0x02)                                                                                       \
+	XX(ReadHoldingRegisters, 0x03)                                                                                     \
+	XX(ReadInputRegisters, 0x04)                                                                                       \
+	XX(WriteSingleCoil, 0x05)                                                                                          \
+	XX(WriteSingleRegister, 0x06)                                                                                      \
+	XX(ReadExceptionStatus, 0x07)                                                                                      \
+	XX(GetComEventCounter, 0x0b)                                                                                       \
+	XX(GetComEventLog, 0x0c)                                                                                           \
+	XX(WriteMultipleCoils, 0x0f)                                                                                       \
+	XX(WriteMultipleRegisters, 0x10)                                                                                   \
+	XX(ReportSlaveID, 0x11)                                                                                            \
+	XX(MaskWriteRegister, 0x16)                                                                                        \
+	XX(ReadWriteMultipleRegisters, 0x17)
+
+// Modbus function codes
 enum class Function {
-	None = 0x00,
-	ReadCoils = 0x01,
-	ReadDiscreteInputs = 0x02,
-	ReadHoldingRegisters = 0x03,
-	ReadInputRegisters = 0x04,
-	WriteSingleCoil = 0x05,
-	WriteSingleRegister = 0x06,
-	ReadExceptionStatus = 0x07,
-	GetComEventCounter = 0x0b,
-	GetComEventLog = 0x0c,
-	WriteMultipleCoils = 0x0f,
-	WriteMultipleRegisters = 0x10,
-	ReportSlaveID = 0x11, // Also known as 'report server ID'
-	MaskWriteRegister = 0x16,
-	ReadWriteMultipleRegisters = 0x17,
+#define XX(tag, value) tag = value,
+	MODBUS_FUNCTION_MAP(XX)
+#undef XX
 };
+
+String toString(Function function);
 
 #define ATTR_PACKED __attribute__((aligned(1), packed))
 
@@ -345,6 +344,12 @@ struct PDU {
 		functionCode = uint8_t(function);
 	}
 
+	void setException(Exception exception)
+	{
+		functionCode |= 0x80;
+		data.exceptionCode = uint8_t(exception);
+	}
+
 	bool exceptionFlag() const
 	{
 		return functionCode & 0x80;
@@ -355,9 +360,9 @@ struct PDU {
 		return exceptionFlag() ? Exception(data.exceptionCode) : Exception::Success;
 	}
 
-	size_t getRequestSize(Direction dir) const
+	size_t getRequestSize() const
 	{
-		return 1 + getRequestDataSize(dir); // function + data
+		return 1 + getRequestDataSize(); // function + data
 	}
 
 	size_t getResponseSize() const
@@ -365,7 +370,7 @@ struct PDU {
 		return 1 + getResponseDataSize(); // function + data
 	}
 
-	size_t getRequestDataSize(Direction dir) const;
+	size_t getRequestDataSize() const;
 	size_t getResponseDataSize() const;
 	void swapRequestByteOrder(Direction dir);
 	void swapResponseByteOrder();

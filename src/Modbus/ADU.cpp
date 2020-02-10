@@ -1,4 +1,5 @@
 #include <IO/Modbus/ADU.h>
+#include <debug_progmem.h>
 
 namespace
 {
@@ -32,14 +33,9 @@ namespace IO
 {
 namespace Modbus
 {
-size_t ADU::initRequest()
+size_t ADU::prepareRequest()
 {
-	auto size = 1 + pdu.getRequestSize(Direction::Outgoing); // SlaveID + PDU
-	if(size < MinSize) {
-		debug_e("MB: ADU too small");
-		return 0;
-	}
-
+	auto size = 1 + pdu.getRequestSize(); // SlaveID + PDU
 	if(size > MaxSize) {
 		debug_e("MB: ADU too big");
 		return 0;
@@ -49,6 +45,37 @@ size_t ADU::initRequest()
 	auto crc = crc16_update(0xFFFF, buffer, size);
 	buffer[size++] = uint8_t(crc);
 	buffer[size++] = uint8_t(crc >> 8);
+
+	debug_hex(DBG, ">", buffer, size);
+
+	if(size < MinSize) {
+		debug_e("MB: ADU too small");
+		return 0;
+	}
+
+	return size;
+}
+
+size_t ADU::prepareResponse()
+{
+	auto size = 1 + pdu.getResponseSize(); // SlaveID + PDU
+
+	if(size > MaxSize) {
+		debug_e("MB: ADU too big");
+		return 0;
+	}
+
+	pdu.swapRequestByteOrder(Direction::Incoming);
+	auto crc = crc16_update(0xFFFF, buffer, size);
+	buffer[size++] = uint8_t(crc);
+	buffer[size++] = uint8_t(crc >> 8);
+
+	if(size < MinSize) {
+		debug_e("MB: ADU too small");
+		return 0;
+	}
+
+	debug_hex(DBG, ">", buffer, size);
 
 	return size;
 }
@@ -89,7 +116,7 @@ Error ADU::parseRequest(size_t receivedSize)
 		return Error::bad_size;
 	}
 
-	auto aduSize = getRequestSize(Direction::Incoming);
+	auto aduSize = getRequestSize();
 
 	if(receivedSize < aduSize) {
 		debug_w("MB: Only %u bytes read, %u expected", receivedSize, aduSize);

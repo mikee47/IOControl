@@ -49,22 +49,36 @@ void Controller::start()
 {
 	this->txEnablePin = MBPIN_TX_EN;
 
-	Serial.end();
-	Serial.setUartCallback(nullptr);
-	Serial.setTxBufferSize(0);
-	Serial.setRxBufferSize(0);
-	Serial.begin(MODBUS_DEFAULT_BAUDRATE);
+	uart_config cfg{
+		.uart_nr = UART0,
+		.tx_pin = 1,
+		.mode = UART_FULL,
+		.options = 0,
+		.baudrate = MODBUS_DEFAULT_BAUDRATE,
+		.config = UART_8N1,
+		.rx_size = ADU::MaxSize,
+		.tx_size = ADU::MaxSize,
+	};
+	uart = uart_init_ex(cfg);
+	if(uart == nullptr) {
+		debug_e("UART init failed");
+		return;
+	}
+
+	uart->rx_headroom = 0;
+	uart_set_callback(uart, uartCallback, this);
 
 	// Using alternate serial pins
-	Serial.swap();
+	//	uart_swap(uart, 1);
 
 	// Put default serial pins in safe state
-	pinMode(1, INPUT_PULLUP);
-	pinMode(3, INPUT_PULLUP);
+	//	pinMode(1, INPUT_PULLUP);
+	//	pinMode(3, INPUT_PULLUP);
 
 	digitalWrite(txEnablePin, 0);
 	pinMode(txEnablePin, OUTPUT);
 
+	request = nullptr;
 	requestFunction = Function::None;
 	IO::Controller::start();
 }
@@ -93,7 +107,7 @@ void Controller::uartCallback(uart_t* uart, uint32_t status)
 
 	// Rx FIFO full or timeout
 	if(status & (UART_RXFIFO_FULL_INT_ST | UART_RXFIFO_TOUT_INT_ST)) {
-		Serial.setUartCallback(nullptr);
+		uart->callback = nullptr;
 		controller->timer.stop();
 
 		// Process the received data in task context
@@ -123,7 +137,11 @@ void Controller::execute(IO::Request& request)
 		return;
 	}
 
-	auto uart = Serial.getUart();
+	if(uart == nullptr) {
+		debug_e("Not initialised");
+		request.complete(Status::error);
+		return;
+	}
 
 	auto& req = reinterpret_cast<Request&>(request);
 	this->request = &req;
@@ -132,13 +150,11 @@ void Controller::execute(IO::Request& request)
 	requestFunction = req.fillRequestData(adu.pdu.data);
 	adu.pdu.setFunction(requestFunction);
 	adu.slaveId = req.device().address();
-	auto aduSize = adu.initRequest();
+	auto aduSize = adu.prepareRequest();
 	if(aduSize == 0) {
 		request.complete(Status::error);
 		return;
 	}
-
-	debug_hex(DBG, ">", adu.buffer, aduSize);
 
 	// Prepare UART for comms
 	auto baudrate = req.device().baudrate();
@@ -146,20 +162,16 @@ void Controller::execute(IO::Request& request)
 		debug_w("Using default baudrate for request");
 		baudrate = MODBUS_DEFAULT_BAUDRATE;
 	}
-	Serial.setBaudRate(baudrate);
-	Serial.clear();
+	uart_set_baudrate(uart, baudrate);
+	uart_flush(uart, UART_FULL);
 
 	// Transmit request data whilst keeping TX_EN assserted
 	digitalWrite(txEnablePin, 1);
 	uart_write(uart, adu.buffer, aduSize + 1);
 
-	// Prepare for response
-	Serial.setUartCallback(uartCallback, this);
-
 	// Put a timeout on the overall transaction
 	timer.initializeMs<MODBUS_TRANSACTION_TIMEOUT_MS>(
 		[](void* param) {
-			Serial.setUartCallback(nullptr);
 			auto controller = static_cast<Controller*>(param);
 			controller->transactionTimeout();
 		},
@@ -169,18 +181,21 @@ void Controller::execute(IO::Request& request)
 
 Error Controller::readResponse(ADU& adu)
 {
-	auto uart = Serial.getUart();
-
 	// Read packet
 	auto receivedSize = uart_read(uart, adu.buffer, ADU::MaxSize);
 
-	auto err = adu.parseResponse(receivedSize);
+	// Flush any surplus data
+	uart_flush(uart, UART_RX_ONLY);
+
+	Error err;
+	if(request == nullptr) {
+		err = adu.parseRequest(receivedSize);
+	} else {
+		err = adu.parseResponse(receivedSize);
+	}
 	if(!!err) {
 		return err;
 	}
-
-	// Flush any surplus data
-	uart_flush(uart, UART_RX_ONLY);
 
 	// If packet is unsolicited (slave mode) then we're done
 	if(request == nullptr) {
@@ -203,19 +218,33 @@ Error Controller::readResponse(ADU& adu)
 
 void Controller::completeTransaction()
 {
-	auto req = request;
-	assert(req != nullptr);
-	request = nullptr;
+	// Re-enable callbacks
+	uart->callback = uartCallback;
 
 	ADU adu;
 	auto err = readResponse(adu);
 
+	auto req = request;
+	request = nullptr;
+
 	if(!!err) {
 		debug_e("Modbus: %s", toString(err).c_str());
-		req->complete(Status::error);
+		if(req != nullptr) {
+			req->complete(Status::error);
+		}
 	} else {
-		debug_d("Modbus: completeTransaction(): %s", toString(adu.pdu.exception()).c_str());
-		req->callback(adu.pdu);
+		debug_d("MB: received '%s': %s", toString(adu.pdu.function()).c_str(), toString(adu.pdu.exception()).c_str());
+		if(req == nullptr) {
+			// Request
+			// todo: Pass to callback, etc. for handling
+			adu.pdu.setException(Exception::IllegalFunction);
+			auto aduSize = adu.prepareResponse();
+			digitalWrite(txEnablePin, 1);
+			uart_write(uart, adu.buffer, aduSize + 1);
+		} else {
+			// Normal response
+			req->callback(adu.pdu);
+		}
 	}
 }
 
