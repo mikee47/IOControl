@@ -331,9 +331,6 @@ struct PDU {
 		ReadWriteMultipleRegisters readWriteMultipleRegisters;
 	};
 
-	uint8_t functionCode;
-	Data data;
-
 	Function function() const
 	{
 		return Function(functionCode & 0x7f);
@@ -360,6 +357,30 @@ struct PDU {
 		return exceptionFlag() ? Exception(data.exceptionCode) : Exception::Success;
 	}
 
+	/**
+	 * @name Prepare request/response packets
+	 * Here, we fill in any dependent fields (e.g. byteCount from registercount) and check maximum limits
+	 * We don't do full validation here, that's the job for the slave/server
+	 * @retval size_t Size of complete PDU, 0 on error
+	 * @{
+	 */
+	size_t prepareRequest();
+	size_t prepareResponse();
+	/** @} */
+
+	/**
+	 * @name Swap byte order of any 16-bit fields
+	 * @{
+	 */
+	void swapRequestByteOrder();
+	void swapResponseByteOrder();
+	/** @} */
+
+	/**
+	 * @name Get PDU size based on content
+	 * Calculation uses byte count so doesn't access any 16-bit fields
+	 * @{
+	 */
 	size_t getRequestSize() const
 	{
 		return 1 + getRequestDataSize(); // function + data
@@ -369,11 +390,16 @@ struct PDU {
 	{
 		return 1 + getResponseDataSize(); // function + data
 	}
+	/** @} */
 
+	/* Structure content */
+
+	uint8_t functionCode;
+	Data data;
+
+private:
 	size_t getRequestDataSize() const;
 	size_t getResponseDataSize() const;
-	void swapRequestByteOrder(Direction dir);
-	void swapResponseByteOrder();
 };
 
 static_assert(offsetof(PDU, data) == 1, "PDU alignment error");

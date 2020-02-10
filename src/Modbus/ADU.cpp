@@ -35,80 +35,57 @@ namespace Modbus
 {
 size_t ADU::prepareRequest()
 {
-	auto size = 1 + pdu.getRequestSize(); // SlaveID + PDU
-	if(size > MaxSize) {
-		debug_e("MB: ADU too big");
-		return 0;
-	}
-
-	pdu.swapRequestByteOrder(Direction::Outgoing);
-	auto crc = crc16_update(0xFFFF, buffer, size);
-	buffer[size++] = uint8_t(crc);
-	buffer[size++] = uint8_t(crc >> 8);
-
-	debug_hex(DBG, ">", buffer, size);
-
-	if(size < MinSize) {
-		debug_e("MB: ADU too small");
-		return 0;
-	}
-
-	return size;
+	return preparePacket(pdu.prepareRequest());
 }
 
 size_t ADU::prepareResponse()
 {
-	auto size = 1 + pdu.getResponseSize(); // SlaveID + PDU
+	return preparePacket(pdu.prepareResponse());
+}
 
-	if(size > MaxSize) {
+size_t ADU::preparePacket(size_t pduSize)
+{
+	if(pduSize == 0) {
+		debug_e("MB: PDU invalid");
+		return 0;
+	}
+
+	auto size{1 + pduSize}; // slave ID
+	if(size + 2 > MaxSize) {
 		debug_e("MB: ADU too big");
 		return 0;
 	}
 
-	pdu.swapRequestByteOrder(Direction::Incoming);
 	auto crc = crc16_update(0xFFFF, buffer, size);
 	buffer[size++] = uint8_t(crc);
 	buffer[size++] = uint8_t(crc >> 8);
+
+	debug_hex(DBG, ">", buffer, size);
 
 	if(size < MinSize) {
 		debug_e("MB: ADU too small");
 		return 0;
 	}
 
-	debug_hex(DBG, ">", buffer, size);
-
 	return size;
-}
-
-Error ADU::parseResponse(size_t receivedSize)
-{
-	if(receivedSize < MinSize) {
-		if(receivedSize != 0) {
-			debug_w("MB: %u bytes received, require at least %u", receivedSize, MinSize);
-		}
-		return Error::bad_size;
-	}
-
-	auto aduSize = getResponseSize();
-
-	if(receivedSize < aduSize) {
-		debug_w("MB: Only %u bytes read, %u expected", receivedSize, aduSize);
-		return Error::bad_size;
-	}
-
-	debug_hex(DBG, "<", buffer, aduSize);
-
-	auto crc = crc16_update(0xFFFF, buffer, aduSize);
-	if(crc != 0) {
-		return Error::bad_checksum;
-	}
-
-	pdu.swapResponseByteOrder();
-	return Error::success;
 }
 
 Error ADU::parseRequest(size_t receivedSize)
 {
+	auto err = parsePacket(receivedSize, pdu.getRequestSize());
+	pdu.swapRequestByteOrder();
+	return err;
+}
+
+Error ADU::parseResponse(size_t receivedSize)
+{
+	auto err = parsePacket(receivedSize, pdu.getResponseSize());
+	pdu.swapResponseByteOrder();
+	return err;
+}
+
+Error ADU::parsePacket(size_t receivedSize, size_t pduSize)
+{
 	if(receivedSize < MinSize) {
 		if(receivedSize != 0) {
 			debug_w("MB: %u bytes received, require at least %u", receivedSize, MinSize);
@@ -116,8 +93,7 @@ Error ADU::parseRequest(size_t receivedSize)
 		return Error::bad_size;
 	}
 
-	auto aduSize = getRequestSize();
-
+	auto aduSize = 1 + pduSize + 2; // slaveId + data + CRC
 	if(receivedSize < aduSize) {
 		debug_w("MB: Only %u bytes read, %u expected", receivedSize, aduSize);
 		return Error::bad_size;
@@ -130,7 +106,6 @@ Error ADU::parseRequest(size_t receivedSize)
 		return Error::bad_checksum;
 	}
 
-	pdu.swapResponseByteOrder();
 	return Error::success;
 }
 

@@ -10,7 +10,7 @@ namespace
 // Perform unaligned byteswap on array of uint16_t
 void bswap(void* values, unsigned count)
 {
-	auto p = static_cast<uint8_t*>(values);
+	auto p{static_cast<uint8_t*>(values)};
 	while(count--) {
 		std::swap(p[0], p[1]);
 		p += 2;
@@ -47,8 +47,102 @@ String toString(Function function)
 	DEFINE_FSTR_MAP_LOCAL(map, Function, FSTR::String, MODBUS_FUNCTION_MAP(XX))
 #undef XX
 
-	auto v = map[function];
+	auto v{map[function]};
 	return v ? String(v) : F("Unknown_") + String(unsigned(function));
+}
+
+size_t PDU::prepareRequest()
+{
+	switch(function()) {
+	case Function::ReadCoils:
+	case Function::ReadDiscreteInputs:
+	case Function::ReadExceptionStatus:
+	case Function::ReportSlaveID:
+	case Function::ReadHoldingRegisters: {
+	case Function::ReadInputRegisters:
+	case Function::WriteSingleCoil:
+	case Function::WriteSingleRegister:
+	case Function::GetComEventCounter:
+	case Function::GetComEventLog:
+	case Function::MaskWriteRegister:
+		break;
+
+	case Function::WriteMultipleCoils: {
+		auto& req{data.writeMultipleCoils.request};
+		if(req.quantityOfOutputs > data.writeMultipleCoils.MaxCoils) {
+			return 0;
+		}
+		req.byteCount = (req.quantityOfOutputs + 7) / 8;
+		break;
+	}
+
+	case Function::WriteMultipleRegisters: {
+		auto& req{data.writeMultipleRegisters.request};
+		if(req.quantityOfRegisters > data.writeMultipleRegisters.MaxRegisters) {
+			return 0;
+		}
+		req.byteCount = req.quantityOfRegisters * 2;
+		break;
+	}
+
+	case Function::ReadWriteMultipleRegisters: {
+		auto& req{data.readWriteMultipleRegisters.request};
+		if(req.quantityToWrite > data.readWriteMultipleRegisters.MaxWriteRegisters) {
+			return 0;
+		}
+		req.writeByteCount = req.quantityToWrite * 2;
+		break;
+	}
+
+	case Function::None:
+	default:
+		return 0;
+	}
+	}
+
+	swapRequestByteOrder();
+	return getRequestSize();
+}
+
+size_t PDU::prepareResponse()
+{
+	switch(function()) {
+	case Function::ReadCoils:
+	case Function::ReadDiscreteInputs:
+	case Function::ReadExceptionStatus:
+	case Function::ReportSlaveID:
+	case Function::ReadHoldingRegisters:
+	case Function::ReadInputRegisters:
+	case Function::WriteSingleCoil:
+	case Function::WriteSingleRegister:
+	case Function::GetComEventCounter:
+	case Function::MaskWriteRegister:
+	case Function::WriteMultipleRegisters:
+		break;
+
+	case Function::GetComEventLog: {
+		auto& rsp{data.getComEventLog.response};
+		if(rsp.eventCount > data.getComEventLog.MaxEvents) {
+			return 0;
+		}
+		rsp.byteCount = 7 + rsp.eventCount;
+		break;
+	}
+
+	case Function::ReadWriteMultipleRegisters: {
+		auto& d{data.readWriteMultipleRegisters};
+		if(d.response.byteCount > d.MaxReadRegisters) {
+			return 0;
+		}
+	}
+
+	case Function::None:
+	default:
+		return 0;
+	}
+
+	swapResponseByteOrder();
+	return getResponseSize();
 }
 
 /**
@@ -121,7 +215,7 @@ size_t PDU::getResponseDataSize() const
 	}
 }
 
-void PDU::swapRequestByteOrder(Direction dir)
+void PDU::swapRequestByteOrder()
 {
 	if(exceptionFlag()) {
 		return;
@@ -147,9 +241,8 @@ void PDU::swapRequestByteOrder(Direction dir)
 
 	case Function::WriteMultipleRegisters: {
 		auto& req{data.writeMultipleRegisters.request};
-		auto count = req.quantityOfRegisters;
 		bswap(&req.startAddress, 2);
-		bswap(req.values, (dir == Direction::Incoming) ? req.quantityOfRegisters : count);
+		bswap(req.values, req.byteCount / 2);
 		break;
 	}
 
@@ -159,10 +252,9 @@ void PDU::swapRequestByteOrder(Direction dir)
 	}
 
 	case Function::ReadWriteMultipleRegisters: {
-		auto& req = data.readWriteMultipleRegisters.request;
-		auto count = req.writeByteCount;
-		bswap(&req.readAddress, 3);
-		bswap(&req.writeValues, ((dir == Direction::Incoming) ? req.writeByteCount : count) / 2);
+		auto& req{data.readWriteMultipleRegisters.request};
+		bswap(&req.readAddress, 4);
+		bswap(&req.writeValues, req.writeByteCount / 2);
 		break;
 	}
 	}
@@ -185,7 +277,7 @@ void PDU::swapResponseByteOrder()
 	case Function::ReadHoldingRegisters: {
 	case Function::ReadInputRegisters:
 	case Function::ReadWriteMultipleRegisters:
-		auto& req = data.readHoldingRegisters.response;
+		auto& req{data.readHoldingRegisters.response};
 		bswap(req.values, req.byteCount / 2);
 		break;
 	}

@@ -15,7 +15,6 @@
 
 #include <IO/Modbus/Modbus.h>
 #include "Digital.h"
-#include "HardwareSerial.h"
 #include "Platform/System.h"
 #include <driver/uart.h>
 #include <espinc/uart_register.h>

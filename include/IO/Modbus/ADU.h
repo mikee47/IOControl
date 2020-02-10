@@ -19,39 +19,28 @@ union ADU {
 	uint8_t buffer[MaxSize];
 
 	/**
-	 * @brief Initialise an outgoing request packet
-	 *
+	 * @name Prepare outgoing packet
 	 * The `slaveId` and `pdu` fields must be correctly initialised.
-	 *
 	 * @retval size_t Size of ADU, 0 on error
+	 * @{
 	 */
 	size_t prepareRequest();
-
 	size_t prepareResponse();
+	/** @} */
 
 	/**
-	 * @brief Parse a received response packet
+	 * @name Parse a received packet
 	 * @param receivedSize How much data was received
 	 * @retval Error Result of parsing
-	 */
-	Error parseResponse(size_t receivedSize);
-
-	/**
-	 * @brief Parse a received request packet
-	 * @param receivedSize How much data was received
-	 * @retval Error Result of parsing
+	 * @{
 	 */
 	Error parseRequest(size_t receivedSize);
+	Error parseResponse(size_t receivedSize);
+	/** @} */
 
-	size_t getResponseSize() const
-	{
-		return 1 + pdu.getResponseSize() + 2; // slaveId + data + CRC
-	}
-
-	size_t getRequestSize() const
-	{
-		return 1 + pdu.getRequestSize() + 2; // slaveId + data + CRC
-	}
+private:
+	size_t preparePacket(size_t pduSize);
+	Error parsePacket(size_t receivedSize, size_t pduSize);
 };
 
 static_assert(offsetof(ADU, pdu) == 1, "ADU alignment error");
