@@ -20,10 +20,6 @@
 #include <driver/uart.h>
 #include <espinc/uart_register.h>
 
-#if DEBUG_VERBOSE_LEVEL == DBG
-#define MODBUS_DEBUG
-#endif
-
 namespace IO
 {
 namespace Modbus
@@ -43,230 +39,6 @@ static constexpr uint8_t MBPIN_TX_EN = 12;
 // Default values
 static constexpr unsigned MODBUS_TRANSACTION_TIMEOUT_MS = 300;
 static constexpr unsigned MODBUS_DEFAULT_BAUDRATE = 9600;
-
-namespace
-{
-uint16_t crc16_update(uint16_t crc, uint8_t a)
-{
-	crc ^= a;
-
-	for(unsigned i = 0; i < 8; ++i) {
-		if(crc & 1)
-			crc = (crc >> 1) ^ 0xA001;
-		else
-			crc = (crc >> 1);
-	}
-
-	return crc;
-}
-
-uint16_t crc16_update(uint16_t crc, const void* data, size_t count)
-{
-	auto p = static_cast<const uint8_t*>(data);
-	while(count--) {
-		crc = crc16_update(crc, *p++);
-	}
-
-	return crc;
-}
-
-// Perform unaligned byteswap on array of uint16_t
-auto bswap = [](void* values, unsigned count) {
-	auto p = static_cast<uint8_t*>(values);
-	while(count--) {
-		std::swap(p[0], p[1]);
-		p += 2;
-	}
-};
-
-} // namespace
-
-String toString(Exception exception)
-{
-	switch(exception) {
-	case Exception::Success:
-		return F("Success");
-	case Exception::IllegalFunction:
-		return F("IllegalFunction");
-	case Exception::IllegalDataAddress:
-		return F("IllegalDataAddress");
-	case Exception::IllegalDataValue:
-		return F("IllegalDataValue");
-	case Exception::SlaveDeviceFailure:
-		return F("SlaveDeviceFailure");
-	default:
-		return F("Unknown") + String(unsigned(exception));
-	}
-}
-
-/**
- * @brief Get size (in bytes) of PDU Data for request packet
- */
-size_t PDU::getRequestDataSize() const
-{
-	switch(function()) {
-	case Function::ReadCoils:
-		return 2 + (data.readCoils.request.quantityOfCoils + 7) / 8;
-	case Function::ReadDiscreteInputs:
-		return 2 + (data.readDiscreteInputs.request.quantityOfInputs + 7) / 8;
-	case Function::ReadHoldingRegisters:
-		return sizeof(data.readHoldingRegisters.request);
-	case Function::ReadInputRegisters:
-		return sizeof(data.readInputRegisters.request);
-	case Function::WriteSingleCoil:
-		return sizeof(data.writeSingleCoil.request);
-	case Function::WriteSingleRegister:
-		return sizeof(data.writeSingleRegister.request);
-	case Function::ReadExceptionStatus:
-		return 0;
-	case Function::GetComEventCounter:
-		return 0;
-	case Function::GetComEventLog:
-		return 0;
-	case Function::WriteMultipleCoils:
-		return 5 + data.writeMultipleCoils.request.byteCount;
-	case Function::WriteMultipleRegisters:
-		return 5 + data.writeMultipleRegisters.request.byteCount;
-	case Function::ReportSlaveID:
-		return 0;
-	case Function::MaskWriteRegister:
-		return sizeof(data.maskWriteRegister.request);
-	case Function::ReadWriteMultipleRegisters:
-		return 9 + data.readWriteMultipleRegisters.request.writeByteCount;
-	default:
-		return 0;
-	}
-}
-
-/**
- * @brief Get size (in bytes) of PDU Data in received response packet
- */
-size_t PDU::getResponseDataSize() const
-{
-	if(exceptionFlag()) {
-		return 1;
-	}
-
-	switch(function()) {
-	case Function::ReadCoils:
-		return 1 + data.readCoils.response.byteCount;
-	case Function::ReadDiscreteInputs:
-		return 1 + data.readDiscreteInputs.response.byteCount;
-	case Function::ReadHoldingRegisters:
-		return 1 + data.readHoldingRegisters.response.byteCount;
-	case Function::ReadInputRegisters:
-		return 1 + data.readInputRegisters.response.byteCount;
-	case Function::WriteSingleCoil:
-		return sizeof(data.writeSingleCoil.response);
-	case Function::WriteSingleRegister:
-		return sizeof(data.writeSingleRegister.response);
-	case Function::ReadExceptionStatus:
-		return sizeof(data.readExceptionStatus.response);
-	case Function::GetComEventCounter:
-		return sizeof(data.getComEventCounter.response);
-	case Function::GetComEventLog:
-		return sizeof(data.getComEventLog.response.byteCount);
-	case Function::WriteMultipleCoils:
-		return sizeof(data.writeMultipleCoils.response);
-	case Function::WriteMultipleRegisters:
-		return sizeof(data.writeMultipleRegisters.response);
-	case Function::ReportSlaveID:
-		return 1 + data.reportSlaveID.response.byteCount;
-	case Function::MaskWriteRegister:
-		return sizeof(data.maskWriteRegister.response);
-	case Function::ReadWriteMultipleRegisters:
-		return 1 + data.readWriteMultipleRegisters.response.byteCount;
-	default:
-		return 0;
-	}
-}
-
-void PDU::swapRequestByteOrder(bool incoming)
-{
-	if(exceptionFlag()) {
-		return;
-	}
-
-	switch(function()) {
-	case Function::None:
-	case Function::GetComEventLog:
-	case Function::ReadExceptionStatus:
-	case Function::ReportSlaveID:
-		break;
-
-	case Function::ReadCoils:
-	case Function::ReadDiscreteInputs:
-	case Function::ReadHoldingRegisters:
-	case Function::ReadInputRegisters:
-	case Function::WriteSingleCoil:
-	case Function::WriteSingleRegister:
-	case Function::GetComEventCounter:
-	case Function::WriteMultipleCoils:
-		bswap(&data.readCoils.request.startAddress, 2);
-		break;
-
-	case Function::WriteMultipleRegisters: {
-		auto& req{data.writeMultipleRegisters.request};
-		auto count = req.quantityOfRegisters;
-		bswap(&req.startAddress, 2);
-		bswap(req.values, incoming ? req.quantityOfRegisters : count);
-		break;
-	}
-
-	case Function::MaskWriteRegister: {
-		bswap(&data.maskWriteRegister.request.address, 3);
-		break;
-	}
-
-	case Function::ReadWriteMultipleRegisters: {
-		auto& req = data.readWriteMultipleRegisters.request;
-		auto count = req.writeByteCount;
-		bswap(&req.readAddress, 3);
-		bswap(&req.writeValues, (incoming ? req.writeByteCount : count) / 2);
-		break;
-	}
-	}
-}
-
-void PDU::swapResponseByteOrder(bool incoming)
-{
-	if(exceptionFlag()) {
-		return;
-	}
-
-	switch(function()) {
-	case Function::None:
-	case Function::ReadCoils:
-	case Function::ReadDiscreteInputs:
-	case Function::ReadExceptionStatus:
-	case Function::ReportSlaveID:
-		break;
-
-	case Function::ReadHoldingRegisters: {
-	case Function::ReadInputRegisters:
-	case Function::ReadWriteMultipleRegisters:
-		auto& req = data.readHoldingRegisters.response;
-		bswap(req.values, req.byteCount / 2);
-		break;
-	}
-
-	case Function::WriteSingleCoil:
-	case Function::WriteSingleRegister:
-	case Function::GetComEventCounter:
-	case Function::WriteMultipleCoils:
-	case Function::WriteMultipleRegisters:
-		bswap(&data.writeSingleCoil.response.outputAddress, 2);
-		break;
-
-	case Function::GetComEventLog:
-		bswap(&data.getComEventLog.response.status, 3);
-		break;
-
-	case Function::MaskWriteRegister:
-		bswap(&data.maskWriteRegister.response.address, 3);
-		break;
-	}
-}
 
 /* Controller */
 
@@ -357,14 +129,14 @@ void Controller::execute(IO::Request& request)
 	this->request = &req;
 
 	ADU adu;
-	adu.slaveId = req.device().address();
 	requestFunction = req.fillRequestData(adu.pdu.data);
-	adu.pdu.functionCode = uint8_t(requestFunction);
-	auto aduSize = 2 + adu.pdu.getRequestDataSize(); // SlaveID + function + data
-	adu.pdu.swapRequestByteOrder(false);
-	auto crc = crc16_update(0xFFFF, &adu, aduSize);
-	adu.buffer[aduSize++] = uint8_t(crc);
-	adu.buffer[aduSize++] = uint8_t(crc >> 8);
+	adu.pdu.setFunction(requestFunction);
+	adu.slaveId = req.device().address();
+	auto aduSize = adu.initRequest();
+	if(aduSize == 0) {
+		request.complete(Status::error);
+		return;
+	}
 
 	debug_hex(DBG, ">", adu.buffer, aduSize);
 
@@ -398,41 +170,24 @@ void Controller::execute(IO::Request& request)
 Error Controller::readResponse(ADU& adu)
 {
 	auto uart = Serial.getUart();
-	auto avail = uart_rx_available(uart);
-
-	if(avail < 5) {
-		/*
-		 * todo: Fail, but could retry
-		 */
-		return Error::timeout;
-	}
 
 	// Read packet
-	auto received = uart_read(uart, adu.buffer, sizeof(adu.buffer));
+	auto receivedSize = uart_read(uart, adu.buffer, ADU::MaxSize);
 
-	// Compute the expected response size
-	auto dataSize = adu.pdu.getResponseDataSize();
-	auto aduSize = 2 + dataSize + 2; // slaveId + function + data + CRC
-
-	if(received < aduSize) {
-		debug_w("MB: Only %u bytes read, %u expected", received, aduSize);
-		return Error::timeout;
+	auto err = adu.parseResponse(receivedSize);
+	if(!!err) {
+		return err;
 	}
 
-	if(avail > aduSize) {
-		debug_w("MB: Too much data, %u bytes available but only %u required", avail, aduSize);
-		if(avail > received) {
-			uart_flush(uart, UART_RX_ONLY);
-		}
+	// Flush any surplus data
+	uart_flush(uart, UART_RX_ONLY);
+
+	// If packet is unsolicited (slave mode) then we're done
+	if(request == nullptr) {
+		return Error::success;
 	}
 
-	debug_hex(DBG, "<", adu.buffer, aduSize);
-
-	auto crc = crc16_update(0xFFFF, adu.buffer, aduSize);
-	if(crc != 0) {
-		return Error::bad_checksum;
-	}
-
+	// In master mode, check for consistency with current request
 	if(adu.slaveId != request->device().address()) {
 		// Mismatch with command slave ID
 		return Error::bad_param;
@@ -443,7 +198,6 @@ Error Controller::readResponse(ADU& adu)
 		return Error::bad_command;
 	}
 
-	adu.pdu.swapResponseByteOrder(true);
 	return Error::success;
 }
 
