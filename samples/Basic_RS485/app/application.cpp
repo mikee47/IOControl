@@ -1,6 +1,7 @@
 #include <SmingCore.h>
 #include <FlashString/Stream.hpp>
 
+#include <IO/Modbus/Debug.h>
 #include <IO/Modbus/R421A/R421A.h>
 #include <IO/DMX512/DMX512.h>
 
@@ -47,19 +48,26 @@ void devmgrCallback(IO::Request& request)
 	//	}
 }
 
+static bool handleModbusRequest(IO::Modbus::ADU& adu)
+{
+	IO::Modbus::printRequest(dbgser, adu);
+	return false; // ignore
+}
+
 IO::Error devmgrInit()
 {
 	// Setup modbus stack
 	modbus0.registerDeviceClass(IO::Modbus::R421A::deviceClass);
-	//	IO::devmgr.registerController(modbus0);
+	IO::devmgr.registerController(modbus0);
+	modbus0.onRequest(handleModbusRequest);
 
 	// Setup RF switch stack
 	//	RFSwitchController::registerDeviceClass(RFSwitchDevice::deviceClass);
 	//	devmgr.registerController(rfswitch0);
 
 	// At present conflicts with modbus0 - needs work to allow modbus and DMX to co-exist on same segment
-	dmx0.registerDeviceClass(IO::DMX512::deviceClass);
-	IO::devmgr.registerController(dmx0);
+	//	dmx0.registerDeviceClass(IO::DMX512::deviceClass);
+	//	IO::devmgr.registerController(dmx0);
 
 #ifndef ARCH_HOST
 //	pixel0.registerDeviceClass(PixelDevice::deviceClass);

@@ -235,15 +235,20 @@ void Controller::completeTransaction()
 		debug_d("MB: received '%s': %s", toString(adu.pdu.function()).c_str(), toString(adu.pdu.exception()).c_str());
 		if(req == nullptr) {
 			// Request
-			// todo: Pass to callback, etc. for handling
-			adu.pdu.setException(Exception::IllegalFunction);
-			auto aduSize = adu.prepareResponse();
-			digitalWrite(txEnablePin, 1);
-			uart_write(uart, adu.buffer, aduSize + 1);
+			handleIncomingRequest(adu);
 		} else {
 			// Normal response
 			req->callback(adu.pdu);
 		}
+	}
+}
+
+void Controller::sendResponse(ADU& adu)
+{
+	auto aduSize = adu.prepareResponse();
+	if(aduSize != 0) {
+		digitalWrite(txEnablePin, 1);
+		uart_write(uart, adu.buffer, aduSize + 1);
 	}
 }
 

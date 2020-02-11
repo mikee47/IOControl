@@ -118,6 +118,34 @@ public:
 		return request != nullptr;
 	}
 
+	/**
+	 * @brief Callback to handle incoming requests
+	 * @param adu The request
+	 * @retval bool true to sent a response, false to ignore
+	 */
+	using RequestDelegate = Delegate<bool(ADU& adu)>;
+
+	void onRequest(RequestDelegate callback)
+	{
+		requestCallback = callback;
+	}
+
+protected:
+	/**
+	 * @brief Override this method to filter or handle incoming requests
+	 *
+	 * If there is no transaction in progress then unsolicited packets
+	 * are interpreted as slave requests.
+	 */
+	virtual void handleIncomingRequest(ADU& adu)
+	{
+		if(requestCallback && requestCallback(adu)) {
+			sendResponse(adu);
+		}
+	}
+
+	void sendResponse(ADU& adu);
+
 private:
 	void execute(IO::Request& request) override;
 	static void IRAM_ATTR uartCallback(uart_t* uart, uint32_t status);
@@ -128,6 +156,7 @@ private:
 private:
 	uart_t* uart{nullptr};
 	Request* request{nullptr};
+	RequestDelegate requestCallback;
 	SimpleTimer timer; ///< Use to schedule callback and timeout
 	Function requestFunction{};
 	uint8_t txEnablePin{0};
