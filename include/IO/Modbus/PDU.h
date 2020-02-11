@@ -102,6 +102,15 @@ String toString(Function function);
  * Content is independent of the communication layer.
  * Structure does NOT represent over-the-wire format as packing issues make handling PDU::Data awkward.
  * Therefore, the other fields are unaligned and adjusted as required when sent over the wire.
+ *
+ * `byteCount` field
+ *
+ * Some functions with a `byteCount` field are marked as `calculated`. This means it doesn't need
+ * to be set when constructing requests or responses, and will be filled in later based on the
+ * values of other fields.
+ *
+ * In other cases, a `setCount` method is provided to help ensure the byteCount field is set correctly.
+ *
  */
 struct PDU {
 	/*
@@ -120,10 +129,30 @@ struct PDU {
 				uint16_t startAddress;
 				uint16_t quantityOfCoils;
 			};
+
 			struct ATTR_PACKED Response {
-				uint8_t byteCount;
-				uint8_t coilStatus[250];
+				uint8_t byteCount;		 ///< Use setCount()
+				uint8_t coilStatus[250]; ///< Use setCoil()
+
+				void setCoil(uint16_t coil, bool value)
+				{
+					if(coil < MaxCoils) {
+						setBit(coilStatus, coil, value);
+					}
+				}
+
+				void setCount(uint16_t count)
+				{
+					byteCount = (count + 7) / 8;
+				}
+
+				// This figure may be larger than the actual coil count
+				uint16_t getCount() const
+				{
+					return byteCount * 8;
+				}
 			};
+
 			static constexpr uint16_t MaxCoils{sizeof(Response::coilStatus) * 8};
 
 			Request request;
@@ -137,10 +166,30 @@ struct PDU {
 				uint16_t startAddress;
 				uint16_t quantityOfInputs;
 			};
+
 			struct ATTR_PACKED Response {
-				uint8_t byteCount;
+				uint8_t byteCount; ///< Calculated
 				uint8_t inputStatus[250];
+
+				void setInput(uint16_t input, bool value)
+				{
+					if(input < MaxInputs) {
+						setBit(inputStatus, input, value);
+					}
+				}
+
+				void setCount(uint16_t count)
+				{
+					byteCount = (count + 7) / 8;
+				}
+
+				// This figure may be larger than the actual input count
+				uint16_t getCount() const
+				{
+					return byteCount * 8;
+				}
 			};
+
 			static constexpr uint16_t MaxInputs{sizeof(Response::inputStatus) * 8};
 
 			Request request;
@@ -156,9 +205,20 @@ struct PDU {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
 			};
+
 			struct ATTR_PACKED Response {
-				uint8_t byteCount;
+				uint8_t byteCount; ///< Calculated
 				uint16_t values[MaxRegisters];
+
+				void setCount(uint16_t count)
+				{
+					byteCount = count * 2;
+				}
+
+				uint16_t getCount() const
+				{
+					return byteCount / 2;
+				}
 			};
 
 			Request request;
@@ -169,13 +229,25 @@ struct PDU {
 		// ReadInputRegisters = 0x04,
 		union ReadInputRegisters {
 			static constexpr uint16_t MaxRegisters{250 / 2};
+
 			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
 			};
+
 			struct ATTR_PACKED Response {
-				uint8_t byteCount;
+				uint8_t byteCount; ///< Calculated
 				uint16_t values[MaxRegisters];
+
+				void setCount(uint16_t count)
+				{
+					byteCount = std::min(count, MaxRegisters) * 2;
+				}
+
+				uint16_t getCount() const
+				{
+					return byteCount / 2;
+				}
 			};
 
 			Request request;
@@ -185,10 +257,15 @@ struct PDU {
 
 		// WriteSingleCoil = 0x05,
 		union WriteSingleCoil {
+			// These are the only two specified values: anything else is illegal
+			static constexpr uint16_t state_on = 0xFF00;
+			static constexpr uint16_t state_off = 0x0000;
+
 			struct ATTR_PACKED Request {
 				uint16_t outputAddress;
 				uint16_t outputValue;
 			};
+
 			using Response = Request;
 
 			Request request;
@@ -202,6 +279,7 @@ struct PDU {
 				uint16_t address;
 				uint16_t value;
 			};
+
 			using Response = Request;
 
 			Request request;
@@ -232,13 +310,19 @@ struct PDU {
 
 		// GetComEventLog = 0x0c,
 		union GetComEventLog {
-			static constexpr uint8_t MaxEvents{64};
+			static constexpr uint16_t MaxEvents{64};
 			struct ATTR_PACKED Response {
-				uint8_t byteCount;
+				uint8_t byteCount; ///< Calculated
 				uint16_t status;
 				uint16_t eventCount;
 				uint16_t messageCount;
 				uint8_t events[MaxEvents];
+
+				void setEventCount(uint16_t count)
+				{
+					eventCount = std::min(count, MaxEvents);
+					byteCount = 7 + eventCount;
+				}
 			};
 
 			Response response;
@@ -250,8 +334,21 @@ struct PDU {
 			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfOutputs;
-				uint8_t byteCount;
+				uint8_t byteCount; ///< Calculated
 				uint8_t values[246];
+
+				void setCoil(uint16_t coil, bool state)
+				{
+					if(coil < MaxCoils) {
+						setBit(values, coil, state);
+					}
+				}
+
+				void setCount(uint16_t count)
+				{
+					quantityOfOutputs = std::min(count, MaxCoils);
+					byteCount = (quantityOfOutputs + 7) / 8;
+				}
 			};
 			static constexpr uint16_t MaxCoils{sizeof(Request::values) * 8};
 			struct ATTR_PACKED Response {
@@ -267,11 +364,18 @@ struct PDU {
 		// WriteMultipleRegisters = 0x10,
 		union WriteMultipleRegisters {
 			static constexpr uint16_t MaxRegisters{123};
+
 			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
-				uint8_t byteCount;
+				uint8_t byteCount; ///< Calculated
 				uint16_t values[MaxRegisters];
+
+				void setCount(uint16_t count)
+				{
+					quantityOfRegisters = std::min(count, MaxRegisters);
+					byteCount = quantityOfRegisters * 2;
+				}
 			};
 			struct ATTR_PACKED Response {
 				uint16_t startAddress;
@@ -317,12 +421,28 @@ struct PDU {
 				uint16_t quantityToRead;
 				uint16_t writeAddress;
 				uint16_t quantityToWrite;
-				uint8_t writeByteCount;
+				uint8_t writeByteCount; ///< Calculated
 				uint16_t writeValues[MaxWriteRegisters];
+
+				void setWriteCount(uint16_t count)
+				{
+					quantityToWrite = std::min(count, MaxWriteRegisters);
+					writeByteCount = quantityToWrite * 2;
+				}
 			};
 			struct ATTR_PACKED Response {
 				uint8_t byteCount;
 				uint16_t values[MaxReadRegisters];
+
+				void setCount(uint16_t count)
+				{
+					byteCount = count * 2;
+				}
+
+				uint16_t getCount() const
+				{
+					return byteCount / 2;
+				}
 			};
 
 			Request request;
@@ -358,17 +478,6 @@ struct PDU {
 	}
 
 	/**
-	 * @name Prepare request/response packets
-	 * Here, we fill in any dependent fields (e.g. byteCount from registercount) and check maximum limits
-	 * We don't do full validation here, that's the job for the slave/server
-	 * @retval size_t Size of complete PDU, 0 on error
-	 * @{
-	 */
-	size_t prepareRequest();
-	size_t prepareResponse();
-	/** @} */
-
-	/**
 	 * @name Swap byte order of any 16-bit fields
 	 * @{
 	 */
@@ -400,6 +509,16 @@ struct PDU {
 private:
 	size_t getRequestDataSize() const;
 	size_t getResponseDataSize() const;
+
+	static void setBit(uint8_t* values, uint16_t number, bool state)
+	{
+		uint8_t mask = 1 << (number % 8);
+		if(state) {
+			values[number / 8] |= mask;
+		} else {
+			values[number / 8] &= ~mask;
+		}
+	}
 };
 
 static_assert(offsetof(PDU, data) == 1, "PDU alignment error");

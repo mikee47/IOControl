@@ -64,11 +64,16 @@ void Controller::start()
 		return;
 	}
 
+	uart_intr_config_t intr_cfg{
+		.rx_timeout_thresh = 16,
+		.txfifo_empty_intr_thresh = 0,
+	};
+	uart_intr_config(uart, &intr_cfg);
 	uart->rx_headroom = 0;
 	uart_set_callback(uart, uartCallback, this);
 
 	// Using alternate serial pins
-	//	uart_swap(uart, 1);
+	uart_swap(uart, 1);
 
 	// Put default serial pins in safe state
 	//	pinMode(1, INPUT_PULLUP);
@@ -107,15 +112,14 @@ void Controller::uartCallback(uart_t* uart, uint32_t status)
 	// Rx FIFO full or timeout
 	if(status & (UART_RXFIFO_FULL_INT_ST | UART_RXFIFO_TOUT_INT_ST)) {
 		uart->callback = nullptr;
-		controller->timer.stop();
-
-		// Process the received data in task context
-		System.queueCallback(
+		// Wait a bit before processing the response. This enforces a minimum inter-message delay
+		controller->timer.initializeMs<50>(
 			[](void* param) {
 				auto controller = static_cast<Controller*>(param);
 				controller->completeTransaction();
 			},
 			controller);
+		controller->timer.startOnce();
 	}
 }
 
@@ -166,7 +170,8 @@ void Controller::execute(IO::Request& request)
 
 	// Transmit request data whilst keeping TX_EN assserted
 	digitalWrite(txEnablePin, 1);
-	uart_write(uart, adu.buffer, aduSize + 1);
+	uart_write(uart, adu.buffer, aduSize);
+	uart_write_char(uart, '\0'); // NUL pad so final byte doesn't get cut off
 
 	// Put a timeout on the overall transaction
 	timer.initializeMs<MODBUS_TRANSACTION_TIMEOUT_MS>(

@@ -35,12 +35,14 @@ namespace Modbus
 {
 size_t ADU::prepareRequest()
 {
-	return preparePacket(pdu.prepareRequest());
+	pdu.swapRequestByteOrder();
+	return preparePacket(pdu.getRequestSize());
 }
 
 size_t ADU::prepareResponse()
 {
-	return preparePacket(pdu.prepareResponse());
+	pdu.swapResponseByteOrder();
+	return preparePacket(pdu.getResponseSize());
 }
 
 size_t ADU::preparePacket(size_t pduSize)

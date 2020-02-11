@@ -12,6 +12,8 @@ static IO::DMX512::Controller dmx0(0);
 
 IMPORT_FSTR_LOCAL(DEVMGR_CONFIG, PROJECT_DIR "/config/devices.json")
 
+static constexpr uint8_t MODBUS_SLAVE_ID{10};
+
 //
 HardwareSerial dbgser(UART_ID_1);
 
@@ -51,7 +53,40 @@ void devmgrCallback(IO::Request& request)
 static bool handleModbusRequest(IO::Modbus::ADU& adu)
 {
 	IO::Modbus::printRequest(dbgser, adu);
-	return false; // ignore
+	if(adu.slaveId != MODBUS_SLAVE_ID) {
+		return false; // ignore
+	}
+
+	switch(adu.pdu.function()) {
+	case IO::Modbus::Function::ReadDiscreteInputs: {
+		auto& data = adu.pdu.data.readDiscreteInputs;
+		auto req{data.request};
+		auto& rsp{data.response};
+		rsp.setCount(req.quantityOfInputs);
+		for(unsigned i = 0; i < req.quantityOfInputs; ++i) {
+			rsp.setInput(i, i & 1);
+		}
+		break;
+	}
+
+	case IO::Modbus::Function::ReadInputRegisters: {
+		auto& data = adu.pdu.data.readInputRegisters;
+		auto req{data.request};
+		auto& rsp{data.response};
+		rsp.setCount(req.quantityOfRegisters);
+		for(unsigned i = 0; i < req.quantityOfRegisters; ++i) {
+			rsp.values[i] = req.startAddress + i;
+		}
+		break;
+	}
+
+	default:
+		adu.pdu.setException(IO::Modbus::Exception::IllegalFunction);
+	}
+
+	IO::Modbus::printResponse(dbgser, adu);
+
+	return true;
 }
 
 IO::Error devmgrInit()
