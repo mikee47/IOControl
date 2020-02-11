@@ -78,7 +78,7 @@ size_t PDU::getRequestDataSize() const
 	case Function::ReadExceptionStatus:
 	case Function::GetComEventCounter:
 	case Function::GetComEventLog:
-	case Function::ReportSlaveID:
+	case Function::ReportServerId:
 	default:
 		return 0;
 	}
@@ -98,7 +98,7 @@ size_t PDU::getResponseDataSize() const
 	case Function::ReadDiscreteInputs:
 	case Function::ReadHoldingRegisters:
 	case Function::ReadInputRegisters:
-	case Function::ReportSlaveID:
+	case Function::ReportServerId:
 	case Function::ReadWriteMultipleRegisters:
 	case Function::GetComEventLog:
 		return 1 + data.readCoils.response.byteCount;
@@ -131,7 +131,7 @@ void PDU::swapRequestByteOrder()
 	case Function::None:
 	case Function::GetComEventLog:
 	case Function::ReadExceptionStatus:
-	case Function::ReportSlaveID:
+	case Function::ReportServerId:
 		break;
 
 	case Function::ReadCoils:
@@ -177,7 +177,7 @@ void PDU::swapResponseByteOrder()
 	case Function::ReadCoils:
 	case Function::ReadDiscreteInputs:
 	case Function::ReadExceptionStatus:
-	case Function::ReportSlaveID:
+	case Function::ReportServerId:
 		break;
 
 	case Function::ReadHoldingRegisters: {

@@ -81,7 +81,7 @@ String toString(Exception exception);
 	XX(GetComEventLog, 0x0c)                                                                                           \
 	XX(WriteMultipleCoils, 0x0f)                                                                                       \
 	XX(WriteMultipleRegisters, 0x10)                                                                                   \
-	XX(ReportSlaveID, 0x11)                                                                                            \
+	XX(ReportServerId, 0x11)                                                                                           \
 	XX(MaskWriteRegister, 0x16)                                                                                        \
 	XX(ReadWriteMultipleRegisters, 0x17)
 
@@ -257,13 +257,14 @@ struct PDU {
 
 		// WriteSingleCoil = 0x05,
 		union WriteSingleCoil {
-			// These are the only two specified values: anything else is illegal
-			static constexpr uint16_t state_on = 0xFF00;
-			static constexpr uint16_t state_off = 0x0000;
-
 			struct ATTR_PACKED Request {
+				enum State : uint16_t {
+					state_off = 0x0000,
+					state_on = 0xFF00,
+				};
+
 				uint16_t outputAddress;
-				uint16_t outputValue;
+				State outputValue;
 			};
 
 			using Response = Request;
@@ -387,16 +388,33 @@ struct PDU {
 		};
 		WriteMultipleRegisters writeMultipleRegisters;
 
-		// ReportSlaveID = 0x11,
-		union ReportSlaveID {
+		// ReportServerId = 0x11,
+		union ReportServerId {
 			struct ATTR_PACKED Response {
+				enum RunStatus : uint8_t {
+					runstatus_off = 0x00,
+					runstatus_on = 0xFF,
+				};
+
 				uint8_t byteCount;
-				uint8_t data[250]; ///< Content is specific to slave device
+				uint8_t serverId;
+				RunStatus runStatus;
+				uint8_t data[248]; ///< Content is specific to slave device
+
+				void setCount(uint8_t dataSize)
+				{
+					byteCount = 2 + dataSize;
+				}
+
+				uint8_t getCount() const
+				{
+					return byteCount - 2;
+				}
 			};
 
 			Response response;
 		};
-		ReportSlaveID reportSlaveID;
+		ReportServerId reportServerId;
 
 		// MaskWriteRegister = 0x16,
 		union MaskWriteRegister {

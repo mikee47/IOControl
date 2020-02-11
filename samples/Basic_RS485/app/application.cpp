@@ -80,6 +80,15 @@ static bool handleModbusRequest(IO::Modbus::ADU& adu)
 		break;
 	}
 
+	case IO::Modbus::Function::ReportServerId: {
+		auto& rsp = adu.pdu.data.reportServerId.response;
+		rsp.serverId = 0x20;
+		rsp.runStatus = rsp.runstatus_on;
+		memcpy(rsp.data, "12345", 5);
+		rsp.setCount(5);
+		break;
+	}
+
 	default:
 		adu.pdu.setException(IO::Modbus::Exception::IllegalFunction);
 	}
@@ -194,7 +203,7 @@ void init()
 	dbgser.setPort(0);
 #endif
 
-	dbgser.setTxBufferSize(4096);
+	dbgser.setTxBufferSize(8192);
 	dbgser.setRxBufferSize(0);
 	dbgser.setTxWait(false);
 	dbgser.begin(COM_SPEED_SERIAL);

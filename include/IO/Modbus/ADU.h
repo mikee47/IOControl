@@ -9,7 +9,7 @@ namespace Modbus
 {
 // Buffer to construct requests and process responses
 union ADU {
-	static constexpr size_t MinSize{5};
+	static constexpr size_t MinSize{4};
 	static constexpr size_t MaxSize{256};
 
 	struct {

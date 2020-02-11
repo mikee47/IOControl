@@ -94,7 +94,7 @@ size_t printRequest(Print& p, const PDU& pdu)
 	switch(pdu.function()) {
 	case Function::None:
 	case Function::ReadExceptionStatus:
-	case Function::ReportSlaveID:
+	case Function::ReportServerId:
 	case Function::GetComEventCounter:
 	case Function::GetComEventLog:
 		break;
@@ -196,10 +196,12 @@ size_t printResponse(Print& p, const PDU& pdu)
 		break;
 	}
 
-	case Function::ReportSlaveID: {
-		auto& rsp{pdu.data.reportSlaveID.response};
+	case Function::ReportServerId: {
+		auto& rsp{pdu.data.reportServerId.response};
 		printField(byteCount);
-		n += printValues(p, _F("data"), rsp.data, rsp.byteCount, ValueFormat::byte);
+		printField(serverId);
+		printField(runStatus);
+		n += printValues(p, _F("data"), rsp.data, rsp.getCount(), ValueFormat::byte);
 		break;
 	}
 
