@@ -120,6 +120,19 @@ using DeviceClassMap = HashMap<String, GetDeviceClass>;
 using IODeviceList = Vector<Device*>;
 
 /*
+ * General information about shared port requirements
+ */
+struct PortInfo {
+	enum Mode {
+		Read,
+		Write,
+		ReadWrite,
+	};
+	Mode io;
+	Mode interrupt;
+};
+
+/*
  * Serialises hardware requests on a physical bus.
  */
 class Controller
@@ -189,6 +202,18 @@ public:
 	}
 
 	virtual bool busy() const = 0;
+
+	/**
+	 * @brief If we have use of a shared resource (e.g. Serial port) then it calls this
+	 * method to ask whether to allow another controller to make use of it.
+	 * @param other The controller making the request
+	 * @param info Some information about the port
+	 * @retval bool false by default, deny access
+	 */
+	virtual bool allowPortAccess(Controller* other, const PortInfo& info)
+	{
+		return false;
+	}
 
 protected:
 	/*
