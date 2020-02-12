@@ -2,6 +2,7 @@
 
 #include "Control.h"
 #include <driver/uart.h>
+#include <espinc/uart_register.h>
 
 namespace IO
 {
@@ -22,23 +23,33 @@ namespace IO
 class Serial
 {
 public:
+	enum class Mode {
+		Shared,
+		Exclusive,
+	};
+
 	// Config which is swapped about when a controller acquires the port
 	struct Config {
-		PortInfo info;
-		uint16_t baudrate;
+		Mode mode;
 		uint8_t config; // uart config values such as start/stop bits, parity, etc.
+		uint32_t baudrate;
 	};
+
+	struct State;
+
+	// Called from interrupt context so implementations must be marked IRAM_ATTR
+	using Callback = void (*)(State& state);
 
 	// Contains fixed initialisation data plus state for a client
 	struct State {
 		Controller* controller;
-		uart_callback_t callback;
-		void* callbackParam;
+		Callback onTransmitComplete;
+		Callback onReceive;
 		uint16_t rxBufferSize;
 		uint16_t txBufferSize;
 		// Used internally by Serial
-		PortInfo::Mode interrupt;
 		Config config;
+		State* previous;
 	};
 
 	virtual ~Serial()
@@ -49,7 +60,7 @@ public:
 	/**
 	 * @brief Initialise the serial port with a default configuration
 	 */
-	bool open(uint8_t uart_nr);
+	Error open(uint8_t uart_nr);
 
 	/**
 	 * @brief Close the port
@@ -66,27 +77,78 @@ public:
 	/**
 	 * @brief Request use of the port for a transaction
 	 */
-	virtual uart_t* acquire(State& state, const Config& cfg);
+	virtual bool acquire(State& state, const Config& cfg);
 
 	/**
 	 * @brief Release port for others to use
 	 */
-	virtual void release(State* state);
+	virtual void release(State& state);
 
 	/**
-	 * @brief Whilst a port is acquired, call this method to being a transmission
-	 * @param device The device making port access
+	 * @brief Callback to handle transmit/receive hardware selection
+	 * Typically called from interrupt context so implementation MUST be marked IRAM_ATTR
 	 * @param enable true to transmit, false to switch back to receive
 	 */
-	virtual void setTransmit(Request* request, bool enable)
+	using TransmitCallback = void (*)(bool enable);
+
+	/**
+	 * @brief Set the transmit callback handler
+	 *
+	 * Typically with RS485 a GPIO is used to toggle between transmit/receive modes.
+	 * Using a callback allows flexibility for your particular hardware implementation.
+	 * You don't need to set this up if your hardware handles the switch automatically.
+	 *
+	 * @param callback
+	 */
+	void onTransmit(TransmitCallback callback)
 	{
+		transmitCallback = callback;
+	}
+
+	/**
+	 * @brief Whilst a port is acquired, call this method to being or end transmission
+	 * @param enable true to transmit, false to receive
+	 * @note Port should be left in receive mode on request completion
+	 */
+	void IRAM_ATTR setTransmit(bool enable)
+	{
+		if(transmitCallback != nullptr) {
+			transmitCallback(enable);
+		}
+	}
+
+	void setBreak(bool state)
+	{
+		uart_set_break(uart, true);
+	}
+
+	size_t read(void* buffer, size_t size)
+	{
+		return uart_read(uart, buffer, size);
+	}
+
+	size_t write(const void* data, size_t len)
+	{
+		return uart_write(uart, data, len);
+	}
+
+	void swap(uint8_t txPin = 1)
+	{
+		uart_swap(uart, txPin);
+	}
+
+	void flush(uart_mode_t mode = UART_FULL)
+	{
+		uart_flush(uart, mode);
 	}
 
 private:
 	void configure(const Config& cfg);
+	static void IRAM_ATTR uartCallback(uart_t* uart, uint32_t status);
 
-	uart_t* uart{nullptr};
-	State* currentState{nullptr}; ///< Not owned
+	uart_t* uart{};
+	State* currentState{}; ///< Not owned
+	TransmitCallback transmitCallback{};
 };
 
 } // namespace IO

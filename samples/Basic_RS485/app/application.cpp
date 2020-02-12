@@ -7,8 +7,12 @@
 
 namespace
 {
-static IO::Modbus::Controller modbus0(0);
-static IO::DMX512::Controller dmx0(0);
+static IO::Serial serial0;
+static IO::Modbus::Controller modbus0(serial0, 0);
+static IO::DMX512::Controller dmx0(serial0, 0);
+
+// Pin to switch  MAX485 between receive (low) and transmit (high)
+static constexpr uint8_t MBPIN_TX_EN = 12;
 
 IMPORT_FSTR_LOCAL(DEVMGR_CONFIG, PROJECT_DIR "/config/devices.json")
 
@@ -53,7 +57,7 @@ void devmgrCallback(IO::Request& request)
 static bool handleModbusRequest(IO::Modbus::ADU& adu)
 {
 	IO::Modbus::printRequest(dbgser, adu);
-	if(adu.slaveId != MODBUS_SLAVE_ID) {
+	if(adu.slaveAddress != MODBUS_SLAVE_ID) {
 		return false; // ignore
 	}
 
@@ -98,8 +102,28 @@ static bool handleModbusRequest(IO::Modbus::ADU& adu)
 	return true;
 }
 
+static void IRAM_ATTR setSerialTransmit(bool enable)
+{
+	digitalWrite(MBPIN_TX_EN, enable);
+}
+
 IO::Error devmgrInit()
 {
+	auto err = serial0.open(UART0);
+	if(!!err) {
+		debug_e("Error opening serial port");
+		return err;
+	}
+
+	// Set up the transmit enable GPIO which toggles MAX485 direction
+	pinMode(MBPIN_TX_EN, OUTPUT);
+	setSerialTransmit(false);
+	serial0.onTransmit(setSerialTransmit);
+	// Use alternate serial pins and put default ones in safe state
+	serial0.swap();
+//	pinMode(1, INPUT_PULLUP);
+//	pinMode(3, INPUT_PULLUP);
+
 	// Setup modbus stack
 	modbus0.registerDeviceClass(IO::Modbus::R421A::deviceClass);
 	IO::devmgr.registerController(modbus0);
@@ -160,44 +184,42 @@ void systemReady()
 	}
 	*/
 
-	testTimer
-		.initializeMs<300>(InterruptCallback([]() {
-			/*
-			{
-				IO::Request* req;
-				auto err = IO::devmgr.createRequest("mb1", req);
-				if(!err) {
-					req->setID("Toggle all outputs");
-					req->nodeToggle(IO::DevNode_ALL);
-					//					req->setID("Toggle output #1");
-					//					req->nodeToggle(DevNode{1});
-					req->submit();
-				}
+	testTimer.initializeMs<5000>(InterruptCallback([]() {
+		{
+			IO::Request* req;
+			auto err = IO::devmgr.createRequest("mb1", req);
+			if(!err) {
+				req->setID("Toggle all outputs");
+				req->nodeToggle(IO::DevNode_ALL);
+				//										req->setID("Toggle output #1");
+				//										req->nodeToggle(IO::DevNode{1});
+				req->submit();
 			}
-			*/
-			//			auto dev = reinterpret_cast<IO::DMX512::Device*>(IO::devmgr.findDevice("dmx1"));
-			//			assert(dev->getClass() == IO::DMX512::deviceClass());
-			//			auto req = new IO::DMX512::Request(*dev);
+		}
 
+		//			auto dev = reinterpret_cast<IO::DMX512::Device*>(IO::devmgr.findDevice("dmx1"));
+		//			assert(dev->getClass() == IO::DMX512::deviceClass());
+		//			auto req = new IO::DMX512::Request(*dev);
+
+		/*
 			IO::Request* req;
 			auto err = IO::devmgr.createRequest("dmx1", req);
 			assert(!err);
 			req->setID("Adjust output #7");
 			req->nodeAdjust(IO::DevNode{7}, 2);
 			req->submit();
-			//			}
-		}))
-		.start();
+*/
+
+		testTimer.startOnce();
+	}));
+
+	testTimer.startOnce();
 }
 
 } // namespace
 
 void init()
 {
-	// Configure serial ports
-	//  Serial.systemDebugOutput(false);
-	Serial.end();
-
 #if DEBUG_BUILD
 #ifdef ARCH_HOST
 	dbgser.setPort(0);

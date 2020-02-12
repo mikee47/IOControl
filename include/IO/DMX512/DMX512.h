@@ -9,6 +9,7 @@
 #pragma once
 
 #include <IO/Control.h>
+#include <IO/Serial.h>
 #include <SimpleTimer.h>
 
 class HardwareSerial;
@@ -238,7 +239,12 @@ private:
 class Controller : public IO::Controller
 {
 public:
-	Controller(uint8_t instance) : IO::Controller(instance)
+	static constexpr size_t MaxPacketSize{520};
+
+	Controller(Serial& serial, uint8_t instance)
+		: IO::Controller(instance), serial{serial}, state{.controller{this},
+														  .onTransmitComplete{transmitComplete},
+														  .txBufferSize{MaxPacketSize}}
 	{
 	}
 
@@ -262,8 +268,11 @@ protected:
 
 private:
 	void updateSlaves();
-	void transmitComplete(HardwareSerial& serial);
+	static void IRAM_ATTR transmitComplete(Serial::State& state);
+	void transmitComplete();
 
+	Serial& serial;
+	Serial::State state;
 	bool m_updating = false; ///< Currently sending update
 	bool m_changed = false;  ///< Data has changed
 	SimpleTimer m_timer;	 ///< For slave update cycle timing

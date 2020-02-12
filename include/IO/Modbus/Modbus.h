@@ -12,6 +12,7 @@
 #pragma once
 
 #include <IO/Control.h>
+#include <IO/Serial.h>
 #include "ADU.h"
 
 namespace IO
@@ -81,6 +82,20 @@ public:
 	Error init(const Config& config);
 	Error init(JsonObjectConst config) override;
 
+	/**
+	 * @brief Handle a broadcast message
+	 */
+	virtual void onBroadcast(const ADU& adu)
+	{
+	}
+
+	/**
+	 * @brief Handle a message specifically for this device
+	 */
+	virtual void onRequest(ADU& adu)
+	{
+	}
+
 	uint16_t address() const override
 	{
 		return m_config.address;
@@ -101,7 +116,14 @@ private:
 class Controller : public IO::Controller
 {
 public:
-	Controller(uint8_t instance) : IO::Controller(instance)
+	Controller(Serial& serial, uint8_t instance)
+		: IO::Controller(instance), serial{serial}, state{
+														.controller{this},
+														.onTransmitComplete{transmitComplete},
+														.onReceive{receive},
+														.rxBufferSize{ADU::MaxSize},
+														.txBufferSize{ADU::MaxSize},
+													}
 	{
 	}
 
@@ -137,29 +159,30 @@ protected:
 	 * If there is no transaction in progress then unsolicited packets
 	 * are interpreted as slave requests.
 	 */
-	virtual void handleIncomingRequest(ADU& adu)
-	{
-		if(requestCallback && requestCallback(adu)) {
-			sendResponse(adu);
-		}
-	}
+	virtual void handleIncomingRequest(ADU& adu);
 
-	void sendResponse(ADU& adu);
+	void sendResponse(ADU& adu)
+	{
+		send(adu, adu.prepareResponse());
+	}
 
 private:
 	void execute(IO::Request& request) override;
-	static void IRAM_ATTR uartCallback(uart_t* uart, uint32_t status);
+	static void IRAM_ATTR transmitComplete(Serial::State& state);
+	static void IRAM_ATTR receive(Serial::State& state);
+
+	void send(ADU& adu, size_t size);
 	Error readResponse(ADU& adu);
 	void completeTransaction();
 	void transactionTimeout();
 
 private:
-	uart_t* uart{nullptr};
+	Serial& serial;
+	Serial::State state;
 	Request* request{nullptr};
 	RequestDelegate requestCallback;
 	SimpleTimer timer; ///< Use to schedule callback and timeout
 	Function requestFunction{};
-	uint8_t txEnablePin{0};
 };
 
 } // namespace Modbus

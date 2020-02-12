@@ -1,22 +1,12 @@
 #include <IO/Serial.h>
-#include <driver/uart.h>
-#include <espinc/uart_register.h>
 
 namespace IO
 {
-static void IRAM_ATTR uart_callback(uart_t* uart, uint32_t status)
+Error Serial::open(uint8_t uart_nr)
 {
-	auto serial = static_cast<Serial*>(uart_get_callback_param(uart));
-	if(serial == nullptr) {
-		return;
+	if(uart != nullptr) {
+		return Error::access_denied;
 	}
-
-	//	serial->currentState
-}
-
-bool Serial::open(uint8_t uart_nr)
-{
-	close();
 
 	uart_config cfg{
 		.uart_nr = uart_nr,
@@ -27,17 +17,30 @@ bool Serial::open(uint8_t uart_nr)
 	};
 	uart = uart_init_ex(cfg);
 	if(uart == nullptr) {
-		debug_e("UART init failed");
-		return false;
+		return Error::bad_config;
 	}
 
-	return true;
+	uart_intr_config_t intr_cfg{
+		// Allow a suitable timeout for receive packets
+		.rx_timeout_thresh = 16,
+		// Don't callback unless FIFO is actually empty
+		.txfifo_empty_intr_thresh = 0,
+	};
+	uart_intr_config(uart, &intr_cfg);
+	// Don't report 'buffer full' early, but only when buffer is actually full
+	uart->rx_headroom = 0;
+
+	// We handle interrupts and notify client as appropriate
+	uart_set_callback(uart, uartCallback, this);
+
+	return Error::success;
 }
 
 void Serial::close()
 {
 	uart_uninit(uart);
 	uart = nullptr;
+	currentState = nullptr;
 }
 
 bool Serial::initState(State& state)
@@ -57,44 +60,78 @@ bool Serial::initState(State& state)
 	return true;
 }
 
-uart_t* Serial::acquire(State& state, const Config& cfg)
+bool Serial::acquire(State& state, const Config& cfg)
 {
 	if(uart == nullptr) {
-		return nullptr;
+		return false;
 	}
 
 	/*
 	 * If port has been acquired already, for example by MODBUS, then ask if it's OK to borrow it.
-	 *
 	 */
 	if(currentState != nullptr) {
-		if(!currentState->controller->allowPortAccess(state->controller, cfg.info)) {
+		if(currentState->config.mode != Mode::Shared) {
 			debug_w("Port in use");
-			return nullptr;
+			return false;
 		}
 	}
 
 	configure(cfg);
 
-	state.interrupt = cfg.info.interrupt;
-	state.oldState = currentState;
-	currentState = &state;
+	if(&state != currentState) {
+		state.config = cfg;
+		state.previous = currentState;
+		currentState = &state;
+	}
 
-	return uart;
+	return true;
 }
 
 void Serial::release(State& state)
 {
-	currentState = state.oldState;
+	if(&state == currentState) {
+		return;
+	}
+
+	currentState = state.previous;
+	state.previous = nullptr;
 	if(currentState != nullptr) {
 		configure(currentState->config);
 	}
 }
 
-void Serial::configure(Config& cfg)
+void Serial::configure(const Config& cfg)
 {
 	uart_set_config(uart, cfg.config);
 	uart_set_baudrate(uart, cfg.baudrate);
+}
+
+void Serial::uartCallback(uart_t* uart, uint32_t status)
+{
+	auto serial = static_cast<Serial*>(uart_get_callback_param(uart));
+	// Guard against spurious interrupts
+	if(serial == nullptr) {
+		return;
+	}
+
+	auto state = serial->currentState;
+	if(state == nullptr) {
+		return;
+	}
+
+	// Tx FIFO empty
+	if(status & UART_TXFIFO_EMPTY_INT_ST) {
+		if(state->onTransmitComplete) {
+			state->onTransmitComplete(*state);
+		}
+	}
+
+	// Rx FIFO full or timeout
+	if(status & (UART_RXFIFO_FULL_INT_ST | UART_RXFIFO_TOUT_INT_ST)) {
+		if(state->onReceive) {
+			state->onReceive(*state);
+		}
+	}
 }
 
 } // namespace IO

@@ -7,20 +7,21 @@ namespace IO
 {
 namespace Modbus
 {
-// Buffer to construct requests and process responses
+// Buffer to construct RTU requests and process responses
 union ADU {
+	static constexpr uint8_t BROADCAST_ADDRESS{0x00};
 	static constexpr size_t MinSize{4};
 	static constexpr size_t MaxSize{256};
 
 	struct {
-		uint8_t slaveId;
+		uint8_t slaveAddress;
 		PDU pdu;
 	};
 	uint8_t buffer[MaxSize];
 
 	/**
 	 * @name Prepare outgoing packet
-	 * The `slaveId` and `pdu` fields must be correctly initialised.
+	 * The `slaveAddress` and `pdu` fields must be correctly initialised.
 	 * @retval size_t Size of ADU, 0 on error
 	 * @{
 	 */

@@ -6,7 +6,6 @@
  */
 
 #include <IO/DMX512/DMX512.h>
-#include "HardwareSerial.h"
 #include "Clock.h"
 #include "Digital.h"
 //#include "ledtable.h"
@@ -23,30 +22,15 @@ DEFINE_FSTR(DEVICE_CLASSNAME, "dmx")
 DEFINE_FSTR_LOCAL(ATTR_ADDRESS, "address")
 DEFINE_FSTR_LOCAL(ATTR_VALUE, "value")
 
-// Pin to switch  MAX485 between receive (low) and transmit (high)
-#define MBPIN_TX_EN 12
-
 /* DMX minimum timings per E1.11 */
-#define DMX_BREAK 92
-#define DMX_MAB 12 // Mark After Break
-
-//
-#define DMX_BAUDRATE 250000
+constexpr unsigned DMX_BREAK{92};
+constexpr unsigned DMX_MAB{12}; // Mark After Break
+constexpr uint32_t DMX_BAUDRATE{250000};
+constexpr uint8_t DMX_SERIAL_CONFIG{SERIAL_8N2};
 
 //
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
 #define DMX_UPDATE_PERIODIC_MS 1000 // 5000	///< Periodic update interval
-
-static void dmxStart()
-{
-	auto uart = Serial.getUart();
-	if(uart != nullptr) {
-		uart_set_break(uart, true);
-		delayMicroseconds(DMX_BREAK);
-		uart_set_break(uart, false);
-		delayMicroseconds(DMX_MAB);
-	}
-}
 
 /* Request */
 
@@ -71,23 +55,10 @@ Error Request::submit()
 
 void Controller::start()
 {
-	Serial.end();
-	Serial.setUartCallback(nullptr);
-	Serial.setTxBufferSize(520);
-	Serial.setRxBufferSize(0);
-	Serial.begin(DMX_BAUDRATE, SERIAL_8N2);
-
-	// Using alternate serial pins
-	Serial.swap();
-
-	// Put default serial pins in safe state
-	pinMode(1, INPUT_PULLUP);
-	pinMode(3, INPUT_PULLUP);
-
-	digitalWrite(MBPIN_TX_EN, 0);
-	pinMode(MBPIN_TX_EN, OUTPUT);
-
-	Serial.onTransmitComplete(TransmitCompleteDelegate(&Controller::transmitComplete, this));
+	if(!serial.initState(state)) {
+		debug_e("Serial init failed");
+		return;
+	}
 
 	m_timer.setCallback(
 		[](void* arg) {
@@ -105,8 +76,9 @@ void Controller::start()
 void Controller::stop()
 {
 	m_timer.stop();
-	Serial.onTransmitComplete(nullptr);
-	Serial.end();
+	serial.release(state);
+	//	Serial.onTransmitComplete(nullptr);
+	//	Serial.end();
 	IO::Controller::stop();
 }
 
@@ -167,6 +139,15 @@ void Controller::updateSlaves()
 	debug_i("maxaddr = %u", maxAddr);
 
 */
+	Serial::Config cfg{
+		.mode{Serial::Mode::Exclusive},
+		.config{DMX_SERIAL_CONFIG},
+		.baudrate{DMX_BAUDRATE},
+	};
+	if(!serial.acquire(state, cfg)) {
+		debug_e("DMX: Serial busy");
+		return;
+	}
 
 	m_changed = false;
 
@@ -194,23 +175,33 @@ void Controller::updateSlaves()
 
 	//	debug_hex(INFO, "SLOTS", data, 8);
 
-	digitalWrite(MBPIN_TX_EN, 1);
-	dmxStart();
-	Serial.write(data, dataSize);
+	serial.setTransmit(true);
+	serial.setBreak(true);
+	delayMicroseconds(DMX_BREAK);
+	serial.setBreak(false);
+	delayMicroseconds(DMX_MAB);
+	serial.write(data, dataSize);
 
 	m_updating = true;
 }
 
-void Controller::transmitComplete(HardwareSerial& serial)
+void Controller::transmitComplete(Serial::State& state)
 {
-	digitalWrite(MBPIN_TX_EN, 0);
+	System.queueCallback(
+		[](void* param) {
+			auto controller = static_cast<Controller*>(param);
+			controller->transmitComplete();
+		},
+		state.controller);
+}
 
-	//	debug_i("Controller::transmitComplete()");
+void Controller::transmitComplete()
+{
+	serial.setTransmit(false);
+	serial.release(state);
+	m_updating = false;
 
-	/* We schedule next periodic update now, rather than in the callback,
-	 * because additional requests may come in before then which set the
-	 * timer to a shorter value
-	 */
+	// Schedule next update
 	if(m_changed) {
 		m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
 		m_timer.startOnce();
@@ -218,7 +209,6 @@ void Controller::transmitComplete(HardwareSerial& serial)
 		m_timer.setIntervalMs<DMX_UPDATE_PERIODIC_MS>();
 		m_timer.startOnce();
 	}
-	m_updating = false;
 }
 
 /* Request */

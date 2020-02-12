@@ -17,7 +17,6 @@
 #include "Digital.h"
 #include "Platform/System.h"
 #include <driver/uart.h>
-#include <espinc/uart_register.h>
 
 namespace IO
 {
@@ -32,12 +31,9 @@ DEFINE_FSTR(ATTR_STATES, "states")
 DEFINE_FSTR_LOCAL(ATTR_ADDRESS, "address")
 DEFINE_FSTR_LOCAL(ATTR_BAUDRATE, "baudrate")
 
-// Pin to switch  MAX485 between receive (low) and transmit (high)
-static constexpr uint8_t MBPIN_TX_EN = 12;
-
 // Default values
-static constexpr unsigned MODBUS_TRANSACTION_TIMEOUT_MS = 300;
-static constexpr unsigned MODBUS_DEFAULT_BAUDRATE = 9600;
+static constexpr unsigned TRANSACTION_TIMEOUT_MS = 300;
+static constexpr unsigned DEFAULT_BAUDRATE = 9600;
 
 /* Controller */
 
@@ -46,41 +42,20 @@ static constexpr unsigned MODBUS_DEFAULT_BAUDRATE = 9600;
  */
 void Controller::start()
 {
-	this->txEnablePin = MBPIN_TX_EN;
-
-	uart_config cfg{
-		.uart_nr = UART0,
-		.tx_pin = 1,
-		.mode = UART_FULL,
-		.options = 0,
-		.baudrate = MODBUS_DEFAULT_BAUDRATE,
-		.config = UART_8N1,
-		.rx_size = ADU::MaxSize,
-		.tx_size = ADU::MaxSize,
-	};
-	uart = uart_init_ex(cfg);
-	if(uart == nullptr) {
-		debug_e("UART init failed");
+	if(!serial.initState(state)) {
+		debug_e("MB: Serial init failed");
 		return;
 	}
 
-	uart_intr_config_t intr_cfg{
-		.rx_timeout_thresh = 16,
-		.txfifo_empty_intr_thresh = 0,
+	Serial::Config cfg{
+		.mode{Serial::Mode::Shared},
+		.config{UART_8N1},
+		.baudrate{DEFAULT_BAUDRATE},
 	};
-	uart_intr_config(uart, &intr_cfg);
-	uart->rx_headroom = 0;
-	uart_set_callback(uart, uartCallback, this);
-
-	// Using alternate serial pins
-	uart_swap(uart, 1);
-
-	// Put default serial pins in safe state
-	//	pinMode(1, INPUT_PULLUP);
-	//	pinMode(3, INPUT_PULLUP);
-
-	digitalWrite(txEnablePin, 0);
-	pinMode(txEnablePin, OUTPUT);
+	if(!serial.acquire(state, cfg)) {
+		debug_e("MB: Serial acquire failed");
+		return;
+	}
 
 	request = nullptr;
 	requestFunction = Function::None;
@@ -95,32 +70,27 @@ void Controller::stop()
 	IO::Controller::stop();
 }
 
-void Controller::uartCallback(uart_t* uart, uint32_t status)
+void Controller::transmitComplete(Serial::State& state)
 {
-	auto controller = static_cast<Controller*>(uart_get_callback_param(uart));
-	// Guard against spurious interrupts
-	if(controller == nullptr) {
-		return;
-	}
+	auto controller = reinterpret_cast<Controller*>(state.controller);
+	controller->serial.setTransmit(false);
+}
 
-	// Tx FIFO empty
-	if(status & UART_TXFIFO_EMPTY_INT_ST) {
-		// Set MAX485 back into read mode
-		digitalWrite(controller->txEnablePin, 0);
-	}
+void Controller::receive(Serial::State& state)
+{
+	// Prevent further callbacks
+	state.onReceive = nullptr;
 
-	// Rx FIFO full or timeout
-	if(status & (UART_RXFIFO_FULL_INT_ST | UART_RXFIFO_TOUT_INT_ST)) {
-		uart->callback = nullptr;
-		// Wait a bit before processing the response. This enforces a minimum inter-message delay
-		controller->timer.initializeMs<50>(
+	// Wait a bit before processing the response. This enforces a minimum inter-message delay
+	auto controller = reinterpret_cast<Controller*>(state.controller);
+	controller->timer
+		.initializeMs<50>(
 			[](void* param) {
 				auto controller = static_cast<Controller*>(param);
 				controller->completeTransaction();
 			},
-			controller);
-		controller->timer.startOnce();
-	}
+			controller)
+		.startOnce();
 }
 
 /*
@@ -140,41 +110,48 @@ void Controller::execute(IO::Request& request)
 		return;
 	}
 
-	if(uart == nullptr) {
-		debug_e("Not initialised");
-		request.complete(Status::error);
-		return;
-	}
-
 	auto& req = reinterpret_cast<Request&>(request);
-	this->request = &req;
 
+	// Fill out the ADU packet
 	ADU adu;
 	requestFunction = req.fillRequestData(adu.pdu.data);
 	adu.pdu.setFunction(requestFunction);
-	adu.slaveId = req.device().address();
+	adu.slaveAddress = req.device().address();
 	auto aduSize = adu.prepareRequest();
 	if(aduSize == 0) {
 		request.complete(Status::error);
 		return;
 	}
 
-	// Prepare UART for comms
-	auto baudrate = req.device().baudrate();
-	if(baudrate == 0) {
-		debug_w("Using default baudrate for request");
-		baudrate = MODBUS_DEFAULT_BAUDRATE;
-	}
-	uart_set_baudrate(uart, baudrate);
-	uart_flush(uart, UART_FULL);
+	debug_i("MB: 1");
 
-	// Transmit request data whilst keeping TX_EN assserted
-	digitalWrite(txEnablePin, 1);
-	uart_write(uart, adu.buffer, aduSize);
-	uart_write_char(uart, '\0'); // NUL pad so final byte doesn't get cut off
+	// Prepare UART for comms
+	Serial::Config cfg{
+		.mode{Serial::Mode::Exclusive},
+		.config{UART_8N1},
+		.baudrate{req.device().baudrate()},
+	};
+	debug_i("MB: 2");
+	if(cfg.baudrate == 0) {
+		debug_w("Using default baudrate for request");
+		cfg.baudrate = DEFAULT_BAUDRATE;
+	}
+	debug_i("MB: 3");
+	if(!serial.acquire(state, cfg)) {
+		debug_e("Failed to acquire serial port");
+		request.complete(Status::error);
+		return;
+	}
+	debug_i("MB: 4");
+		serial.flush();
+	debug_i("MB: 5");
+
+	// OK, issue the request
+	this->request = &req;
+	send(adu, aduSize);
 
 	// Put a timeout on the overall transaction
-	timer.initializeMs<MODBUS_TRANSACTION_TIMEOUT_MS>(
+	timer.initializeMs<TRANSACTION_TIMEOUT_MS>(
 		[](void* param) {
 			auto controller = static_cast<Controller*>(param);
 			controller->transactionTimeout();
@@ -186,11 +163,9 @@ void Controller::execute(IO::Request& request)
 Error Controller::readResponse(ADU& adu)
 {
 	// Read packet
-	auto receivedSize = uart_read(uart, adu.buffer, ADU::MaxSize);
+	auto receivedSize = serial.read(adu.buffer, ADU::MaxSize);
 
-	// Flush any surplus data
-	uart_flush(uart, UART_RX_ONLY);
-
+	// Parse the received packet
 	Error err;
 	if(request == nullptr) {
 		err = adu.parseRequest(receivedSize);
@@ -207,7 +182,7 @@ Error Controller::readResponse(ADU& adu)
 	}
 
 	// In master mode, check for consistency with current request
-	if(adu.slaveId != request->device().address()) {
+	if(adu.slaveAddress != request->device().address()) {
 		// Mismatch with command slave ID
 		return Error::bad_param;
 	}
@@ -222,17 +197,21 @@ Error Controller::readResponse(ADU& adu)
 
 void Controller::completeTransaction()
 {
-	// Re-enable callbacks
-	uart->callback = uartCallback;
-
 	ADU adu;
 	auto err = readResponse(adu);
+
+	// Flush any surplus data and release the serial port
+	serial.flush(UART_RX_ONLY);
+	serial.release(state);
+
+	// Re-enable callbacks
+	state.onReceive = receive;
 
 	auto req = request;
 	request = nullptr;
 
 	if(!!err) {
-		debug_e("Modbus: %s", toString(err).c_str());
+		debug_e("MB: %s", toString(err).c_str());
 		if(req != nullptr) {
 			req->complete(Status::error);
 		}
@@ -248,23 +227,62 @@ void Controller::completeTransaction()
 	}
 }
 
-void Controller::sendResponse(ADU& adu)
+void Controller::send(ADU& adu, size_t size)
 {
-	auto aduSize = adu.prepareResponse();
-	if(aduSize != 0) {
-		digitalWrite(txEnablePin, 1);
-		uart_write(uart, adu.buffer, aduSize + 1);
+	if(size != 0) {
+		serial.setTransmit(true);
+		serial.write(adu.buffer, size);
+		// NUL pad so we don'final byte doesn't get cut off
+		uint8_t nul{0};
+		serial.write(&nul, 1);
+
+		debug_i("MB: Sent %u bytes...", size);
 	}
 }
 
 void Controller::transactionTimeout()
 {
+	//
+	ADU adu;
+	auto receivedSize = serial.read(adu.buffer, ADU::MaxSize);
+	debug_hex(INFO, "TIMEOUT", adu.buffer, receivedSize);
+	//
+
+	serial.release(state);
+
 	auto req = request;
 	assert(req != nullptr);
 	request = nullptr;
 
 	debug_w("MB: Timeout");
 	req->complete(Status::error);
+}
+
+void Controller::handleIncomingRequest(ADU& adu)
+{
+	if(requestCallback) {
+		if(requestCallback(adu)) {
+			sendResponse(adu);
+		}
+		return;
+	}
+
+	if(adu.slaveAddress == ADU::BROADCAST_ADDRESS) {
+		// Forward ADU to all devices
+		for(unsigned i = 0; i < m_devices.count(); ++i) {
+			auto dev = reinterpret_cast<Device*>(m_devices[i]);
+			dev->onBroadcast(adu);
+		}
+	} else {
+		// Forward ADU to specific device
+		for(unsigned i = 0; i < m_devices.count(); ++i) {
+			auto dev = reinterpret_cast<Device*>(m_devices[i]);
+			if(adu.slaveAddress == dev->address()) {
+				dev->onRequest(adu);
+				break;
+			}
+		}
+	}
 }
 
 /* Device */

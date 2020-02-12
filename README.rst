@@ -62,7 +62,7 @@ Device, Group and Controller configuration is stored in a JSON configuration fil
 CModbusController: Hardware comms
 
 CModbusSlave: One of these for each slave device.
-  * slaveID
+  * slaveAddress
   * baudrate
 
 CModbusDevice: Other types of slave might require different configuration

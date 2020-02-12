@@ -95,7 +95,7 @@ Error ADU::parsePacket(size_t receivedSize, size_t pduSize)
 		return Error::bad_size;
 	}
 
-	auto aduSize = 1 + pduSize + 2; // slaveId + data + CRC
+	auto aduSize = 1 + pduSize + 2; // slaveAddress + data + CRC
 	if(receivedSize < aduSize) {
 		debug_w("MB: Only %u bytes read, %u expected", receivedSize, aduSize);
 		return Error::bad_size;

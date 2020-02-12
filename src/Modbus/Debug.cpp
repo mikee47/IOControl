@@ -289,8 +289,8 @@ size_t printResponse(Print& p, const PDU& pdu)
 size_t printRequest(Print& p, const ADU& adu)
 {
 	size_t n{};
-	n += p.print(_F("slaveId = "));
-	n += p.println(adu.slaveId);
+	n += p.print(_F("slaveAddress = "));
+	n += p.println(adu.slaveAddress);
 	n += printRequest(p, adu.pdu);
 	return n;
 }
@@ -298,8 +298,8 @@ size_t printRequest(Print& p, const ADU& adu)
 size_t printResponse(Print& p, const ADU& adu)
 {
 	size_t n{};
-	n += p.print(_F("slaveId = "));
-	n += p.println(adu.slaveId);
+	n += p.print(_F("slaveAddress = "));
+	n += p.println(adu.slaveAddress);
 	n += printResponse(p, adu.pdu);
 	return n;
 }
