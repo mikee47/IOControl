@@ -49,7 +49,7 @@ public:
 		uint16_t txBufferSize;
 		// Used internally by Serial
 		Config config;
-		State* previous;
+		State* previousState;
 	};
 
 	virtual ~Serial()
@@ -137,7 +137,7 @@ public:
 		uart_swap(uart, txPin);
 	}
 
-	void flush(uart_mode_t mode = UART_FULL)
+	void clear(uart_mode_t mode = UART_FULL)
 	{
 		uart_flush(uart, mode);
 	}
@@ -148,6 +148,7 @@ private:
 
 	uart_t* uart{};
 	State* currentState{}; ///< Not owned
+	Mode mode{};
 	TransmitCallback transmitCallback{};
 };
 

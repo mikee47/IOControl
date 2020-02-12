@@ -221,6 +221,11 @@ public:
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
+	Error start() override
+	{
+		return Error::success;
+	}
+
 	/** @brief controller calls this before performing an update,
 	 *  typically for effects processing.
 	 *  Return true if value changed.
@@ -273,9 +278,9 @@ private:
 
 	Serial& serial;
 	Serial::State state;
-	bool m_updating = false; ///< Currently sending update
-	bool m_changed = false;  ///< Data has changed
-	SimpleTimer m_timer;	 ///< For slave update cycle timing
+	bool m_updating{false}; ///< Currently sending update
+	bool m_changed{false};  ///< Data has changed
+	SimpleTimer m_timer;	///< For slave update cycle timing
 };
 
 } // namespace DMX512

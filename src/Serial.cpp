@@ -25,6 +25,8 @@ Error Serial::open(uint8_t uart_nr)
 		.rx_timeout_thresh = 16,
 		// Don't callback unless FIFO is actually empty
 		.txfifo_empty_intr_thresh = 0,
+		// Use max value
+		.rxfifo_full_thresh = 0xff,
 	};
 	uart_intr_config(uart, &intr_cfg);
 	// Don't report 'buffer full' early, but only when buffer is actually full
@@ -66,38 +68,30 @@ bool Serial::acquire(State& state, const Config& cfg)
 		return false;
 	}
 
-	/*
-	 * If port has been acquired already, for example by MODBUS, then ask if it's OK to borrow it.
-	 */
-	if(currentState != nullptr) {
-		if(currentState->config.mode != Mode::Shared) {
-			debug_w("Port in use");
-			return false;
-		}
+	if(mode == Mode::Exclusive) {
+		debug_w("Port in use");
+		return false;
 	}
 
+	mode = cfg.mode;
+	state.previousState = currentState;
+	currentState = &state;
 	configure(cfg);
-
-	if(&state != currentState) {
-		state.config = cfg;
-		state.previous = currentState;
-		currentState = &state;
-	}
+	state.config = cfg;
 
 	return true;
 }
 
 void Serial::release(State& state)
 {
-	if(&state == currentState) {
-		return;
-	}
-
-	currentState = state.previous;
-	state.previous = nullptr;
+	currentState = state.previousState;
 	if(currentState != nullptr) {
+		if(&state != currentState) {
+			state.previousState = nullptr;
+		}
 		configure(currentState->config);
 	}
+	mode = Mode::Shared;
 }
 
 void Serial::configure(const Config& cfg)

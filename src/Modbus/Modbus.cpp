@@ -143,7 +143,7 @@ void Controller::execute(IO::Request& request)
 		return;
 	}
 	debug_i("MB: 4");
-		serial.flush();
+	serial.clear();
 	debug_i("MB: 5");
 
 	// OK, issue the request
@@ -201,7 +201,7 @@ void Controller::completeTransaction()
 	auto err = readResponse(adu);
 
 	// Flush any surplus data and release the serial port
-	serial.flush(UART_RX_ONLY);
+	serial.clear(UART_RX_ONLY);
 	serial.release(state);
 
 	// Re-enable callbacks
