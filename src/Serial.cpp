@@ -1,8 +1,10 @@
-#include <IO/Serial.h>
+#include <IO/Serial/Port.h>
 
 namespace IO
 {
-Error Serial::open(uint8_t uart_nr)
+namespace Serial
+{
+Error Port::open(uint8_t uart_nr)
 {
 	if(uart != nullptr) {
 		return Error::access_denied;
@@ -38,38 +40,41 @@ Error Serial::open(uint8_t uart_nr)
 	return Error::success;
 }
 
-void Serial::close()
+void Port::close()
 {
 	uart_uninit(uart);
 	uart = nullptr;
 	currentState = nullptr;
 }
 
-bool Serial::initState(State& state)
-{
-	if(uart == nullptr || state.controller == nullptr) {
-		return false;
-	}
-
-	// Expand buffers if required
-	if(state.rxBufferSize > uart_rx_buffer_size(uart)) {
-		uart_resize_rx_buffer(uart, state.rxBufferSize);
-	}
-	if(state.txBufferSize > uart_tx_buffer_size(uart)) {
-		uart_resize_tx_buffer(uart, state.txBufferSize);
-	}
-
-	return true;
-}
-
-bool Serial::acquire(State& state, const Config& cfg)
+bool Port::resizeBuffers(size_t rxSize, size_t txSize)
 {
 	if(uart == nullptr) {
 		return false;
 	}
 
+	// Expand buffers if required
+	if(rxSize > uart_rx_buffer_size(uart) && !uart_resize_rx_buffer(uart, rxSize)) {
+		debug_e("Serial: Failed to set RX buffer size to %u", rxSize);
+		return false;
+	}
+	if(txSize > uart_tx_buffer_size(uart) && !uart_resize_tx_buffer(uart, txSize)) {
+		debug_e("Serial: Failed to set TX buffer size to %u", txSize);
+		return false;
+	}
+
+	return true;
+}
+
+bool Port::acquire(State& state, const Config& cfg)
+{
+	if(uart == nullptr) {
+		debug_e("Serial: Port not open");
+		return false;
+	}
+
 	if(mode == Mode::Exclusive) {
-		debug_w("Port in use");
+		debug_w("Serial: Port in use");
 		return false;
 	}
 
@@ -82,27 +87,25 @@ bool Serial::acquire(State& state, const Config& cfg)
 	return true;
 }
 
-void Serial::release(State& state)
+void Port::release(State& state)
 {
 	currentState = state.previousState;
-	if(currentState != nullptr) {
-		if(&state != currentState) {
-			state.previousState = nullptr;
-		}
+	if(currentState != nullptr && &state != currentState) {
+		state.previousState = nullptr;
 		configure(currentState->config);
 	}
 	mode = Mode::Shared;
 }
 
-void Serial::configure(const Config& cfg)
+void Port::configure(const Config& cfg)
 {
 	uart_set_config(uart, cfg.config);
 	uart_set_baudrate(uart, cfg.baudrate);
 }
 
-void Serial::uartCallback(uart_t* uart, uint32_t status)
+void Port::uartCallback(uart_t* uart, uint32_t status)
 {
-	auto serial = static_cast<Serial*>(uart_get_callback_param(uart));
+	auto serial = static_cast<Serial::Port*>(uart_get_callback_param(uart));
 	// Guard against spurious interrupts
 	if(serial == nullptr) {
 		return;
@@ -128,4 +131,5 @@ void Serial::uartCallback(uart_t* uart, uint32_t status)
 	}
 }
 
+} // namespace Serial
 } // namespace IO

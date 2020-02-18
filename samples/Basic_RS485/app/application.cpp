@@ -7,7 +7,7 @@
 
 namespace
 {
-static IO::Serial serial0;
+static IO::Serial::Port serial0;
 static IO::Modbus::Controller modbus0(serial0, 0);
 static IO::DMX512::Controller dmx0(serial0, 0);
 

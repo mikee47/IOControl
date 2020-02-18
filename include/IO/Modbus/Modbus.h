@@ -12,7 +12,7 @@
 #pragma once
 
 #include <IO/Control.h>
-#include <IO/Serial.h>
+#include <IO/Serial/Port.h>
 #include "ADU.h"
 
 namespace IO
@@ -116,13 +116,11 @@ private:
 class Controller : public IO::Controller
 {
 public:
-	Controller(Serial& serial, uint8_t instance)
+	Controller(Serial::Port& serial, uint8_t instance)
 		: IO::Controller(instance), serial{serial}, state{
 														.controller{this},
 														.onTransmitComplete{transmitComplete},
 														.onReceive{receive},
-														.rxBufferSize{ADU::MaxSize},
-														.txBufferSize{ADU::MaxSize},
 													}
 	{
 	}
@@ -177,7 +175,7 @@ private:
 	void transactionTimeout();
 
 private:
-	Serial& serial;
+	Serial::Port& serial;
 	Serial::State state;
 	Request* request{nullptr};
 	RequestDelegate requestCallback;

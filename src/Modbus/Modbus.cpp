@@ -42,8 +42,7 @@ static constexpr unsigned DEFAULT_BAUDRATE = 9600;
  */
 void Controller::start()
 {
-	if(!serial.initState(state)) {
-		debug_e("MB: Serial init failed");
+	if(!serial.resizeBuffers(ADU::MaxSize, ADU::MaxSize)) {
 		return;
 	}
 
@@ -53,7 +52,6 @@ void Controller::start()
 		.baudrate{DEFAULT_BAUDRATE},
 	};
 	if(!serial.acquire(state, cfg)) {
-		debug_e("MB: Serial acquire failed");
 		return;
 	}
 

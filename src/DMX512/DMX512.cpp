@@ -55,8 +55,7 @@ Error Request::submit()
 
 void Controller::start()
 {
-	if(!serial.initState(state)) {
-		debug_e("Serial init failed");
+	if(!serial.resizeBuffers(0, MaxPacketSize)) {
 		return;
 	}
 

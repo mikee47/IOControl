@@ -1,11 +1,40 @@
 #pragma once
 
-#include "Control.h"
+#include "../Control.h"
 #include <driver/uart.h>
 #include <espinc/uart_register.h>
 
 namespace IO
 {
+namespace Serial
+{
+enum class Mode {
+	Shared,
+	Exclusive,
+};
+
+// Config which is swapped about when a controller acquires the port
+struct Config {
+	Mode mode;
+	uint8_t config; // uart config values such as start/stop bits, parity, etc.
+	uint32_t baudrate;
+};
+
+struct State;
+
+// Called from interrupt context so implementations must be marked IRAM_ATTR
+using Callback = void (*)(State& state);
+
+// Contains fixed initialisation data plus state for a client
+struct State {
+	Controller* controller;
+	Callback onTransmitComplete;
+	Callback onReceive;
+	// Used internally by Serial
+	Config config;
+	State* previousState;
+};
+
 /**
  * @brief Class to arbitrate serial port access
  *
@@ -20,39 +49,10 @@ namespace IO
  *
  * The port instances is then passed to the relevant controllers during setup.
  */
-class Serial
+class Port
 {
 public:
-	enum class Mode {
-		Shared,
-		Exclusive,
-	};
-
-	// Config which is swapped about when a controller acquires the port
-	struct Config {
-		Mode mode;
-		uint8_t config; // uart config values such as start/stop bits, parity, etc.
-		uint32_t baudrate;
-	};
-
-	struct State;
-
-	// Called from interrupt context so implementations must be marked IRAM_ATTR
-	using Callback = void (*)(State& state);
-
-	// Contains fixed initialisation data plus state for a client
-	struct State {
-		Controller* controller;
-		Callback onTransmitComplete;
-		Callback onReceive;
-		uint16_t rxBufferSize;
-		uint16_t txBufferSize;
-		// Used internally by Serial
-		Config config;
-		State* previousState;
-	};
-
-	virtual ~Serial()
+	virtual ~Port()
 	{
 		close();
 	}
@@ -68,11 +68,15 @@ public:
 	void close();
 
 	/**
-	 * @brief Initialise a state object
-	 * @param state Caller should initialise this
+	 * @brief Set required buffer sizes
+	 *
+	 * Serial buffers are expanded if required, but not reduced.
+	 *
+	 * @param rxSize
+	 * @param txSize
 	 * @retval bool true on success
 	 */
-	bool initState(State& state);
+	bool resizeBuffers(size_t rxSize, size_t txSize);
 
 	/**
 	 * @brief Request use of the port for a transaction
@@ -152,4 +156,5 @@ private:
 	TransmitCallback transmitCallback{};
 };
 
+} // namespace Serial
 } // namespace IO

@@ -9,7 +9,7 @@
 #pragma once
 
 #include <IO/Control.h>
-#include <IO/Serial.h>
+#include <IO/Serial/Port.h>
 #include <SimpleTimer.h>
 
 class HardwareSerial;
@@ -246,10 +246,11 @@ class Controller : public IO::Controller
 public:
 	static constexpr size_t MaxPacketSize{520};
 
-	Controller(Serial& serial, uint8_t instance)
-		: IO::Controller(instance), serial{serial}, state{.controller{this},
-														  .onTransmitComplete{transmitComplete},
-														  .txBufferSize{MaxPacketSize}}
+	Controller(Serial::Port& serial, uint8_t instance)
+		: IO::Controller(instance), serial{serial}, state{
+														.controller{this},
+														.onTransmitComplete{transmitComplete},
+													}
 	{
 	}
 
@@ -276,7 +277,7 @@ private:
 	static void IRAM_ATTR transmitComplete(Serial::State& state);
 	void transmitComplete();
 
-	Serial& serial;
+	Serial::Port& serial;
 	Serial::State state;
 	bool m_updating{false}; ///< Currently sending update
 	bool m_changed{false};  ///< Data has changed
