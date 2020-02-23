@@ -1,14 +1,5 @@
-/*
- * R421A.cpp
- *
- *  Created on: 1 May 2018
- *      Author: mikee47
- */
-
-#include <IO/Modbus/R421A/R421A.h>
-
-#define MB_RELAY_ON 0x0100
-#define MB_RELAY_OFF 0x0200
+#include <IO/Modbus/R421A/Request.h>
+#include <IO/Strings.h>
 
 namespace IO
 {
@@ -16,10 +7,6 @@ namespace Modbus
 {
 namespace R421A
 {
-DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "r421a")
-DEFINE_FSTR_LOCAL(ATTR_CHANNELS, "channels")
-DEFINE_FSTR_LOCAL(ATTR_STATES, "states")
-
 enum r421a_command_t {
 	r421_query = 0x00,
 	r421_close = 0x01,
@@ -39,8 +26,6 @@ enum a421_relay_state_t {
 	relay_open = 0x0000,
 	relay_closed = 0x0001,
 };
-
-/* Request */
 
 static r421a_command_t map(Command cmd)
 {
@@ -197,7 +182,7 @@ Error Request::parseJson(JsonObjectConst json)
 {
 	Error err = Modbus::Request::parseJson(json);
 	if(!err) {
-		unsigned delay = json[ATTR_DELAY];
+		unsigned delay = json[FS_delay];
 		if(delay <= 255) {
 			m_data.delay = delay;
 		} else {
@@ -214,7 +199,7 @@ void Request::getJson(JsonObject json) const
 
 	auto mask = (m_status == Status::pending) ? m_data.channelMask : m_response.channelMask;
 
-	JsonArray nodes = json.createNestedArray(ATTR_NODES);
+	JsonArray nodes = json.createNestedArray(FS_nodes);
 	for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
 		if(mask[ch]) {
 			nodes.add(ch);
@@ -222,7 +207,7 @@ void Request::getJson(JsonObject json) const
 	}
 
 	if(m_response.channelMask.any()) {
-		JsonArray states = json.createNestedArray(ATTR_STATES);
+		JsonArray states = json.createNestedArray(FS_states);
 
 		debug_d("Channel mask = 0x%08x, states = 0x%08x", m_response.channelMask, m_response.channelStates);
 		for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
@@ -231,90 +216,6 @@ void Request::getJson(JsonObject json) const
 			}
 		}
 	}
-}
-
-/* CModbusR421ADevice */
-
-Error Device::init(const Config& config)
-{
-	Error err = Modbus::Device::init(config);
-	if(!!err) {
-		return err;
-	}
-
-	m_channelCount = std::min(config.channels, R421A_MAX_CHANNELS);
-
-	debug_d("Device %s has %u channels", id().c_str(), m_channelCount);
-
-	return Error::success;
-}
-
-void Device::parseJson(JsonObjectConst json, Config& cfg)
-{
-	Modbus::Device::parseJson(json, cfg);
-	cfg.channels = json[ATTR_CHANNELS].as<unsigned>();
-}
-
-Error Device::init(JsonObjectConst json)
-{
-	Config cfg{};
-	parseJson(json, cfg);
-	return init(cfg);
-}
-
-static Error createDevice(IO::Controller& controller, IO::Device*& device)
-{
-	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
-		return Error::bad_controller_class;
-	}
-
-	device = new Device(reinterpret_cast<RS485::Controller&>(controller));
-	return device ? Error::success : Error::no_mem;
-}
-
-const DeviceClassInfo deviceClass()
-{
-	return {DEVICE_CLASSNAME, createDevice};
-}
-
-void Device::handleEvent(IO::Request* request, Event event)
-{
-	if(event == Event::RequestComplete && request->status() == Status::success) {
-		// Keep track of channel states
-		auto& rsp = reinterpret_cast<Request*>(request)->response();
-		m_states.channelMask += rsp.channelMask;
-		m_states.channelStates -= rsp.channelMask;
-		m_states.channelStates += rsp.channelStates;
-	}
-
-	IO::Modbus::Device::handleEvent(request, event);
-}
-
-DevNode::States Device::getNodeStates(DevNode node) const
-{
-	if(node == DevNode_ALL) {
-		DevNode::States states;
-		for(unsigned ch = nodeIdMin(); ch <= nodeIdMax(); ++ch) {
-			if(!m_states.channelMask[ch]) {
-				states += DevNode::State::unknown;
-			} else if(m_states.channelStates[ch]) {
-				states += DevNode::State::on;
-			} else {
-				states += DevNode::State::off;
-			}
-		}
-		return states;
-	}
-
-	if(!isValid(node)) {
-		return DevNode::State::unknown;
-	}
-
-	if(!m_states.channelMask[node.id]) {
-		return DevNode::State::unknown;
-	}
-
-	return m_states.channelStates[node.id] ? DevNode::State::on : DevNode::State::off;
 }
 
 } // namespace R421A

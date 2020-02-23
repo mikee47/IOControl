@@ -5,22 +5,23 @@
  *      Author: mikee47
  */
 
-#include <IO/DMX512/DMX512.h>
-#include <Clock.h>
-//#include <Digital.h>
-#include <SimpleTimer.h>
+#include <IO/DMX512/Device.h>
+#include <IO/DMX512/Request.h>
+#include <IO/RS485/Controller.h>
+#include <IO/Strings.h>
 //#include "ledtable.h"
 
 namespace IO
 {
 namespace DMX512
 {
-// Device configuration
-DEFINE_FSTR(DEVICE_CLASSNAME, "dmx")
+SimpleTimer Device::m_timer;
+bool Device::m_changed{false};
+bool Device::m_updating{false};
 
-//
-DEFINE_FSTR_LOCAL(ATTR_ADDRESS, "address")
-DEFINE_FSTR_LOCAL(ATTR_VALUE, "value")
+namespace
+{
+DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "dmx")
 
 /* DMX minimum timings per E1.11 */
 constexpr unsigned DMX_BREAK{92};
@@ -28,37 +29,25 @@ constexpr unsigned DMX_MAB{12}; // Mark After Break
 constexpr uint32_t DMX_BAUDRATE{250000};
 constexpr uint8_t DMX_SERIAL_CONFIG{SERIAL_8N2};
 
-SimpleTimer Device::m_timer;
-bool Device::m_changed{false};
-bool Device::m_updating{false};
-
 //
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
 #define DMX_UPDATE_PERIODIC_MS 1000 // 5000	///< Periodic update interval
 
-/* Request */
-
-/*
- * We don't need to use the queue as requests do not perform any I/O.
- * Instead, device state is updated and echoed on next slave update.
- */
-Error Request::submit()
+Error createDevice(IO::Controller& controller, IO::Device*& device)
 {
-	// Only update command gets queued
-	if(command() == Command::update) {
-		return IO::Request::submit();
+	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
+		return Error::bad_controller_class;
 	}
 
-	// All others are executed immediately
-	auto err = device().execute(*this);
-	if(!!err) {
-		debug_e("Request failed, %s", toString(err).c_str());
-		complete(Status::error);
-	} else {
-		complete(Status::success);
-	}
+	device = new Device(reinterpret_cast<IO::RS485::Controller&>(controller));
+	return device ? Error::success : Error::no_mem;
+}
 
-	return err;
+} // namespace
+
+const DeviceClassInfo deviceClass()
+{
+	return {DEVICE_CLASSNAME, createDevice};
 }
 
 /*
@@ -139,7 +128,7 @@ void Device::updateSlaves()
 		}
 	}
 
-	//	debug_hex(INFO, "SLOTS", data, 8);
+	debug_hex(INFO, ">", data, dataSize, 0, 32);
 
 	controller().setDirection(Direction::Outgoing);
 	serial.setBreak(true);
@@ -152,52 +141,6 @@ void Device::updateSlaves()
 
 	m_updating = true;
 	m_changed = false;
-}
-
-/* Request */
-
-Error Request::parseJson(JsonObjectConst json)
-{
-	Error err = IO::Request::parseJson(json);
-	if(!!err) {
-		return err;
-	}
-	m_value = json[ATTR_VALUE].as<unsigned>();
-	return Error::success;
-}
-
-void Request::getJson(JsonObject json) const
-{
-	IO::Request::getJson(json);
-	json[IO::ATTR_NODE] = m_node.id;
-	json[ATTR_VALUE] = m_value;
-}
-
-bool Request::setNode(DevNode node)
-{
-	if(!device().isValid(node)) {
-		return false;
-	}
-
-	m_node = node;
-	return true;
-}
-
-/* Device */
-
-static Error createDevice(IO::Controller& controller, IO::Device*& device)
-{
-	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
-		return Error::bad_controller_class;
-	}
-
-	device = new Device(reinterpret_cast<IO::RS485::Controller&>(controller));
-	return device ? Error::success : Error::no_mem;
-}
-
-const DeviceClassInfo deviceClass()
-{
-	return {DEVICE_CLASSNAME, createDevice};
 }
 
 Error Device::init(const Config& config)
@@ -231,11 +174,16 @@ Error Device::init(const Config& config)
 	return Error::success;
 }
 
+IO::Request* Device::createRequest()
+{
+	return new Request(*this);
+}
+
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
 	IO::Device::parseJson(json, cfg);
-	cfg.address = json[ATTR_ADDRESS] | 0x01;
-	cfg.nodeCount = json[ATTR_COUNT] | 1;
+	cfg.address = json[FS_address] | 0x01;
+	cfg.nodeCount = json[FS_count] | 1;
 }
 
 Error Device::init(JsonObjectConst config)
@@ -257,8 +205,12 @@ bool Device::update()
 	return res;
 }
 
+#include <hostlib/hostmsg.h>
+
 void Device::handleEvent(IO::Request* request, Event event)
 {
+hostmsg("event = %s", toString(event).c_str());
+
 	switch(event) {
 	case Event::Execute:
 		if(request->command() == Command::update) {

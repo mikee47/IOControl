@@ -2,8 +2,10 @@
 #include <FlashString/Stream.hpp>
 
 #include <IO/Modbus/Debug.h>
-#include <IO/Modbus/R421A/R421A.h>
-#include <IO/DMX512/DMX512.h>
+#include <IO/Modbus/Slave.h>
+#include <IO/Modbus/R421A/Request.h>
+#include <IO/DMX512/Request.h>
+#include <IO/DeviceManager.h>
 
 namespace
 {

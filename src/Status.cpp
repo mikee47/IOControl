@@ -1,78 +1,39 @@
-/*
- * status.cpp
- *
- *  Created on: 28 May 2018
- *      Author: mikee47
- */
-
 #include <IO/Status.h>
+#include <IO/Strings.h>
 #include <FlashString/Vector.hpp>
 
 namespace IO
 {
-DEFINE_FSTR(ATTR_STATUS, "status");
-DEFINE_FSTR_LOCAL(STATUS_SUCCESS, "success");
-DEFINE_FSTR_LOCAL(STATUS_PENDING, "pending");
-DEFINE_FSTR_LOCAL(STATUS_ERROR, "error");
-DEFINE_FSTR_LOCAL(STATUS_UNKNOWN, "unknown");
-
-// Json error node
-DEFINE_FSTR_LOCAL(ATTR_ERROR, "error");
-DEFINE_FSTR(ATTR_CODE, "code");
-DEFINE_FSTR(ATTR_TEXT, "text");
-DEFINE_FSTR_LOCAL(ATTR_ARG, "arg");
-
 String toString(Status status)
 {
 	switch(status) {
 	case Status::success:
-		return STATUS_SUCCESS;
+		return FS_success;
 	case Status::pending:
-		return STATUS_PENDING;
+		return FS_pending;
 	case Status::error:
-		return STATUS_ERROR;
+		return FS_error;
 	default:
-		return STATUS_UNKNOWN;
+		return FS_unknown;
 	}
 }
 
 void setStatus(JsonObject json, Status status)
 {
-	json[ATTR_STATUS] = toString(status);
+	json[FS_status] = toString(status);
 }
 
 void setError(JsonObject json, int code, const String& text, const String& arg)
 {
 	setStatus(json, Status::error);
-	JsonObject err = json.createNestedObject(ATTR_ERROR);
-	err[ATTR_CODE] = code;
+	JsonObject err = json.createNestedObject(FS_error);
+	err[FS_code] = code;
 	if(text) {
-		err[ATTR_TEXT] = text;
+		err[FS_text] = text;
 	}
 	if(arg) {
-		err[ATTR_ARG] = arg;
+		err[FS_arg] = arg;
 	}
-}
-
-#define XX(tag, value) DEFINE_FSTR_LOCAL(statusstr_##tag, #tag);
-IOERROR_MAP(XX)
-#undef XX
-
-#define XX(tag, value) &statusstr_##tag,
-DEFINE_FSTR_VECTOR(ioerrorStrings, FSTR::String, IOERROR_MAP(XX))
-#undef XX
-
-String toString(Error err)
-{
-	auto n = unsigned(err);
-	String s = ioerrorStrings[n];
-	return s ?: String(n);
-}
-
-Error setError(JsonObject json, Error err, const String& arg)
-{
-	setError(json, int(err), toString(err), arg);
-	return err;
 }
 
 } // namespace IO

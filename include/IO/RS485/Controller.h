@@ -1,28 +1,14 @@
 #pragma once
 
-#include <IO/Control.h>
+#include <IO/Controller.h>
 #include <IO/Serial.h>
+#include <SimpleTimer.h>
 
 namespace IO
 {
 namespace RS485
 {
 DECLARE_FSTR(CONTROLLER_CLASSNAME)
-
-class Controller;
-
-class Device : public IO::Device
-{
-public:
-	Device(Controller& controller) : IO::Device(reinterpret_cast<IO::Controller&>(controller))
-	{
-	}
-
-	Controller& controller()
-	{
-		return reinterpret_cast<Controller&>(IO::Device::controller());
-	}
-};
 
 class Controller : public IO::Controller
 {

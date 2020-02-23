@@ -8,65 +8,13 @@
 
 #pragma once
 
-#include <IO/RS485/Controller.h>
+#include <IO/RS485/Device.h>
 
 namespace IO
 {
 namespace DMX512
 {
-// Device configuration
-DECLARE_FSTR(CONTROLLER_CLASSNAME)
-
-class Device;
-
-class Request : public IO::Request
-{
-	friend Controller;
-
-public:
-	Request(Device& device) : IO::Request(reinterpret_cast<IO::Device&>(device))
-	{
-	}
-
-	Device& device()
-	{
-		return reinterpret_cast<Device&>(m_device);
-	}
-
-	Error parseJson(JsonObjectConst json) override;
-
-	void getJson(JsonObject json) const override;
-
-	bool setNode(DevNode node) override;
-
-	DevNode node() const
-	{
-		return m_node;
-	}
-
-	bool nodeAdjust(DevNode node, int value) override
-	{
-		setCommand(Command::adjust);
-		setValue(value);
-		return setNode(node);
-	}
-
-	void setValue(int code)
-	{
-		m_value = code;
-	}
-
-	int value() const
-	{
-		return m_value;
-	}
-
-	Error submit() override;
-
-private:
-	int m_value{};
-	DevNode m_node{};
-};
+class Request;
 
 struct NodeData {
 	enum class State {
@@ -143,9 +91,9 @@ struct NodeData {
 
 const DeviceClassInfo deviceClass();
 
-class Device : public IO::RS485::Device
+class Device : public RS485::Device
 {
-	friend Controller;
+	friend Request;
 
 public:
 	static constexpr size_t MaxPacketSize{520};
@@ -175,10 +123,7 @@ public:
 	Error init(const Config& config);
 	Error init(JsonObjectConst config) override;
 
-	IO::Request* createRequest() override
-	{
-		return new Request(*this);
-	}
+	IO::Request* createRequest() override;
 
 	uint16_t address() const override
 	{
@@ -225,7 +170,6 @@ protected:
 	void updateSlaves();
 
 private:
-	friend Request;
 	Error execute(Request& request);
 
 	uint16_t m_address = 0x01;		///< Start address for this device, may occupy more than one slot

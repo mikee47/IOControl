@@ -13,19 +13,52 @@
  *
  */
 
-#include <IO/Modbus/Modbus.h>
-#include "Digital.h"
-#include "Platform/System.h"
-#include <driver/uart.h>
+#include <IO/Modbus/Device.h>
+#include <IO/Modbus/Request.h>
+#include <IO/Strings.h>
 
 namespace IO
 {
 namespace Modbus
 {
-DEFINE_FSTR_LOCAL(ATTR_ADDRESS, "address")
-DEFINE_FSTR_LOCAL(ATTR_BAUDRATE, "baudrate")
+Error Device::init(const Config& config)
+{
+	auto err = IO::Device::init(config);
+	if(!!err) {
+		return err;
+	}
 
-/* Device */
+	if(config.slave.address == 0) {
+		return Error::no_address;
+	}
+
+	if(config.slave.baudrate == 0) {
+		return Error::no_baudrate;
+	}
+
+	m_config = config.slave;
+
+	auto& ctrl = reinterpret_cast<IO::RS485::Controller&>(controller());
+	if(!ctrl.getSerial().resizeBuffers(ADU::MaxSize, ADU::MaxSize)) {
+		return Error::no_mem;
+	}
+
+	return Error::success;
+}
+
+Error Device::init(JsonObjectConst config)
+{
+	Config cfg{};
+	parseJson(config, cfg);
+	return init(cfg);
+}
+
+void Device::parseJson(JsonObjectConst json, Config& cfg)
+{
+	IO::Device::parseJson(json, cfg);
+	cfg.slave.address = json[FS_address];
+	cfg.slave.baudrate = json[FS_baudrate];
+}
 
 void Device::handleEvent(IO::Request* request, Event event)
 {
@@ -122,81 +155,6 @@ void Device::readResponse(Request* request)
 
 	debug_d("MB: received '%s': %s", toString(adu.pdu.function()).c_str(), toString(adu.pdu.exception()).c_str());
 	request->callback(adu.pdu);
-}
-
-/* Device */
-
-Error Device::init(const Config& config)
-{
-	auto err = IO::Device::init(config);
-	if(!!err) {
-		return err;
-	}
-
-	if(config.slave.address == 0) {
-		return Error::no_address;
-	}
-
-	if(config.slave.baudrate == 0) {
-		return Error::no_baudrate;
-	}
-
-	m_config = config.slave;
-
-	auto& ctrl = reinterpret_cast<IO::RS485::Controller&>(controller());
-	if(!ctrl.getSerial().resizeBuffers(ADU::MaxSize, ADU::MaxSize)) {
-		return Error::no_mem;
-	}
-
-	return Error::success;
-}
-
-Error Device::init(JsonObjectConst config)
-{
-	Config cfg{};
-	parseJson(config, cfg);
-	return init(cfg);
-}
-
-void Device::parseJson(JsonObjectConst json, Config& cfg)
-{
-	IO::Device::parseJson(json, cfg);
-	cfg.slave.address = json[ATTR_ADDRESS];
-	cfg.slave.baudrate = json[ATTR_BAUDRATE];
-}
-
-/* Request */
-
-void Request::callback(PDU& pdu)
-{
-	complete(!m_exception ? Status::success : Status::error);
-}
-
-void Request::getJson(JsonObject json) const
-{
-	IO::Request::getJson(json);
-
-	if(m_status == Status::error) {
-		setError(json, unsigned(m_exception), toString(m_exception));
-	}
-}
-
-Error readRequest(RS485::Controller& controller, ADU& adu)
-{
-	// Read packet
-	auto& serial = controller.getSerial();
-	auto receivedSize = serial.read(adu.buffer, ADU::MaxSize);
-
-	// Parse the received packet
-	Error err = adu.parseRequest(receivedSize);
-
-	if(!!err) {
-		debug_e("MB: %s", toString(err).c_str());
-	} else {
-		debug_d("MB: received '%s': %s", toString(adu.pdu.function()).c_str(), toString(adu.pdu.exception()).c_str());
-	}
-
-	return err;
 }
 
 } // namespace Modbus

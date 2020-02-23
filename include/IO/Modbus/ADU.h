@@ -1,7 +1,7 @@
 #pragma once
 
 #include "PDU.h"
-#include <IO/Status.h>
+#include <IO/Error.h>
 
 namespace IO
 {

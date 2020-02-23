@@ -1,6 +1,6 @@
 #pragma once
 
-#include <IO/Status.h>
+#include "Error.h"
 #include <driver/uart.h>
 #include <espinc/uart_register.h>
 

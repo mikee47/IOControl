@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "../Modbus.h"
+#include <IO/Modbus/Device.h>
 
 /**
  *  R421A08 modbus 8-channel relay board
@@ -35,6 +35,14 @@
  *
  */
 
+/**
+ * @brief Tracks state of multiple relays
+ */
+struct StateMask {
+	BitSet32 channelMask; ///< Identifies valid channels
+	BitSet32 channelStates;
+};
+
 /*
  * R421 devices don't respond to channel numbers greater than 16.
  */
@@ -49,85 +57,6 @@ namespace Modbus
 {
 namespace R421A
 {
-struct Response {
-	// Response data
-	BitSet32 channelMask;
-	BitSet32 channelStates;
-};
-
-class Device;
-
-class Request : public Modbus::Request
-{
-public:
-	Request(Modbus::Device& device) : Modbus::Request(device)
-	{
-	}
-
-	Error parseJson(JsonObjectConst json) override;
-
-	void getJson(JsonObject json) const override;
-
-	const Device& device() const
-	{
-		return reinterpret_cast<Device&>(m_device);
-	}
-
-	bool setNode(DevNode node) override;
-
-	bool nodeLatch(DevNode node)
-	{
-		setCommand(Command::latch);
-		return setNode(node);
-	}
-
-	bool nodeMomentary(DevNode node)
-	{
-		setCommand(Command::momentary);
-		return setNode(node);
-	}
-
-	bool nodeDelay(DevNode node, uint8_t secs)
-	{
-		setCommand(Command::delay);
-		m_data.delay = secs;
-		return setNode(node);
-	}
-
-	DevNode::States getNodeStates(DevNode node) override;
-
-	bool setNodeState(DevNode node, DevNode::State state) override
-	{
-		if(state == DevNode::State::on) {
-			nodeOn(node);
-		} else if(state == DevNode::State::off) {
-			nodeOff(node);
-		} else {
-			return false;
-		}
-		return true;
-	}
-
-	Response& response()
-	{
-		return m_response;
-	}
-
-protected:
-	Function fillRequestData(PDU::Data& data) override;
-	void callback(PDU& pdu) override;
-
-private:
-	// Associated command data
-	struct Data {
-		BitSet32 channelMask;
-		uint8_t delay;
-	};
-
-	Data m_data{};
-	Response m_response{};
-};
-
 const IO::DeviceClassInfo deviceClass();
 
 class Device : public Modbus::Device
@@ -147,12 +76,9 @@ public:
 	Error init(const Config& config);
 	Error init(JsonObjectConst config) override;
 
-	IO::Request* createRequest() override
-	{
-		return new Request(*this);
-	}
+	IO::Request* createRequest() override;
 
-	const Response& states() const
+	const StateMask& states() const
 	{
 		return m_states;
 	}
@@ -186,7 +112,7 @@ protected:
 
 private:
 	// Tracks current output states as far as possible
-	Response m_states{};
+	StateMask m_states{};
 	// Depends on device variant (e.g. 8, 4)
 	uint8_t m_channelCount{0};
 };

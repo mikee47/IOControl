@@ -1,4 +1,5 @@
 #include <IO/RS485/Controller.h>
+#include <IO/Request.h>
 #include "Digital.h"
 #include "Platform/System.h"
 #include <driver/uart.h>
@@ -28,8 +29,12 @@ void Controller::stop()
 	serial.setCallback(nullptr, nullptr);
 }
 
+#include <hostlib/hostmsg.h>
+
 void Controller::uartCallback(uart_t* uart, uint32_t status)
 {
+hostmsg("status = 0x%08x", status);
+
 	auto controller = static_cast<Controller*>(uart_get_callback_param(uart));
 	// Guard against spurious interrupts
 	if(controller == nullptr) {
