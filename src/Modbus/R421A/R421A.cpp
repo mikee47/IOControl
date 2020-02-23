@@ -18,6 +18,7 @@ namespace R421A
 {
 DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "r421a")
 DEFINE_FSTR_LOCAL(ATTR_CHANNELS, "channels")
+DEFINE_FSTR_LOCAL(ATTR_STATES, "states")
 
 enum r421a_command_t {
 	r421_query = 0x00,
@@ -221,7 +222,7 @@ void Request::getJson(JsonObject json) const
 	}
 
 	if(m_response.channelMask.any()) {
-		JsonArray states = json.createNestedArray(Modbus::ATTR_STATES);
+		JsonArray states = json.createNestedArray(ATTR_STATES);
 
 		debug_d("Channel mask = 0x%08x, states = 0x%08x", m_response.channelMask, m_response.channelStates);
 		for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
@@ -263,12 +264,12 @@ Error Device::init(JsonObjectConst json)
 
 static Error createDevice(IO::Controller& controller, IO::Device*& device)
 {
-	if(!controller.verifyClass(Modbus::CONTROLLER_CLASSNAME)) {
+	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
 		return Error::bad_controller_class;
 	}
 
-	device = new Device(reinterpret_cast<Modbus::Controller&>(controller));
-	return device ? Error::success : Error::nomem;
+	device = new Device(reinterpret_cast<RS485::Controller&>(controller));
+	return device ? Error::success : Error::no_mem;
 }
 
 const DeviceClassInfo deviceClass()
@@ -276,19 +277,17 @@ const DeviceClassInfo deviceClass()
 	return {DEVICE_CLASSNAME, createDevice};
 }
 
-void Device::requestComplete(IO::Request* request)
+void Device::handleEvent(IO::Request* request, Event event)
 {
-	/*
-	 * Keep track of channel states
-	 */
-	if(request->status() == Status::success) {
+	if(event == Event::RequestComplete && request->status() == Status::success) {
+		// Keep track of channel states
 		auto& rsp = reinterpret_cast<Request*>(request)->response();
 		m_states.channelMask += rsp.channelMask;
 		m_states.channelStates -= rsp.channelMask;
 		m_states.channelStates += rsp.channelStates;
 	}
 
-	Modbus::Device::requestComplete(request);
+	IO::Modbus::Device::handleEvent(request, event);
 }
 
 DevNode::States Device::getNodeStates(DevNode node) const

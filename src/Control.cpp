@@ -107,7 +107,7 @@ void Request::complete(Status status)
 {
 	debug_i("Request %p (%s) complete - %s", this, m_id.c_str(), toString(status).c_str());
 	m_status = status;
-	m_device.requestComplete(this);
+	m_device.handleEvent(this, Event::RequestComplete);
 }
 
 String Request::caption()
@@ -157,7 +157,7 @@ Error Device::start()
 
 	Request* req = createRequest();
 	if(req == nullptr) {
-		return Error::nomem;
+		return Error::no_mem;
 	}
 
 	// This fails if device doesn't have any nodes
@@ -183,15 +183,18 @@ Error Device::stop()
 	return Error::success;
 }
 
-void Device::requestComplete(Request* request)
+void Device::handleEvent(Request* request, Event event)
 {
-	if(request->status() == Status::error) {
-		m_state = devstate_fault;
-		m_controller.deviceError(*this);
-	} else if(request->status() == Status::success && m_state == devstate_starting) {
-		m_state = devstate_normal;
+	if(event == Event::RequestComplete) {
+		if(request->status() == Status::error) {
+			m_state = devstate_fault;
+			m_controller.deviceError(*this);
+		} else if(request->status() == Status::success && m_state == devstate_starting) {
+			m_state = devstate_normal;
+		}
 	}
-	m_controller.requestComplete(request);
+
+	m_controller.handleEvent(request, event);
 }
 
 String Device::caption()
@@ -355,7 +358,7 @@ Error Controller::submit(Request* request)
 	if(m_queue.count() && m_queue.peek() == request) {
 		debug_d("Re-submitting request %s", request->caption().c_str());
 		// Execute directly, don't invoke callback
-		execute(*request);
+		request->handleEvent(Event::Execute);
 		return Error::success;
 	}
 
@@ -369,18 +372,34 @@ Error Controller::submit(Request* request)
 	return Error::success;
 }
 
-void Controller::requestComplete(Request* request)
+void Controller::handleEvent(Request* request, Event event)
 {
-	devmgr.callback(*request);
+	switch(event) {
+	case Event::Execute:
+		devmgr.callback(*request);
+		break;
 
-	// If this was a queued request, remove it
-	if(m_queue.peek() == request) {
-		m_queue.dequeue();
+	case Event::RequestComplete:
+		devmgr.callback(*request);
+
+		// If this was a queued request, remove it
+		if(m_queue.peek() == request) {
+			m_queue.dequeue();
+		}
+
+		delete request;
+
+		executeNext();
+		break;
+
+	case Event::ReceiveComplete:
+	case Event::TransmitComplete:
+		break;
+
+	case Event::Timeout:
+		request->complete(Status::error);
+		break;
 	}
-
-	delete request;
-
-	executeNext();
 }
 
 /*
@@ -392,8 +411,7 @@ void Controller::executeNext()
 	if(!busy() && m_queue.count()) {
 		Request* req = m_queue.peek();
 		debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->command()).c_str());
-		devmgr.callback(*req);
-		execute(*req);
+		req->handleEvent(Event::Execute);
 	}
 }
 
@@ -508,7 +526,7 @@ Error DeviceManager::createRequest(const String& devid, Request*& request)
 	}
 
 	request = dev->createRequest();
-	return request ? Error::success : Error::nomem;
+	return request ? Error::success : Error::no_mem;
 }
 
 /*

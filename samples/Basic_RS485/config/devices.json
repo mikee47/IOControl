@@ -1,7 +1,7 @@
 {
 	"devices": [
 		{
-			"controller": "modbus0",
+			"controller": "RS485#0",
 			"class": "r421a",
 			"id": "mb1",
 			"address": 1,
@@ -9,7 +9,7 @@
 			"channels": 8
 		},
 		{
-			"controller": "dmx0",
+			"controller": "RS485#0",
 			"class": "dmx",
 			"id": "dmx1",
 			"address": 1,

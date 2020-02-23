@@ -7,9 +7,8 @@
 
 namespace
 {
-static IO::Serial::Port serial0;
-static IO::Modbus::Controller modbus0(serial0, 0);
-static IO::DMX512::Controller dmx0(serial0, 0);
+static IO::Serial serial0;
+static IO::RS485::Controller rs485_0(serial0, 0);
 
 // Pin to switch  MAX485 between receive (low) and transmit (high)
 static constexpr uint8_t MBPIN_TX_EN = 12;
@@ -38,7 +37,7 @@ void devmgrCallback(IO::Request& request)
 	auto status = request.status();
 
 	auto& controller = request.device().controller();
-	if(&controller == &modbus0) {
+	if(&controller == &rs485_0) {
 		if(status == IO::Status::pending) {
 			//			g_userio.setDot(dot_ModbusStatus, led_on);
 		} else {
@@ -54,11 +53,17 @@ void devmgrCallback(IO::Request& request)
 	//	}
 }
 
-static bool handleModbusRequest(IO::Modbus::ADU& adu)
+static void handleRS485Request(IO::RS485::Controller& controller)
 {
+	IO::Modbus::ADU adu;
+	auto err = IO::Modbus::readRequest(controller, adu);
+	if(!!err) {
+		return;
+	}
+
 	IO::Modbus::printRequest(dbgser, adu);
 	if(adu.slaveAddress != MODBUS_SLAVE_ID) {
-		return false; // ignore
+		return; // ignore
 	}
 
 	switch(adu.pdu.function()) {
@@ -98,13 +103,12 @@ static bool handleModbusRequest(IO::Modbus::ADU& adu)
 	}
 
 	IO::Modbus::printResponse(dbgser, adu);
-
-	return true;
+	IO::Modbus::sendResponse(controller, adu);
 }
 
-static void IRAM_ATTR setSerialTransmit(bool enable)
+static void IRAM_ATTR setSerialDirection(IO::Direction direction)
 {
-	digitalWrite(MBPIN_TX_EN, enable);
+	digitalWrite(MBPIN_TX_EN, direction == IO::Direction::Outgoing);
 }
 
 IO::Error devmgrInit()
@@ -117,25 +121,22 @@ IO::Error devmgrInit()
 
 	// Set up the transmit enable GPIO which toggles MAX485 direction
 	pinMode(MBPIN_TX_EN, OUTPUT);
-	setSerialTransmit(false);
-	serial0.onTransmit(setSerialTransmit);
+	setSerialDirection(IO::Direction::Incoming);
+	rs485_0.onSetDirection(setSerialDirection);
 	// Use alternate serial pins and put default ones in safe state
 	serial0.swap();
-//	pinMode(1, INPUT_PULLUP);
-//	pinMode(3, INPUT_PULLUP);
+	//	pinMode(1, INPUT_PULLUP);
+	//	pinMode(3, INPUT_PULLUP);
 
 	// Setup modbus stack
-	modbus0.registerDeviceClass(IO::Modbus::R421A::deviceClass);
-	IO::devmgr.registerController(modbus0);
-	modbus0.onRequest(handleModbusRequest);
+	rs485_0.registerDeviceClass(IO::Modbus::R421A::deviceClass);
+	rs485_0.registerDeviceClass(IO::DMX512::deviceClass);
+	IO::devmgr.registerController(rs485_0);
+	rs485_0.onRequest(handleRS485Request);
 
 	// Setup RF switch stack
 	//	RFSwitchController::registerDeviceClass(RFSwitchDevice::deviceClass);
 	//	devmgr.registerController(rfswitch0);
-
-	// At present conflicts with modbus0 - needs work to allow modbus and DMX to co-exist on same segment
-	//	dmx0.registerDeviceClass(IO::DMX512::deviceClass);
-	//	IO::devmgr.registerController(dmx0);
 
 #ifndef ARCH_HOST
 //	pixel0.registerDeviceClass(PixelDevice::deviceClass);
@@ -201,14 +202,12 @@ void systemReady()
 		//			assert(dev->getClass() == IO::DMX512::deviceClass());
 		//			auto req = new IO::DMX512::Request(*dev);
 
-		/*
-			IO::Request* req;
-			auto err = IO::devmgr.createRequest("dmx1", req);
-			assert(!err);
-			req->setID("Adjust output #7");
-			req->nodeAdjust(IO::DevNode{7}, 2);
-			req->submit();
-*/
+		IO::Request* req;
+		auto err = IO::devmgr.createRequest("dmx1", req);
+		assert(!err);
+		req->setID("Adjust output #7");
+		req->nodeAdjust(IO::DevNode{7}, 2);
+		req->submit();
 
 		testTimer.startOnce();
 	}));
@@ -222,7 +221,7 @@ void init()
 {
 #if DEBUG_BUILD
 #ifdef ARCH_HOST
-	dbgser.setPort(0);
+//	dbgser.setPort(0);
 #endif
 
 	dbgser.setTxBufferSize(8192);

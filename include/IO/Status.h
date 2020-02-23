@@ -81,7 +81,7 @@ void setError(JsonObject json, int code, const String& text = nullptr, const Str
 	XX(bad_size, "Data size invalid")                                                                                  \
 	XX(busy, "Device or controller is busy")                                                                           \
 	XX(queue_full, "Request queue is full")                                                                            \
-	XX(nomem, "Out of memory")                                                                                         \
+	XX(no_mem, "Out of memory")                                                                                        \
 	XX(no_config, "No configuration found")                                                                            \
 	XX(no_control_id, "Control ID not specified")                                                                      \
 	XX(no_device_id, "Device ID not specified")                                                                        \

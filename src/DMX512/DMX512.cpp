@@ -6,8 +6,9 @@
  */
 
 #include <IO/DMX512/DMX512.h>
-#include "Clock.h"
-#include "Digital.h"
+#include <Clock.h>
+//#include <Digital.h>
+#include <SimpleTimer.h>
 //#include "ledtable.h"
 
 namespace IO
@@ -15,7 +16,6 @@ namespace IO
 namespace DMX512
 {
 // Device configuration
-DEFINE_FSTR(CONTROLLER_CLASSNAME, "dmx")
 DEFINE_FSTR(DEVICE_CLASSNAME, "dmx")
 
 //
@@ -27,6 +27,10 @@ constexpr unsigned DMX_BREAK{92};
 constexpr unsigned DMX_MAB{12}; // Mark After Break
 constexpr uint32_t DMX_BAUDRATE{250000};
 constexpr uint8_t DMX_SERIAL_CONFIG{SERIAL_8N2};
+
+SimpleTimer Device::m_timer;
+bool Device::m_changed{false};
+bool Device::m_updating{false};
 
 //
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
@@ -40,6 +44,12 @@ constexpr uint8_t DMX_SERIAL_CONFIG{SERIAL_8N2};
  */
 Error Request::submit()
 {
+	// Only update command gets queued
+	if(command() == Command::update) {
+		return IO::Request::submit();
+	}
+
+	// All others are executed immediately
 	auto err = device().execute(*this);
 	if(!!err) {
 		debug_e("Request failed, %s", toString(err).c_str());
@@ -49,36 +59,6 @@ Error Request::submit()
 	}
 
 	return err;
-}
-
-/* Controller */
-
-void Controller::start()
-{
-	if(!serial.resizeBuffers(0, MaxPacketSize)) {
-		return;
-	}
-
-	m_timer.setCallback(
-		[](void* arg) {
-			auto ctrl = static_cast<Controller*>(arg);
-			ctrl->updateSlaves();
-		},
-		this);
-
-	IO::Controller::start();
-}
-
-/*
- * Inherited classes call this before their own stop() code.
- */
-void Controller::stop()
-{
-	m_timer.stop();
-	serial.release(state);
-	//	Serial.onTransmitComplete(nullptr);
-	//	Serial.end();
-	IO::Controller::stop();
 }
 
 /*
@@ -107,24 +87,10 @@ void Controller::stop()
  * We do have two serial ports though, so simplest solution would be to switch to debug port for release build as we don't need RX. That would
  * require a second RS485 interface, of course.
  */
-void Controller::execute(IO::Request& request)
-{
-	debug_e("DMX512 requests are not queued!");
-	assert(false);
-}
 
-void Controller::deviceChanged()
+void Device::updateSlaves()
 {
-	if(!m_changed) {
-		m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
-		m_timer.startOnce();
-		m_changed = true;
-	}
-}
-
-void Controller::updateSlaves()
-{
-	//	debug_i("Controller::updateSlaves()");
+	debug_i("DMX512: updateSlaves()");
 
 	/*
 	// Determine how many slots we need
@@ -138,17 +104,13 @@ void Controller::updateSlaves()
 	debug_i("maxaddr = %u", maxAddr);
 
 */
-	Serial::Config cfg{
-		.mode{Serial::Mode::Exclusive},
-		.config{DMX_SERIAL_CONFIG},
-		.baudrate{DMX_BAUDRATE},
-	};
-	if(!serial.acquire(state, cfg)) {
-		debug_e("DMX: Serial busy");
-		return;
-	}
+	auto& serial = controller().getSerial();
 
-	m_changed = false;
+	Serial::Config cfg{
+		.baudrate = DMX_BAUDRATE,
+		.config = DMX_SERIAL_CONFIG,
+	};
+	serial.setConfig(cfg);
 
 	const uint16_t maxAddr = 512;
 
@@ -157,11 +119,16 @@ void Controller::updateSlaves()
 	uint8_t data[dataSize];
 	memset(data, 0, dataSize);
 	data[0] = 0x00; // Lighting start code
-	for(unsigned i = 0; i < m_devices.count(); ++i) {
-		auto dev = reinterpret_cast<Device*>(m_devices[i]);
+	for(unsigned i = 0; i < controller().devices().count(); ++i) {
+		auto dev = reinterpret_cast<Device*>(controller().devices()[i]);
+		if(dev->type() != DeviceType::DMX512) {
+			continue;
+		}
+
 		if(dev->update()) {
 			m_changed = true;
 		}
+
 		for(unsigned nodeId = dev->nodeIdMin(); nodeId <= dev->nodeIdMax(); ++nodeId) {
 			auto& nodeData = dev->getNodeData(nodeId);
 			unsigned addr = dev->address() + nodeId;
@@ -174,40 +141,17 @@ void Controller::updateSlaves()
 
 	//	debug_hex(INFO, "SLOTS", data, 8);
 
-	serial.setTransmit(true);
+	controller().setDirection(Direction::Outgoing);
 	serial.setBreak(true);
 	delayMicroseconds(DMX_BREAK);
 	serial.setBreak(false);
 	delayMicroseconds(DMX_MAB);
 	serial.write(data, dataSize);
+	uint8_t c{0};
+	serial.write(&c, 1);
 
 	m_updating = true;
-}
-
-void Controller::transmitComplete(Serial::State& state)
-{
-	System.queueCallback(
-		[](void* param) {
-			auto controller = static_cast<Controller*>(param);
-			controller->transmitComplete();
-		},
-		state.controller);
-}
-
-void Controller::transmitComplete()
-{
-	serial.setTransmit(false);
-	serial.release(state);
-	m_updating = false;
-
-	// Schedule next update
-	if(m_changed) {
-		m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
-		m_timer.startOnce();
-	} else if(DMX_UPDATE_PERIODIC_MS != 0) {
-		m_timer.setIntervalMs<DMX_UPDATE_PERIODIC_MS>();
-		m_timer.startOnce();
-	}
+	m_changed = false;
 }
 
 /* Request */
@@ -243,12 +187,12 @@ bool Request::setNode(DevNode node)
 
 static Error createDevice(IO::Controller& controller, IO::Device*& device)
 {
-	if(!controller.verifyClass(CONTROLLER_CLASSNAME)) {
+	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
 		return Error::bad_controller_class;
 	}
 
-	device = new Device(reinterpret_cast<Controller&>(controller));
-	return device ? Error::success : Error::nomem;
+	device = new Device(reinterpret_cast<IO::RS485::Controller&>(controller));
+	return device ? Error::success : Error::no_mem;
 }
 
 const DeviceClassInfo deviceClass()
@@ -267,6 +211,22 @@ Error Device::init(const Config& config)
 	assert(m_nodeData == nullptr);
 	m_nodeData = new NodeData[m_nodeCount];
 	memset(m_nodeData, 0, sizeof(NodeData) * m_nodeCount);
+
+	auto& serial = controller().getSerial();
+	if(!serial.resizeBuffers(0, MaxPacketSize)) {
+		return Error::no_mem;
+	}
+
+	m_timer.setCallback(
+		[](void* arg) {
+			auto dev = static_cast<Device*>(arg);
+			auto req = dev->createRequest();
+			req->setCommand(Command::update);
+			req->submit();
+		},
+		this);
+	m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
+	m_timer.startOnce();
 
 	return Error::success;
 }
@@ -297,6 +257,38 @@ bool Device::update()
 	return res;
 }
 
+void Device::handleEvent(IO::Request* request, Event event)
+{
+	switch(event) {
+	case Event::Execute:
+		if(request->command() == Command::update) {
+			updateSlaves();
+		}
+		break;
+
+	case Event::TransmitComplete:
+		assert(m_updating);
+		m_updating = false;
+
+		// Schedule next update
+		if(m_changed) {
+			m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
+			m_timer.startOnce();
+		} else if(DMX_UPDATE_PERIODIC_MS != 0) {
+			m_timer.setIntervalMs<DMX_UPDATE_PERIODIC_MS>();
+			m_timer.startOnce();
+		}
+		break;
+
+	case Event::ReceiveComplete:
+	case Event::RequestComplete:
+	case Event::Timeout:
+		break;
+	}
+
+	IO::RS485::Device::handleEvent(request, event);
+}
+
 Error Device::execute(Request& request)
 {
 	auto node = request.node();
@@ -324,7 +316,7 @@ Error Device::execute(Request& request)
 			data.enable();
 			break;
 		}
-		case Command::send:
+		case Command::set:
 			data.setValue(request.value());
 			break;
 		default:
@@ -340,7 +332,11 @@ Error Device::execute(Request& request)
 		apply(node.id);
 	}
 
-	controller().deviceChanged();
+	if(!m_changed) {
+		m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
+		m_timer.startOnce();
+		m_changed = true;
+	}
 
 	return err;
 }

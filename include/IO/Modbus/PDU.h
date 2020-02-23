@@ -6,11 +6,6 @@ namespace IO
 {
 namespace Modbus
 {
-enum class Direction {
-	Incoming,
-	Outgoing,
-};
-
 /**
  * @brief Modbus exception codes returned in response packets
  */

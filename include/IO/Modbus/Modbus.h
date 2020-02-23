@@ -12,28 +12,23 @@
 #pragma once
 
 #include <IO/Control.h>
-#include <IO/Serial/Port.h>
+#include <IO/RS485/Controller.h>
 #include "ADU.h"
 
 namespace IO
 {
 namespace Modbus
 {
-// Device configuration
-DECLARE_FSTR(CONTROLLER_CLASSNAME)
-
-// json tags
-DECLARE_FSTR(ATTR_STATES)
+constexpr unsigned DEFAULT_BAUDRATE = 9600;
 
 class Device;
-class Controller;
 
 class Request : public IO::Request
 {
-	friend Controller;
+	friend Device;
 
 public:
-	Request(Device& device) : IO::Request(reinterpret_cast<IO::Device&>(device))
+	Request(Device& device) : IO::Request(reinterpret_cast<IO::RS485::Device&>(device))
 	{
 	}
 
@@ -62,7 +57,7 @@ private:
  *  callback()
  *  fillRequestData()
  */
-class Device : public IO::Device
+class Device : public RS485::Device
 {
 public:
 	struct SlaveConfig {
@@ -75,8 +70,11 @@ public:
 		SlaveConfig slave;
 	};
 
-	Device(Controller& controller) : IO::Device(reinterpret_cast<IO::Controller&>(controller))
+	using RS485::Device::Device;
+
+	const DeviceType type() const override
 	{
+		return DeviceType::Modbus;
 	}
 
 	Error init(const Config& config);
@@ -103,85 +101,30 @@ public:
 
 	unsigned baudrate() const
 	{
-		return m_config.baudrate;
+		return m_config.baudrate ?: DEFAULT_BAUDRATE;
 	}
+
+	void handleEvent(IO::Request* request, Event event) override;
 
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 private:
+	void execute(Request* request);
+	void readRequest();
+	void readResponse(Request* request);
+
 	SlaveConfig m_config;
-};
-
-class Controller : public IO::Controller
-{
-public:
-	Controller(Serial::Port& serial, uint8_t instance)
-		: IO::Controller(instance), serial{serial}, state{
-														.controller{this},
-														.onTransmitComplete{transmitComplete},
-														.onReceive{receive},
-													}
-	{
-	}
-
-	String classname() override
-	{
-		return CONTROLLER_CLASSNAME;
-	}
-
-	void start() override;
-	void stop() override;
-
-	bool busy() const override
-	{
-		return request != nullptr;
-	}
-
-	/**
-	 * @brief Callback to handle incoming requests
-	 * @param adu The request
-	 * @retval bool true to sent a response, false to ignore
-	 */
-	using RequestDelegate = Delegate<bool(ADU& adu)>;
-
-	void onRequest(RequestDelegate callback)
-	{
-		requestCallback = callback;
-	}
-
-protected:
-	/**
-	 * @brief Override this method to filter or handle incoming requests
-	 *
-	 * If there is no transaction in progress then unsolicited packets
-	 * are interpreted as slave requests.
-	 */
-	virtual void handleIncomingRequest(ADU& adu);
-
-	void sendResponse(ADU& adu)
-	{
-		send(adu, adu.prepareResponse());
-	}
-
-private:
-	void execute(IO::Request& request) override;
-	static void IRAM_ATTR transmitComplete(Serial::State& state);
-	static void IRAM_ATTR receive(Serial::State& state);
-
-	void send(ADU& adu, size_t size);
-	Error readResponse(ADU& adu);
-	void completeTransaction();
-	void transactionTimeout();
-
-private:
-	Serial::Port& serial;
-	Serial::State state;
-	Request* request{nullptr};
-	RequestDelegate requestCallback;
-	SimpleTimer timer; ///< Use to schedule callback and timeout
 	Function requestFunction{};
 };
+
+Error readRequest(RS485::Controller& controller, ADU& adu);
+
+static inline void sendResponse(RS485::Controller& controller, ADU& adu)
+{
+	auto aduSize = adu.prepareResponse();
+	controller.send(adu.buffer, aduSize);
+}
 
 } // namespace Modbus
 } // namespace IO

@@ -8,11 +8,7 @@
 
 #pragma once
 
-#include <IO/Control.h>
-#include <IO/Serial/Port.h>
-#include <SimpleTimer.h>
-
-class HardwareSerial;
+#include <IO/RS485/Controller.h>
 
 namespace IO
 {
@@ -22,7 +18,6 @@ namespace DMX512
 DECLARE_FSTR(CONTROLLER_CLASSNAME)
 
 class Device;
-class Controller;
 
 class Request : public IO::Request
 {
@@ -148,40 +143,33 @@ struct NodeData {
 
 const DeviceClassInfo deviceClass();
 
-/*
- * A virtual device, represents a DMX512 slave device.
- * Actual devices must implement
- *  createRequest()
- *  callback()
- *  fillRequestData()
- */
-class Device : public IO::Device
+class Device : public IO::RS485::Device
 {
 	friend Controller;
 
 public:
+	static constexpr size_t MaxPacketSize{520};
+
 	struct Config : public IO::Device::Config {
 		uint16_t address;
 		uint8_t nodeCount;
 	};
 
-	Device(Controller& controller) : IO::Device(reinterpret_cast<IO::Controller&>(controller))
-	{
-	}
+	using IO::RS485::Device::Device;
 
-	~Device() override
+	~Device()
 	{
 		delete m_nodeData;
 	}
 
-	const IO::DeviceClassInfo getClass() const override
+	const IO::DeviceClassInfo classInfo() const override
 	{
 		return deviceClass();
 	}
 
-	Controller& controller() const
+	const DeviceType type() const override
 	{
-		return reinterpret_cast<Controller&>(IO::Device::controller());
+		return DeviceType::DMX512;
 	}
 
 	Error init(const Config& config);
@@ -218,6 +206,8 @@ public:
 		return node == DevNode_ALL || node.id < m_nodeCount;
 	}
 
+	void handleEvent(IO::Request* request, Event event) override;
+
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
@@ -232,6 +222,8 @@ protected:
 	 */
 	bool update();
 
+	void updateSlaves();
+
 private:
 	friend Request;
 	Error execute(Request& request);
@@ -239,49 +231,9 @@ private:
 	uint16_t m_address = 0x01;		///< Start address for this device, may occupy more than one slot
 	uint8_t m_nodeCount = 1;		///< Number of DMX slots managed by this device
 	NodeData* m_nodeData = nullptr; ///< Data for each slot, starting at `address`
-};
-
-class Controller : public IO::Controller
-{
-public:
-	static constexpr size_t MaxPacketSize{520};
-
-	Controller(Serial::Port& serial, uint8_t instance)
-		: IO::Controller(instance), serial{serial}, state{
-														.controller{this},
-														.onTransmitComplete{transmitComplete},
-													}
-	{
-	}
-
-	String classname() override
-	{
-		return CONTROLLER_CLASSNAME;
-	}
-
-	void start() override;
-	void stop() override;
-
-	bool busy() const override
-	{
-		return m_updating;
-	}
-
-	void deviceChanged();
-
-protected:
-	void execute(IO::Request& request) override;
-
-private:
-	void updateSlaves();
-	static void IRAM_ATTR transmitComplete(Serial::State& state);
-	void transmitComplete();
-
-	Serial::Port& serial;
-	Serial::State state;
-	bool m_updating{false}; ///< Currently sending update
-	bool m_changed{false};  ///< Data has changed
-	SimpleTimer m_timer;	///< For slave update cycle timing
+	static SimpleTimer m_timer;		///< For slave update cycle timing
+	static bool m_changed;			///< Data has changed
+	static bool m_updating;			///< Currently sending update
 };
 
 } // namespace DMX512

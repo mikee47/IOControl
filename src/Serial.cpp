@@ -1,10 +1,8 @@
-#include <IO/Serial/Port.h>
+#include <IO/Serial.h>
 
 namespace IO
 {
-namespace Serial
-{
-Error Port::open(uint8_t uart_nr)
+Error Serial::open(uint8_t uart_nr)
 {
 	if(uart != nullptr) {
 		return Error::access_denied;
@@ -14,8 +12,8 @@ Error Port::open(uint8_t uart_nr)
 		.uart_nr = uart_nr,
 		.tx_pin = 1,
 		.mode = UART_FULL,
-		.baudrate = 9600,
-		.config = UART_8N1,
+		.baudrate = activeConfig.baudrate,
+		.config = activeConfig.config,
 	};
 	uart = uart_init_ex(cfg);
 	if(uart == nullptr) {
@@ -34,20 +32,16 @@ Error Port::open(uint8_t uart_nr)
 	// Don't report 'buffer full' early, but only when buffer is actually full
 	uart->rx_headroom = 0;
 
-	// We handle interrupts and notify client as appropriate
-	uart_set_callback(uart, uartCallback, this);
-
 	return Error::success;
 }
 
-void Port::close()
+void Serial::close()
 {
 	uart_uninit(uart);
 	uart = nullptr;
-	currentState = nullptr;
 }
 
-bool Port::resizeBuffers(size_t rxSize, size_t txSize)
+bool Serial::resizeBuffers(size_t rxSize, size_t txSize)
 {
 	if(uart == nullptr) {
 		return false;
@@ -66,70 +60,10 @@ bool Port::resizeBuffers(size_t rxSize, size_t txSize)
 	return true;
 }
 
-bool Port::acquire(State& state, const Config& cfg)
-{
-	if(uart == nullptr) {
-		debug_e("Serial: Port not open");
-		return false;
-	}
-
-	if(mode == Mode::Exclusive) {
-		debug_w("Serial: Port in use");
-		return false;
-	}
-
-	mode = cfg.mode;
-	state.previousState = currentState;
-	currentState = &state;
-	configure(cfg);
-	state.config = cfg;
-
-	return true;
-}
-
-void Port::release(State& state)
-{
-	currentState = state.previousState;
-	if(currentState != nullptr && &state != currentState) {
-		state.previousState = nullptr;
-		configure(currentState->config);
-	}
-	mode = Mode::Shared;
-}
-
-void Port::configure(const Config& cfg)
+void Serial::setConfig(const Config& cfg)
 {
 	uart_set_config(uart, cfg.config);
 	uart_set_baudrate(uart, cfg.baudrate);
 }
 
-void Port::uartCallback(uart_t* uart, uint32_t status)
-{
-	auto serial = static_cast<Serial::Port*>(uart_get_callback_param(uart));
-	// Guard against spurious interrupts
-	if(serial == nullptr) {
-		return;
-	}
-
-	auto state = serial->currentState;
-	if(state == nullptr) {
-		return;
-	}
-
-	// Tx FIFO empty
-	if(status & UART_TXFIFO_EMPTY_INT_ST) {
-		if(state->onTransmitComplete) {
-			state->onTransmitComplete(*state);
-		}
-	}
-
-	// Rx FIFO full or timeout
-	if(status & (UART_RXFIFO_FULL_INT_ST | UART_RXFIFO_TOUT_INT_ST)) {
-		if(state->onReceive) {
-			state->onReceive(*state);
-		}
-	}
-}
-
-} // namespace Serial
 } // namespace IO

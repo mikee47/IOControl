@@ -137,11 +137,9 @@ public:
 		uint8_t channels;
 	};
 
-	Device(Modbus::Controller& controller) : Modbus::Device(controller)
-	{
-	}
+	using Modbus::Device::Device;
 
-	const IO::DeviceClassInfo getClass() const override
+	const IO::DeviceClassInfo classInfo() const override
 	{
 		return deviceClass();
 	}
@@ -181,11 +179,10 @@ public:
 
 	DevNode::States getNodeStates(DevNode node) const override;
 
+	void handleEvent(IO::Request* request, Event event) override;
+
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
-
-	// We use this to track states
-	void requestComplete(IO::Request* request) override;
 
 private:
 	// Tracks current output states as far as possible

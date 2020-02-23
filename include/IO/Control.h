@@ -18,6 +18,7 @@
 #include <Data/CStringArray.h>
 #include "BitSet.h"
 #include "Status.h"
+#include "DeviceType.h"
 
 #ifdef ENABLE_HEAP_PRINTING
 #ifdef ENABLE_MALLOC_COUNT
@@ -60,6 +61,11 @@ DECLARE_FSTR(ATTR_COUNT)
 // Global tags
 DECLARE_FSTR(ATTR_DELAY)
 
+enum class Direction {
+	Incoming,
+	Outgoing,
+};
+
 /*
  * IO Commands
  */
@@ -72,8 +78,9 @@ DECLARE_FSTR(ATTR_DELAY)
 	XX(latch, "Relay nodes")                                                                                           \
 	XX(momentary, "Relay nodes")                                                                                       \
 	XX(delay, "Relay nodes")                                                                                           \
-	XX(send, "Action with no acknowledgement or response")                                                             \
-	XX(adjust, "Adjust value")
+	XX(set, "Set value")                                                                                               \
+	XX(adjust, "Adjust value")                                                                                         \
+	XX(update, "Perform update cycle (e.g. DMX512)")
 
 enum class Command {
 #define XX(tag, comment) tag,
@@ -87,6 +94,17 @@ class Controller;
 class Device;
 class Request;
 class DeviceManager;
+
+/**
+ * @brief Event code used during request processing for internal notification between request/device/controller objects
+ */
+enum class Event {
+	Execute,
+	TransmitComplete,
+	ReceiveComplete,
+	RequestComplete,
+	Timeout,
+};
 
 /*
  * A request goes through the following states:
@@ -185,10 +203,16 @@ public:
 
 	String id()
 	{
-		return classname() + String(m_instance);
+		String s;
+		s += classname();
+		s += '#';
+		s += m_instance;
+		return s;
 	}
 
 	virtual bool busy() const = 0;
+
+	virtual void handleEvent(Request* request, Event event);
 
 protected:
 	/*
@@ -196,10 +220,6 @@ protected:
 	 * delete the request or try again later.
 	 */
 	Error submit(Request* request);
-
-	virtual void execute(Request& request) = 0;
-
-	void requestComplete(Request* request);
 
 	void startTimer();
 	void stopTimer();
@@ -299,7 +319,9 @@ public:
 	{
 	}
 
-	virtual const IO::DeviceClassInfo getClass() const = 0;
+	virtual const IO::DeviceClassInfo classInfo() const = 0;
+
+	virtual const DeviceType type() const = 0;
 
 	Error init(const Config& config);
 	virtual Error init(JsonObjectConst config) = 0;
@@ -355,6 +377,8 @@ public:
 		return DevNode::States{};
 	}
 
+	virtual void handleEvent(Request* request, Event event);
+
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
@@ -365,8 +389,6 @@ protected:
 	{
 		return m_controller.submit(request);
 	}
-
-	virtual void requestComplete(Request* request);
 
 private:
 	String m_id;
@@ -423,7 +445,7 @@ Error Controller::createDevice(DeviceClass* device, const typename DeviceClass::
  */
 class Request
 {
-	friend Controller;
+	//	friend Controller;
 
 public:
 	Request(Device& device) : m_device(device)
@@ -570,6 +592,11 @@ public:
 		return m_param;
 	}
 
+	virtual void handleEvent(Event event)
+	{
+		m_device.handleEvent(this, event);
+	}
+
 protected:
 	Device& m_device;
 	void* m_param;							///< User-assigned parameter
@@ -649,8 +676,9 @@ public:
 	 */
 	void callback(Request& request)
 	{
-		if(m_callback)
+		if(m_callback) {
 			m_callback(request);
+		}
 	}
 
 	Error handleMessage(JsonObject json, void* param);
