@@ -58,7 +58,7 @@ static r421a_command_t map(Command cmd)
  */
 Function Request::fillRequestData(PDU::Data& data)
 {
-	if(m_command == Command::query) {
+	if(command() == Command::query) {
 		// Query all channels
 		auto& req = data.readHoldingRegisters.request;
 		req.startAddress = device().nodeIdMin();
@@ -72,7 +72,7 @@ Function Request::fillRequestData(PDU::Data& data)
 			PDU::Data::WriteSingleRegister::Request req;
 			req.address = ch;
 			req.value = map(command()) << 8;
-			if(m_command == Command::delay) {
+			if(command() == Command::delay) {
 				req.value |= m_data.delay;
 			}
 
@@ -121,10 +121,10 @@ void Request::callback(PDU& pdu)
 		//  debug_i("Channel = %u, mask = %08x", channel, m_data.channelMask);
 		// Report back which bits were affected
 		m_response.channelMask += ch;
-		if(m_command == Command::toggle) {
+		if(command() == Command::toggle) {
 			// Use current states held by IODevice to determine effect of toggle command
 			m_response.channelStates[ch] = !device().states().channelStates[ch];
-		} else if(m_command == Command::on) {
+		} else if(command() == Command::on) {
 			m_response.channelStates += ch;
 		}
 
@@ -197,7 +197,7 @@ void Request::getJson(JsonObject json) const
 {
 	Modbus::Request::getJson(json);
 
-	auto mask = (m_status == Status::pending) ? m_data.channelMask : m_response.channelMask;
+	auto mask = (status() == Status::pending) ? m_data.channelMask : m_response.channelMask;
 
 	JsonArray nodes = json.createNestedArray(FS_nodes);
 	for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {

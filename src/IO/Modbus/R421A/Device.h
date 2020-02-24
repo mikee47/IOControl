@@ -43,13 +43,11 @@ struct StateMask {
 	BitSet32 channelStates;
 };
 
-/*
- * R421 devices don't respond to channel numbers greater than 16.
- */
-constexpr uint8_t R421A_MAX_CHANNELS = 16;
-
 // Channels start with 1
 constexpr uint8_t R421_CHANNEL_MIN = 1;
+
+// R421 devices don't respond to channel numbers greater than 16
+constexpr uint8_t R421A_MAX_CHANNELS = 16;
 
 namespace IO
 {
@@ -62,7 +60,8 @@ const IO::DeviceClassInfo deviceClass();
 class Device : public Modbus::Device
 {
 public:
-	struct Config : public Modbus::Device::Config {
+	struct Config {
+		Modbus::Device::Config modbus;
 		uint8_t channels;
 	};
 

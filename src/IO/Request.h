@@ -196,7 +196,7 @@ public:
 
 	virtual void handleEvent(Event event);
 
-protected:
+private:
 	Device& m_device;
 	void* m_param;							///< User-assigned parameter
 	Command m_command = Command::undefined; ///< Active command

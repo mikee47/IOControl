@@ -21,14 +21,14 @@ class Request;
 class Device : public RS485::Device
 {
 public:
-	struct SlaveConfig {
-		uint8_t address;
-		unsigned baudrate;
-		unsigned timeout; ///< Max time between command/response
-	};
-
-	struct Config : public RS485::Device::Config {
-		SlaveConfig slave;
+	struct Config {
+		IO::Device::Config base;
+		struct Slave {
+			uint8_t address;
+			unsigned baudrate;
+			unsigned timeout; ///< Max time between command/response
+		};
+		Slave slave;
 	};
 
 	using RS485::Device::Device;
@@ -71,10 +71,10 @@ protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 private:
-	void execute(Request* request);
-	void readResponse(Request* request);
+	bool execute(Request* request);
+	bool readResponse(Request* request);
 
-	SlaveConfig m_config;
+	Config::Slave m_config;
 	Function requestFunction{};
 };
 

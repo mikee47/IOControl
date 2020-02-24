@@ -111,10 +111,6 @@ protected:
 	void startTimer();
 	void stopTimer();
 
-protected:
-	IODeviceList m_devices;
-	RequestQueue m_queue;
-
 private:
 	void executeNext();
 
@@ -123,10 +119,11 @@ private:
 	void startDevices();
 	void stopDevices();
 
-private:
+	IODeviceList m_devices;
+	RequestQueue m_queue;
 	static DeviceClassMap m_deviceClasses;
-	SimpleTimer* m_deviceCheckTimer = nullptr;
-	uint8_t m_instance = 0;
+	SimpleTimer* m_deviceCheckTimer{nullptr};
+	uint8_t m_instance;
 };
 
 template <class DeviceClass>

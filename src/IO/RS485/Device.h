@@ -10,7 +10,7 @@ namespace RS485
 class Device : public IO::Device
 {
 public:
-	Device(Controller& controller) : IO::Device(static_cast<IO::Controller&>(controller))
+	Device(Controller& controller) : IO::Device(controller)
 	{
 	}
 

@@ -67,6 +67,7 @@ void Controller::handleEvent(Request* request, Event event)
 {
 	switch(event) {
 	case Event::Execute:
+		this->request = request;
 		// Put a timeout on the overall transaction
 		timer.initializeMs<TRANSACTION_TIMEOUT_MS>(
 			[](void* param) {
@@ -79,6 +80,7 @@ void Controller::handleEvent(Request* request, Event event)
 		break;
 
 	case Event::RequestComplete:
+		timer.stop();
 		this->request = nullptr;
 		serial.setConfig(m_savedConfig);
 		break;

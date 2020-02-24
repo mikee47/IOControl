@@ -17,7 +17,7 @@ public:
 
 	const Device& device() const
 	{
-		return reinterpret_cast<const Device&>(m_device);
+		return reinterpret_cast<const Device&>(IO::Request::device());
 	}
 
 	void getJson(JsonObject json) const;

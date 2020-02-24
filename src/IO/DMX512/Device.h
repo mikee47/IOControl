@@ -98,7 +98,8 @@ class Device : public RS485::Device
 public:
 	static constexpr size_t MaxPacketSize{520};
 
-	struct Config : public IO::Device::Config {
+	struct Config {
+		IO::Device::Config base;
 		uint16_t address;
 		uint8_t nodeCount;
 	};

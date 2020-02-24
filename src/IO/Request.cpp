@@ -87,7 +87,7 @@ void Request::complete(Status status)
 {
 	debug_i("Request %p (%s) complete - %s", this, m_id.c_str(), toString(status).c_str());
 	m_status = status;
-	m_device.handleEvent(this, Event::RequestComplete);
+	handleEvent(Event::RequestComplete);
 }
 
 String Request::caption()

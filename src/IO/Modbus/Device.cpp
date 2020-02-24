@@ -23,7 +23,7 @@ namespace Modbus
 {
 Error Device::init(const Config& config)
 {
-	auto err = IO::Device::init(config);
+	auto err = IO::Device::init(config.base);
 	if(!!err) {
 		return err;
 	}
@@ -55,7 +55,7 @@ Error Device::init(JsonObjectConst config)
 
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
-	IO::Device::parseJson(json, cfg);
+	IO::Device::parseJson(json, cfg.base);
 	cfg.slave.address = json[FS_address];
 	cfg.slave.baudrate = json[FS_baudrate];
 }
@@ -66,11 +66,14 @@ void Device::handleEvent(IO::Request* request, Event event)
 
 	switch(event) {
 	case Event::Execute:
-		execute(req);
-		break;
+		IO::RS485::Device::handleEvent(request, event);
+		if(!execute(req)) {
+			request->complete(Status::error);
+		}
+		return;
 
 	case Event::ReceiveComplete:
-		readResponse(req);
+		request->complete(readResponse(req) ? Status::success : Status::error);
 		break;
 
 	case Event::TransmitComplete:
@@ -94,7 +97,7 @@ void Device::handleEvent(IO::Request* request, Event event)
  * We write data into the hardware FIFO: no need for any software buffering.
  *
  */
-void Device::execute(Request* request)
+bool Device::execute(Request* request)
 {
 	// Fill out the ADU packet
 	ADU adu;
@@ -103,8 +106,7 @@ void Device::execute(Request* request)
 	adu.slaveAddress = request->device().address();
 	auto aduSize = adu.prepareRequest();
 	if(aduSize == 0) {
-		request->complete(Status::error);
-		return;
+		return false;
 	}
 
 	// Prepare UART for comms
@@ -118,11 +120,10 @@ void Device::execute(Request* request)
 
 	// OK, issue the request
 	controller().send(adu.buffer, aduSize);
-
-	IO::RS485::Device::handleEvent(request, Event::Execute);
+	return true;
 }
 
-void Device::readResponse(Request* request)
+bool Device::readResponse(Request* request)
 {
 	// Read packet
 	ADU adu;
@@ -133,7 +134,7 @@ void Device::readResponse(Request* request)
 	Error err;
 	err = adu.parseResponse(receivedSize);
 	if(!!err) {
-		return;
+		return false;
 	}
 
 	// In master mode, check for consistency with current request
@@ -149,12 +150,12 @@ void Device::readResponse(Request* request)
 
 	if(!!err) {
 		debug_e("MB: %s", toString(err).c_str());
-		request->complete(Status::error);
-		return;
+		return false;
 	}
 
 	debug_d("MB: received '%s': %s", toString(adu.pdu.function()).c_str(), toString(adu.pdu.exception()).c_str());
 	request->callback(adu.pdu);
+	return true;
 }
 
 } // namespace Modbus

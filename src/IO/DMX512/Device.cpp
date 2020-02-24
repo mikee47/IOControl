@@ -145,7 +145,7 @@ void Device::updateSlaves()
 
 Error Device::init(const Config& config)
 {
-	Error err = IO::Device::init(config);
+	Error err = IO::Device::init(config.base);
 	if(!!err) {
 		return err;
 	}
@@ -181,7 +181,7 @@ IO::Request* Device::createRequest()
 
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
-	IO::Device::parseJson(json, cfg);
+	IO::Device::parseJson(json, cfg.base);
 	cfg.address = json[FS_address] | 0x01;
 	cfg.nodeCount = json[FS_count] | 1;
 }
@@ -209,9 +209,8 @@ void Device::handleEvent(IO::Request* request, Event event)
 {
 	switch(event) {
 	case Event::Execute:
-		if(request->command() == Command::update) {
-			updateSlaves();
-		}
+		assert(request->command() == Command::update);
+		updateSlaves();
 		break;
 
 	case Event::TransmitComplete:
@@ -226,7 +225,8 @@ void Device::handleEvent(IO::Request* request, Event event)
 			m_timer.setIntervalMs<DMX_UPDATE_PERIODIC_MS>();
 			m_timer.startOnce();
 		}
-		break;
+		request->complete(Status::success);
+		return;
 
 	case Event::ReceiveComplete:
 	case Event::RequestComplete:

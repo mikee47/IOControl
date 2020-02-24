@@ -38,7 +38,7 @@ const DeviceClassInfo deviceClass()
 
 Error Device::init(const Config& config)
 {
-	Error err = Modbus::Device::init(config);
+	Error err = Modbus::Device::init(config.modbus);
 	if(!!err) {
 		return err;
 	}
@@ -52,7 +52,7 @@ Error Device::init(const Config& config)
 
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
-	Modbus::Device::parseJson(json, cfg);
+	Modbus::Device::parseJson(json, cfg.modbus);
 	cfg.channels = json[FS_channels].as<unsigned>();
 }
 

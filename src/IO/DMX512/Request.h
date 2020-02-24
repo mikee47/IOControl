@@ -24,7 +24,7 @@ public:
 
 	Device& device()
 	{
-		return reinterpret_cast<Device&>(m_device);
+		return reinterpret_cast<Device&>(IO::Request::device());
 	}
 
 	Error parseJson(JsonObjectConst json) override;

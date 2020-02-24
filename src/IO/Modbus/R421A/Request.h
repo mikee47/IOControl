@@ -55,7 +55,7 @@ public:
 
 	const Device& device() const
 	{
-		return reinterpret_cast<Device&>(m_device);
+		return reinterpret_cast<const Device&>(Modbus::Request::device());
 	}
 
 	bool setNode(DevNode node) override;

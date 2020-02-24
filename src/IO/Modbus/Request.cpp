@@ -28,7 +28,7 @@ void Request::getJson(JsonObject json) const
 {
 	IO::Request::getJson(json);
 
-	if(m_status == Status::error) {
+	if(status() == Status::error) {
 		setError(json, unsigned(m_exception), toString(m_exception));
 	}
 }
