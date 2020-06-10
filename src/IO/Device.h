@@ -76,7 +76,7 @@ public:
 	{
 	}
 
-	virtual const IO::DeviceClassInfo classInfo() const = 0;
+	virtual const DeviceClassInfo classInfo() const = 0;
 
 	virtual const DeviceType type() const = 0;
 
