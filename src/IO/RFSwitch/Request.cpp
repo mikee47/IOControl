@@ -1,55 +1,11 @@
 #include "Request.h"
+#include "Device.h"
 
 namespace IO
 {
 namespace RFSwitch
 {
-DEFINE_FSTR_LOCAL(ATTR_TIMING, "timing")
-DEFINE_FSTR_LOCAL(ATTR_STARTH, "starth")
-DEFINE_FSTR_LOCAL(ATTR_STARTL, "startl")
-DEFINE_FSTR_LOCAL(ATTR_PERIOD, "period")
-DEFINE_FSTR_LOCAL(ATTR_BIT0, "bit0")
-DEFINE_FSTR_LOCAL(ATTR_BIT1, "bit1")
-DEFINE_FSTR_LOCAL(ATTR_GAP, "gap")
-DEFINE_FSTR_LOCAL(ATTR_REPEATS, "repeats")
-
-#define RF_DEFAULT_REPEATS 20
-
-namespace
-{
-Error readProtocol(Protocol& protocol, JsonObjectConst config)
-{
-	JsonObjectConst timing = config[ATTR_TIMING];
-	protocol.timing.starth = timing[ATTR_STARTH];
-	protocol.timing.startl = timing[ATTR_STARTL];
-	protocol.timing.period = timing[ATTR_PERIOD];
-	protocol.timing.bit0 = timing[ATTR_BIT0];
-	protocol.timing.bit1 = timing[ATTR_BIT1];
-	protocol.timing.gap = timing[ATTR_GAP];
-	protocol.repeats = config[ATTR_REPEATS];
-
-	if(protocol.repeats == 0) {
-		protocol.repeats = RF_DEFAULT_REPEATS;
-	}
-
-	return ioe_success;
-}
-
-/*
-static void writeProtocol(const Protocol::Protocol& protocol, JsonObject config)
-{
-	JsonObject timing = config.createNestedObject(ATTR_TIMING);
-	timing[ATTR_STARTH] = protocol.timing.starth;
-	timing[ATTR_STARTL] = protocol.timing.startl;
-	timing[ATTR_PERIOD] = protocol.timing.period;
-	timing[ATTR_BIT0] = protocol.timing.bit0;
-	timing[ATTR_BIT1] = protocol.timing.bit1;
-	timing[ATTR_GAP] = protocol.timing.gap;
-	config[ATTR_REPEATS] = protocol.repeats;
-}
-*/
-
-} // namespace
+DEFINE_FSTR(ATTR_CODE, "code")
 
 void Request::send(uint32_t code, uint8_t repeats)
 {
@@ -63,7 +19,7 @@ void Request::send(uint32_t code, uint8_t repeats)
 Error Request::parseJson(JsonObjectConst json)
 {
 	Error err = IO::Request::parseJson(json);
-	if(err) {
+	if(!!err) {
 		return err;
 	}
 	const char* s = json[ATTR_CODE];
@@ -80,7 +36,7 @@ Error Request::parseJson(JsonObjectConst json)
 
 void Request::getJson(JsonObject json) const
 {
-	IORequest::getJson(json);
+	IO::Request::getJson(json);
 
 	//  writeProtocol(m_protocol, json);
 

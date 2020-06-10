@@ -5,5 +5,6 @@ namespace IO
 enum class DeviceType {
 	Modbus,
 	DMX512,
+	RFSwitch,
 };
 }

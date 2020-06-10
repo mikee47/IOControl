@@ -8,7 +8,7 @@
 #pragma once
 
 #include <IO/Request.h>
-#include "RFSwitch.h"
+#include "Device.h"
 
 namespace IO
 {
@@ -20,10 +20,10 @@ class Request : public IO::Request
 	friend Controller;
 
 public:
-	Request(Device& device) : IO::Request(device)
+	Request(IO::Device& device) : IO::Request(device)
 	{
 		// Only one command applicable, may as well be the default
-		setCommand(ioc_send);
+		setCommand(Command::set);
 	}
 
 	const Device& device() const
