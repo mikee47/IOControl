@@ -8,8 +8,6 @@ namespace RFSwitch
 DEFINE_FSTR(CONTROLLER_CLASSNAME, "rfswitch")
 const FlashString& DEVICE_CLASSNAME = CONTROLLER_CLASSNAME;
 
-namespace
-{
 DEFINE_FSTR_LOCAL(ATTR_TIMING, "timing")
 DEFINE_FSTR_LOCAL(ATTR_STARTH, "starth")
 DEFINE_FSTR_LOCAL(ATTR_STARTL, "startl")
@@ -21,40 +19,6 @@ DEFINE_FSTR(ATTR_REPEATS, "repeats")
 
 const unsigned RF_DEFAULT_REPEATS = 20;
 
-Error readProtocol(Protocol& protocol, JsonObjectConst config)
-{
-	JsonObjectConst timing = config[ATTR_TIMING];
-	protocol.timing.starth = timing[ATTR_STARTH];
-	protocol.timing.startl = timing[ATTR_STARTL];
-	protocol.timing.period = timing[ATTR_PERIOD];
-	protocol.timing.bit0 = timing[ATTR_BIT0];
-	protocol.timing.bit1 = timing[ATTR_BIT1];
-	protocol.timing.gap = timing[ATTR_GAP];
-	protocol.repeats = config[ATTR_REPEATS];
-
-	if(protocol.repeats == 0) {
-		protocol.repeats = RF_DEFAULT_REPEATS;
-	}
-
-	return Error::success;
-}
-
-/*
-static void writeProtocol(const Protocol::Protocol& protocol, JsonObject config)
-{
-	JsonObject timing = config.createNestedObject(ATTR_TIMING);
-	timing[ATTR_STARTH] = protocol.timing.starth;
-	timing[ATTR_STARTL] = protocol.timing.startl;
-	timing[ATTR_PERIOD] = protocol.timing.period;
-	timing[ATTR_BIT0] = protocol.timing.bit0;
-	timing[ATTR_BIT1] = protocol.timing.bit1;
-	timing[ATTR_GAP] = protocol.timing.gap;
-	config[ATTR_REPEATS] = protocol.repeats;
-}
-*/
-
-} // namespace
-
 Error Device::init(JsonObjectConst config)
 {
 	Error err = IO::Device::init(config);
@@ -62,7 +26,20 @@ Error Device::init(JsonObjectConst config)
 		return err;
 	}
 
-	return readProtocol(m_protocol, config);
+	JsonObjectConst timing = config[ATTR_TIMING];
+	m_timing.starth = timing[ATTR_STARTH];
+	m_timing.startl = timing[ATTR_STARTL];
+	m_timing.period = timing[ATTR_PERIOD];
+	m_timing.bit0 = timing[ATTR_BIT0];
+	m_timing.bit1 = timing[ATTR_BIT1];
+	m_timing.gap = timing[ATTR_GAP];
+	m_repeats = config[ATTR_REPEATS];
+
+	if(m_repeats == 0) {
+		m_repeats = RF_DEFAULT_REPEATS;
+	}
+
+	return Error::success;
 }
 
 namespace

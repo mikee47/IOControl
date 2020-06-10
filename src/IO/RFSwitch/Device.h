@@ -10,19 +10,15 @@ namespace RFSwitch
 DECLARE_FSTR(ATTR_REPEATS)
 
 /**
- * @brief Protocol configuration
+ * @brief Protocol timings in microseconds
  */
-struct Protocol {
-	/// Timings in microseconds
-	struct {
-		uint16_t starth; ///< Width of start High pulse
-		uint16_t startl; ///< Width of start Low pulse
-		uint16_t period; ///< Bit period
-		uint16_t bit0;   ///< Width of a '0' high pulse
-		uint16_t bit1;   ///< Width of a '1' high pulse
-		uint16_t gap;	///< Gap after final bit before repeating
-	} timing;
-	uint8_t repeats; ///< Number of times to repeat code
+struct Timing {
+	uint16_t starth; ///< Width of start High pulse
+	uint16_t startl; ///< Width of start Low pulse
+	uint16_t period; ///< Bit period
+	uint16_t bit0;   ///< Width of a '0' high pulse
+	uint16_t bit1;   ///< Width of a '1' high pulse
+	uint16_t gap;	///< Gap after final bit before repeating
 };
 
 /*
@@ -45,16 +41,22 @@ public:
 
 	IO::Request* createRequest() override;
 
-	const Protocol& protocol() const
+	const Timing& timing() const
 	{
-		return m_protocol;
+		return m_timing;
+	}
+
+	uint8_t repeats() const
+	{
+		return m_repeats;
 	}
 
 protected:
 	Error init(JsonObjectConst config) override;
 
 protected:
-	Protocol m_protocol;
+	Timing m_timing;
+	uint8_t m_repeats; ///< Number of times to repeat code
 };
 
 } // namespace RFSwitch

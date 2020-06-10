@@ -10,10 +10,7 @@ DEFINE_FSTR(ATTR_CODE, "code")
 void Request::send(uint32_t code, uint8_t repeats)
 {
 	m_code = code;
-	m_protocol = device().protocol();
-	if(repeats != 0) {
-		m_protocol.repeats = repeats;
-	}
+	m_repeats = repeats ?: device().repeats();
 }
 
 Error Request::parseJson(JsonObjectConst json)
@@ -28,8 +25,7 @@ Error Request::parseJson(JsonObjectConst json)
 	}
 	m_code = strtoul(s, nullptr, 16);
 
-	m_protocol = device().protocol();
-	Json::getValue(json[ATTR_REPEATS], m_protocol.repeats);
+	Json::getValue(json[ATTR_REPEATS], m_repeats);
 
 	return Error::success;
 }

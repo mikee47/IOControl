@@ -77,7 +77,7 @@ void IRAM_ATTR Controller::setTransmit(TransmitState state, bool output, unsigne
 	setOutput(output);
 
 	if(output) {
-		m_lowDuration = m_request->protocol().timing.period - duration;
+		m_lowDuration = m_request->device().timing().period - duration;
 		duration += RC_PULSE_EXTENSION;
 	} else {
 		duration -= RC_PULSE_EXTENSION;
@@ -90,9 +90,9 @@ void IRAM_ATTR Controller::setTransmit(TransmitState state, bool output, unsigne
 
 void IRAM_ATTR Controller::transmitInterruptHandler()
 {
-	auto& protocol = m_request->protocol();
+	auto& timing = m_request->device().timing();
 	if(m_transmitState == startHigh) {
-		setTransmit(startLow, false, protocol.timing.startl);
+		setTransmit(startLow, false, timing.startl);
 		return;
 	}
 
@@ -107,11 +107,11 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
 	}
 
 	if(m_transmitMask != 0) {
-		setTransmit(dataHigh, true, (m_transmitData & m_transmitMask) ? protocol.timing.bit1 : protocol.timing.bit0);
+		setTransmit(dataHigh, true, (m_transmitData & m_transmitMask) ? timing.bit1 : timing.bit0);
 		m_transmitMask >>= 1;
 		// Final low period is extended to create a gap before repeating
 		if(m_transmitMask == 0) {
-			m_lowDuration += protocol.timing.gap;
+			m_lowDuration += timing.gap;
 		}
 		return;
 	}
@@ -136,7 +136,7 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
 	}
 
 	// Send again
-	setTransmit(startHigh, true, protocol.timing.starth);
+	setTransmit(startHigh, true, timing.starth);
 }
 
 /*
@@ -157,11 +157,11 @@ void Controller::execute(IO::Request& request)
 
 	m_request = reinterpret_cast<Request*>(&request);
 	m_transmitData = m_request->code();
-	m_repeats = m_request->protocol().repeats;
+	m_repeats = m_request->repeats();
 	pinMode(RC_OUTPUT_PIN, OUTPUT);
 
 	m_hardwareTimer.setCallback(transmitInterruptHandler);
-	setTransmit(startHigh, true, m_request->protocol().timing.starth);
+	setTransmit(startHigh, true, m_request->device().timing().starth);
 }
 
 } // namespace RFSwitch

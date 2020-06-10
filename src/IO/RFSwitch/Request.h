@@ -50,9 +50,9 @@ public:
 		return m_code;
 	}
 
-	const Protocol& protocol() const
+	uint8_t repeats() const
 	{
-		return m_protocol;
+		return m_repeats;
 	}
 
 protected:
@@ -64,7 +64,7 @@ protected:
 
 private:
 	uint32_t m_code = 0;
-	Protocol m_protocol;
+	uint8_t m_repeats;
 };
 
 } // namespace RFSwitch
