@@ -1,12 +1,11 @@
 #include "Request.h"
 #include "Device.h"
+#include <IO/Strings.h>
 
 namespace IO
 {
 namespace RFSwitch
 {
-DEFINE_FSTR(ATTR_CODE, "code")
-
 void Request::send(uint32_t code, uint8_t repeats)
 {
 	m_code = code;
@@ -19,7 +18,7 @@ Error Request::parseJson(JsonObjectConst json)
 	if(!!err) {
 		return err;
 	}
-	const char* s = json[ATTR_CODE];
+	const char* s = json[FS_code];
 	if(s == nullptr) {
 		return Error::no_code;
 	}
@@ -36,7 +35,7 @@ void Request::getJson(JsonObject json) const
 
 	//  writeProtocol(m_protocol, json);
 
-	json[ATTR_CODE] = String(m_code, HEX);
+	json[FS_code] = String(m_code, HEX);
 }
 
 } // namespace RFSwitch
