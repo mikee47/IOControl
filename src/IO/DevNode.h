@@ -30,4 +30,6 @@ struct DevNode {
 // Special value to indicate all nodes
 static constexpr DevNode DevNode_ALL{0xFFFF};
 
+DevNode::State getState(DevNode::States states);
+
 } // namespace IO
