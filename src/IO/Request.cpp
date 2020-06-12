@@ -87,6 +87,9 @@ void Request::complete(Status status)
 {
 	debug_i("Request %p (%s) complete - %s", this, m_id.c_str(), toString(status).c_str());
 	m_status = status;
+	if(m_callback) {
+		m_callback(*this);
+	}
 	handleEvent(Event::RequestComplete);
 }
 

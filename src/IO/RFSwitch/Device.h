@@ -21,6 +21,8 @@ struct Timing {
 	uint16_t gap;	///< Gap after final bit before repeating
 };
 
+const DeviceClassInfo deviceClass();
+
 /*
  * A specific type of RF device protocol.
  * Actual RF I/O is performed by Controller.
@@ -28,15 +30,27 @@ struct Timing {
 class Device : public IO::Device
 {
 public:
-	Device(Controller& controller) : IO::Device(controller)
-	{
-	}
-
-	const DeviceClassInfo classInfo() const override;
+	struct Config {
+		IO::Device::Config base;
+		Timing timing;
+		uint8_t repeats;
+	};
 
 	const DeviceType type() const override
 	{
 		return DeviceType::RFSwitch;
+	}
+
+	Error init(const Config& config);
+	Error init(JsonObjectConst config) override;
+
+	Device(Controller& controller) : IO::Device(controller)
+	{
+	}
+
+	const DeviceClassInfo classInfo() const override
+	{
+		return deviceClass();
 	}
 
 	IO::Request* createRequest() override;
@@ -52,7 +66,7 @@ public:
 	}
 
 protected:
-	Error init(JsonObjectConst config) override;
+	void parseJson(JsonObjectConst json, Config& cfg);
 
 protected:
 	Timing m_timing;

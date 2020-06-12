@@ -32,8 +32,26 @@ String toString(Command cmd);
 bool fromString(Command& cmd, const char* str);
 
 class Device;
+class Request;
 
-/** @brief Request represents a single user request/response over a bus.
+///**
+// * @brief Implemented to support per-request callbacks, typically by client connection object
+// */
+//class IRequestCallbacks
+//{
+//public:
+//	/**
+//	 * @brief Request has completed
+//	 *
+//	 * Where a request is initiated from a client connection, for example,
+//	 * that connection object can now return status to the caller via this
+//	 * callback.
+//	 */
+//	virtual void requestComplete(const Request& request) = 0;
+//};
+
+/**
+ * @brief Request represents a single user request/response over a bus.
  *
  * Inherited classes provide additional methods to encapsulate
  * specific commands or functions.
@@ -53,6 +71,8 @@ class Device;
 class Request
 {
 public:
+	using Callback = Delegate<void(const Request& request)>;
+
 	Request(Device& device) : m_device(device)
 	{
 		debug_d("Request %p created", this);
@@ -116,9 +136,9 @@ public:
 		m_command = cmd;
 	}
 
-	void setParam(void* param)
+	void onComplete(Callback callback)
 	{
-		m_param = param;
+		m_callback = callback;
 	}
 
 	bool nodeQuery(DevNode node)
@@ -186,21 +206,13 @@ public:
 		return m_command;
 	}
 
-	/**
-	 * @brief User-assigned parameter
-	 */
-	void* param() const
-	{
-		return m_param;
-	}
-
 	virtual void handleEvent(Event event);
 
 private:
 	Device& m_device;
-	void* m_param;							///< User-assigned parameter
-	Command m_command = Command::undefined; ///< Active command
-	Status m_status = Status::pending;
+	Callback m_callback;
+	Command m_command{Command::undefined}; ///< Active command
+	Status m_status{Status::pending};
 	String m_id; ///< User assigned request ID
 };
 

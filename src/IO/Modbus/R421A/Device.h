@@ -55,7 +55,7 @@ namespace Modbus
 {
 namespace R421A
 {
-const IO::DeviceClassInfo deviceClass();
+const DeviceClassInfo deviceClass();
 
 class Device : public Modbus::Device
 {
@@ -67,7 +67,7 @@ public:
 
 	using Modbus::Device::Device;
 
-	const IO::DeviceClassInfo classInfo() const override
+	const DeviceClassInfo classInfo() const override
 	{
 		return deviceClass();
 	}

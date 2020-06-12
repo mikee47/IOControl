@@ -2,6 +2,7 @@
 
 #include <WString.h>
 #include "Controller.h"
+#include "Request.h"
 #include <ArduinoJson.h>
 
 namespace IO
@@ -20,7 +21,7 @@ class Request;
  * request.status() will be 'Status::pending' at execution, any other value
  * at completion.
  */
-using IoCallback = Delegate<void(Request& request)>;
+//using IoCallback = Delegate<void(Request& request)>;
 
 using ControllerMap = HashMap<String, Controller*>;
 
@@ -82,7 +83,7 @@ public:
 	 * @brief set the callback handler function for all I/O requests
 	 * @note Callback invoked twice; once when executed, then again when completed.
 	 */
-	void setCallback(IoCallback callback)
+	void setCallback(Request::Callback callback)
 	{
 		m_callback = callback;
 	}
@@ -98,11 +99,11 @@ public:
 		}
 	}
 
-	Error handleMessage(JsonObject json, void* param);
+	Error handleMessage(JsonObject json, Request::Callback callback);
 
 private:
 	ControllerMap m_controllers; ///< We don't own the controllers
-	IoCallback m_callback = nullptr;
+	Request::Callback m_callback;
 };
 
 extern DeviceManager devmgr;

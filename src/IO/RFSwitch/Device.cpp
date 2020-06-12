@@ -5,9 +5,6 @@ namespace IO
 {
 namespace RFSwitch
 {
-DEFINE_FSTR(CONTROLLER_CLASSNAME, "rfswitch")
-const FlashString& DEVICE_CLASSNAME = CONTROLLER_CLASSNAME;
-
 DEFINE_FSTR_LOCAL(ATTR_TIMING, "timing")
 DEFINE_FSTR_LOCAL(ATTR_STARTH, "starth")
 DEFINE_FSTR_LOCAL(ATTR_STARTL, "startl")
@@ -19,31 +16,10 @@ DEFINE_FSTR(ATTR_REPEATS, "repeats")
 
 const unsigned RF_DEFAULT_REPEATS = 20;
 
-Error Device::init(JsonObjectConst config)
-{
-	Error err = IO::Device::init(config);
-	if(!!err) {
-		return err;
-	}
-
-	JsonObjectConst timing = config[ATTR_TIMING];
-	m_timing.starth = timing[ATTR_STARTH];
-	m_timing.startl = timing[ATTR_STARTL];
-	m_timing.period = timing[ATTR_PERIOD];
-	m_timing.bit0 = timing[ATTR_BIT0];
-	m_timing.bit1 = timing[ATTR_BIT1];
-	m_timing.gap = timing[ATTR_GAP];
-	m_repeats = config[ATTR_REPEATS];
-
-	if(m_repeats == 0) {
-		m_repeats = RF_DEFAULT_REPEATS;
-	}
-
-	return Error::success;
-}
-
 namespace
 {
+DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "rfswitch")
+
 Error createDevice(IO::Controller& controller, IO::Device*& device)
 {
 	if(!controller.verifyClass(CONTROLLER_CLASSNAME)) {
@@ -56,9 +32,43 @@ Error createDevice(IO::Controller& controller, IO::Device*& device)
 
 } // namespace
 
-const DeviceClassInfo Device::classInfo() const
+const DeviceClassInfo deviceClass()
 {
 	return {DEVICE_CLASSNAME, createDevice};
+}
+
+Error Device::init(const Config& config)
+{
+	Error err = IO::Device::init(config.base);
+	if(!!err) {
+		return err;
+	}
+
+	m_timing = config.timing;
+	m_repeats = config.repeats ?: RF_DEFAULT_REPEATS;
+
+	return Error::success;
+}
+
+Error Device::init(JsonObjectConst config)
+{
+	Config cfg{};
+	parseJson(config, cfg);
+	return init(cfg);
+}
+
+void Device::parseJson(JsonObjectConst json, Config& cfg)
+{
+	IO::Device::parseJson(json, cfg.base);
+
+	JsonObjectConst timing = json[ATTR_TIMING];
+	cfg.timing.starth = timing[ATTR_STARTH];
+	cfg.timing.startl = timing[ATTR_STARTL];
+	cfg.timing.period = timing[ATTR_PERIOD];
+	cfg.timing.bit0 = timing[ATTR_BIT0];
+	cfg.timing.bit1 = timing[ATTR_BIT1];
+	cfg.timing.gap = timing[ATTR_GAP];
+	cfg.repeats = json[ATTR_REPEATS];
 }
 
 IO::Request* Device::createRequest()

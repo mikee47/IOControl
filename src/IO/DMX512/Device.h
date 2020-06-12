@@ -111,7 +111,7 @@ public:
 		delete m_nodeData;
 	}
 
-	const IO::DeviceClassInfo classInfo() const override
+	const DeviceClassInfo classInfo() const override
 	{
 		return deviceClass();
 	}

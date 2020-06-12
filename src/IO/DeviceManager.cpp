@@ -1,5 +1,4 @@
 #include "DeviceManager.h"
-#include "Request.h"
 #include "Strings.h"
 
 namespace IO
@@ -127,7 +126,7 @@ Error DeviceManager::createRequest(const String& devid, Request*& request)
  * DEVNODES[]
  *
  */
-Error DeviceManager::handleMessage(JsonObject json, void* param)
+Error DeviceManager::handleMessage(JsonObject json, Request::Callback callback)
 {
 	Request* req;
 	Error err = Error::success;
@@ -162,7 +161,7 @@ Error DeviceManager::handleMessage(JsonObject json, void* param)
 				}
 
 				req->setID(requestId);
-				req->setParam(param);
+				req->onComplete(callback);
 				if(cmd != Command::undefined) {
 					req->setCommand(cmd);
 				}
@@ -180,7 +179,7 @@ Error DeviceManager::handleMessage(JsonObject json, void* param)
 				}
 
 				req->setID(requestId);
-				req->setParam(param);
+				req->onComplete(callback);
 				req->setCommand(cmd);
 				req->setNode(DevNode_ALL);
 			}
@@ -219,7 +218,7 @@ Error DeviceManager::handleMessage(JsonObject json, void* param)
 			return setError(json, err, json[FS_device]);
 		}
 
-		req->setParam(param);
+		req->onComplete(callback);
 		err = req->parseJson(json);
 		if(!err) {
 			err = req->submit();
