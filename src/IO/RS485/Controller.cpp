@@ -8,7 +8,7 @@ namespace IO
 namespace RS485
 {
 // Device configuration
-DEFINE_FSTR(CONTROLLER_CLASSNAME, "RS485")
+DEFINE_FSTR(CONTROLLER_CLASSNAME, "rs485")
 
 constexpr unsigned TRANSACTION_TIMEOUT_MS = 800;
 
