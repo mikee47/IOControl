@@ -1,7 +1,7 @@
 #pragma once
 
 #include <IO/RS485/Controller.h>
-#include "ADU.h"
+#include <IO/Modbus/ADU.h>
 
 namespace IO
 {

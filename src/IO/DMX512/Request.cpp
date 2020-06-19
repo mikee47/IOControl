@@ -7,10 +7,7 @@
 
 #include <IO/DMX512/Request.h>
 #include <IO/Strings.h>
-//#include <Clock.h>
-//#include <Digital.h>
 #include <SimpleTimer.h>
-//#include "ledtable.h"
 
 namespace IO
 {

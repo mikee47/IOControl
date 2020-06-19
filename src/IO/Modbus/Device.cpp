@@ -13,8 +13,8 @@
  *
  */
 
-#include "Device.h"
-#include "Request.h"
+#include <IO/Modbus/Device.h>
+#include <IO/Modbus/Request.h>
 #include <IO/Strings.h>
 
 namespace IO

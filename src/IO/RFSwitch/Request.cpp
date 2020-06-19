@@ -1,5 +1,5 @@
-#include "Request.h"
-#include "Device.h"
+#include <IO/RFSwitch/Request.h>
+#include <IO/RFSwitch/Device.h>
 #include <IO/Strings.h>
 
 namespace IO

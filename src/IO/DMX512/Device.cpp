@@ -9,7 +9,6 @@
 #include <IO/DMX512/Request.h>
 #include <IO/RS485/Controller.h>
 #include <IO/Strings.h>
-//#include "ledtable.h"
 
 namespace IO
 {

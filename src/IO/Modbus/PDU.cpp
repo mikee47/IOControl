@@ -1,4 +1,4 @@
-#include "PDU.h"
+#include <IO/Modbus/PDU.h>
 #include <FlashString/Map.hpp>
 
 namespace IO

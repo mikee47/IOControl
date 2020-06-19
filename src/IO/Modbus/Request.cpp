@@ -13,7 +13,7 @@
  *
  */
 
-#include "Request.h"
+#include <IO/Modbus/Request.h>
 
 namespace IO
 {
