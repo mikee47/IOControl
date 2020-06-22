@@ -13,7 +13,7 @@
  *
  */
 
-#include "Slave.h"
+#include <IO/Modbus/Slave.h>
 #include <IO/RS485/Controller.h>
 
 namespace IO

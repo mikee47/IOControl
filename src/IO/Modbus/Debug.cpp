@@ -1,4 +1,4 @@
-#include "Debug.h"
+#include <IO/Modbus/Debug.h>
 #include <stringconversion.h>
 
 namespace IO
