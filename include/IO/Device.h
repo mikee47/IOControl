@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Status.h"
 #include "Error.h"
 #include "DevNode.h"
 #include "DeviceType.h"
@@ -13,7 +12,7 @@ class Request;
 class Device;
 class Controller;
 
-using DeviceConstructor = Error (&)(Controller& controller, Device*& device);
+using DeviceConstructor = ErrorCode (&)(Controller& controller, Device*& device);
 
 struct DeviceClassInfo {
 	const FlashString& name;
@@ -80,8 +79,8 @@ public:
 
 	virtual const DeviceType type() const = 0;
 
-	Error init(const Config& config);
-	virtual Error init(JsonObjectConst config) = 0;
+	ErrorCode init(const Config& config);
+	virtual ErrorCode init(JsonObjectConst config) = 0;
 
 	virtual Request* createRequest() = 0;
 
@@ -139,10 +138,10 @@ public:
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
-	virtual Error start();
-	virtual Error stop();
+	virtual ErrorCode start();
+	virtual ErrorCode stop();
 
-	Error submit(Request* request);
+	ErrorCode submit(Request* request);
 
 private:
 	String m_id;

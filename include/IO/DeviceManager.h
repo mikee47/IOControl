@@ -18,8 +18,7 @@ class Request;
  *
  * An Controller invokes this callback twice, when a request is about to
  * be executed and again when it has completed.
- * request.status() will be 'Status::pending' at execution, any other value
- * at completion.
+ * Call `request.isPending()` to determine which.
  */
 //using IoCallback = Delegate<void(Request& request)>;
 
@@ -47,19 +46,19 @@ public:
 	/**
 	 * @brief Load device config and create device tree.
 	 */
-	Error begin(JsonObjectConst config);
+	ErrorCode begin(JsonObjectConst config);
 
-	Error end();
+	ErrorCode end();
 
 	void start();
 
-	Error stop();
+	ErrorCode stop();
 
 	bool canStop();
 
 	Device* findDevice(const String& id);
 
-	Error createRequest(const String& devid, Request*& request);
+	ErrorCode createRequest(const String& devid, Request*& request);
 
 	/*
 	 * Generally, requests should fit into the general model so that IO::Request can be used.
@@ -67,14 +66,14 @@ public:
 	 * Request object.
 	 * NOTE: At present there is no type checking on this, so use care.
 	 */
-	template <class RequestClass> Error createRequest(const String& devid, RequestClass*& request)
+	template <class RequestClass> ErrorCode createRequest(const String& devid, RequestClass*& request)
 	{
 		Request* req;
 		auto err = createRequest(devid, req);
 		if(!err) {
 			request = reinterpret_cast<RequestClass*>(req);
 		} else {
-			debug_w("createRequest('%s'): %s", devid.c_str(), IO::toString(err).c_str());
+			debug_w("createRequest('%s'): %s", devid.c_str(), Error::toString(err).c_str());
 		}
 		return err;
 	}
@@ -99,7 +98,7 @@ public:
 		}
 	}
 
-	Error handleMessage(JsonObject json, Request::Callback callback);
+	ErrorCode handleMessage(JsonObject json, Request::Callback callback);
 
 private:
 	ControllerMap m_controllers; ///< We don't own the controllers

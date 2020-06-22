@@ -2,7 +2,7 @@
 
 namespace IO
 {
-Error Serial::open(uint8_t uart_nr)
+ErrorCode Serial::open(uint8_t uart_nr)
 {
 	if(uart != nullptr) {
 		return Error::access_denied;

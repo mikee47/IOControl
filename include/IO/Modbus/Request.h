@@ -20,16 +20,8 @@ public:
 		return reinterpret_cast<const Device&>(IO::Request::device());
 	}
 
-	void getJson(JsonObject json) const;
-
-	// Transaction result
-	Error error{};
-
 	virtual Function fillRequestData(PDU::Data& data) = 0;
 	virtual void callback(PDU& pdu) = 0;
-
-private:
-	Exception m_exception = Exception::Success;
 };
 
 } // namespace Modbus

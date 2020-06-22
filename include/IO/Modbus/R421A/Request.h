@@ -49,7 +49,7 @@ public:
 	{
 	}
 
-	Error parseJson(JsonObjectConst json) override;
+	ErrorCode parseJson(JsonObjectConst json) override;
 
 	void getJson(JsonObject json) const override;
 
@@ -94,6 +94,11 @@ public:
 	}
 
 	StateMask& response()
+	{
+		return m_response;
+	}
+
+	const StateMask& response() const
 	{
 		return m_response;
 	}

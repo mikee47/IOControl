@@ -21,10 +21,10 @@ namespace IO
 {
 namespace Modbus
 {
-Error Device::init(const Config& config)
+ErrorCode Device::init(const Config& config)
 {
 	auto err = IO::Device::init(config.base);
-	if(!!err) {
+	if(err) {
 		return err;
 	}
 
@@ -40,13 +40,14 @@ Error Device::init(const Config& config)
 
 	auto& ctrl = reinterpret_cast<IO::RS485::Controller&>(controller());
 	if(!ctrl.getSerial().resizeBuffers(ADU::MaxSize, ADU::MaxSize)) {
-		return Error::no_mem;
+		debug_e("Failed to resize serial buffers");
+		//		return Error::no_mem;
 	}
 
 	return Error::success;
 }
 
-Error Device::init(JsonObjectConst config)
+ErrorCode Device::init(JsonObjectConst config)
 {
 	Config cfg{};
 	parseJson(config, cfg);
@@ -65,15 +66,18 @@ void Device::handleEvent(IO::Request* request, Event event)
 	auto req = reinterpret_cast<Request*>(request);
 
 	switch(event) {
-	case Event::Execute:
+	case Event::Execute: {
 		IO::RS485::Device::handleEvent(request, event);
-		if(!execute(req)) {
-			request->complete(Status::error);
+		ErrorCode err = execute(req);
+		if(err != Error::pending) {
+			request->complete(err);
+			return;
 		}
-		return;
+		break;
+	}
 
 	case Event::ReceiveComplete:
-		request->complete(readResponse(req) ? Status::success : Status::error);
+		request->complete(readResponse(req));
 		break;
 
 	case Event::TransmitComplete:
@@ -97,7 +101,7 @@ void Device::handleEvent(IO::Request* request, Event event)
  * We write data into the hardware FIFO: no need for any software buffering.
  *
  */
-bool Device::execute(Request* request)
+ErrorCode Device::execute(Request* request)
 {
 	// Fill out the ADU packet
 	ADU adu;
@@ -106,7 +110,7 @@ bool Device::execute(Request* request)
 	adu.slaveAddress = request->device().address();
 	auto aduSize = adu.prepareRequest();
 	if(aduSize == 0) {
-		return false;
+		return Error::bad_size;
 	}
 
 	// Prepare UART for comms
@@ -120,10 +124,10 @@ bool Device::execute(Request* request)
 
 	// OK, issue the request
 	controller().send(adu.buffer, aduSize);
-	return true;
+	return Error::pending;
 }
 
-bool Device::readResponse(Request* request)
+ErrorCode Device::readResponse(Request* request)
 {
 	// Read packet
 	ADU adu;
@@ -131,10 +135,9 @@ bool Device::readResponse(Request* request)
 	auto receivedSize = serial.read(adu.buffer, ADU::MaxSize);
 
 	// Parse the received packet
-	Error err;
-	err = adu.parseResponse(receivedSize);
-	if(!!err) {
-		return false;
+	ErrorCode err = adu.parseResponse(receivedSize);
+	if(err) {
+		return err;
 	}
 
 	// In master mode, check for consistency with current request
@@ -144,18 +147,30 @@ bool Device::readResponse(Request* request)
 	} else if(adu.pdu.function() != requestFunction) {
 		// Mismatch with command function
 		err = Error::bad_command;
+	}
+
+	if(err) {
+		debug_e("MB: %s", Error::toString(err).c_str());
 	} else {
-		err = Error::success;
+		debug_d("MB: received '%s': %s", toString(adu.pdu.function()).c_str(), toString(adu.pdu.exception()).c_str());
+		switch(adu.pdu.exception()) {
+		case Exception::Success:
+			break;
+		case Exception::IllegalDataAddress:
+			err = Error::bad_node;
+			break;
+		case Exception::IllegalDataValue:
+			err = Error::bad_param;
+			break;
+		case Exception::IllegalFunction:
+			err = Error::bad_command;
+			break;
+		case Exception::SlaveDeviceFailure:
+			err = Error::bad_node;
+		}
+		request->callback(adu.pdu);
 	}
-
-	if(!!err) {
-		debug_e("MB: %s", toString(err).c_str());
-		return false;
-	}
-
-	debug_d("MB: received '%s': %s", toString(adu.pdu.function()).c_str(), toString(adu.pdu.exception()).c_str());
-	request->callback(adu.pdu);
-	return true;
+	return err;
 }
 
 } // namespace Modbus

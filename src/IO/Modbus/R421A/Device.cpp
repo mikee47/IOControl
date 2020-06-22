@@ -19,7 +19,7 @@ namespace
 {
 DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "r421a")
 
-Error createDevice(IO::Controller& controller, IO::Device*& device)
+ErrorCode createDevice(IO::Controller& controller, IO::Device*& device)
 {
 	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
 		return Error::bad_controller_class;
@@ -36,10 +36,10 @@ const DeviceClassInfo deviceClass()
 	return {DEVICE_CLASSNAME, createDevice};
 }
 
-Error Device::init(const Config& config)
+ErrorCode Device::init(const Config& config)
 {
-	Error err = Modbus::Device::init(config.modbus);
-	if(!!err) {
+	auto err = Modbus::Device::init(config.modbus);
+	if(err) {
 		return err;
 	}
 
@@ -56,7 +56,7 @@ void Device::parseJson(JsonObjectConst json, Config& cfg)
 	cfg.channels = json[FS_channels].as<unsigned>();
 }
 
-Error Device::init(JsonObjectConst json)
+ErrorCode Device::init(JsonObjectConst json)
 {
 	Config cfg{};
 	parseJson(json, cfg);
@@ -70,7 +70,7 @@ IO::Request* Device::createRequest()
 
 void Device::handleEvent(IO::Request* request, Event event)
 {
-	if(event == Event::RequestComplete && request->status() == Status::success) {
+	if(event == Event::RequestComplete && request->error() == Error::success) {
 		// Keep track of channel states
 		auto& rsp = reinterpret_cast<Request*>(request)->response();
 		m_states.channelMask += rsp.channelMask;

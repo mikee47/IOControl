@@ -25,7 +25,7 @@ bool fromString(Command& cmd, const char* str)
 	return true;
 }
 
-Error Request::parseJson(JsonObjectConst json)
+ErrorCode Request::parseJson(JsonObjectConst json)
 {
 	Json::getValue(json[FS_id], m_id);
 
@@ -67,10 +67,10 @@ void Request::getJson(JsonObject json) const
 	}
 	json[FS_command] = toString(m_command);
 	json[FS_device] = m_device.id();
-	setStatus(json, m_status);
+	setError(json, m_error, Error::toString(m_error));
 }
 
-Error Request::submit()
+ErrorCode Request::submit()
 {
 	return m_device.submit(this);
 }
@@ -83,10 +83,10 @@ void Request::handleEvent(Event event)
 /*
  * Request has completed. Device will destroy Notify originator then destroy this request.
  */
-void Request::complete(Status status)
+void Request::complete(ErrorCode err)
 {
-	debug_i("Request %p (%s) complete - %s", this, m_id.c_str(), toString(status).c_str());
-	m_status = status;
+	debug_i("Request %p (%s) complete - %s", this, m_id.c_str(), Error::toString(err).c_str());
+	m_error = err;
 	if(m_callback) {
 		m_callback(*this);
 	}

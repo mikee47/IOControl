@@ -11,10 +11,10 @@ void DeviceManager::registerController(Controller& controller)
 	debug_i("Controller '%s' registered", controller.id().c_str());
 }
 
-Error DeviceManager::begin(JsonObjectConst config)
+ErrorCode DeviceManager::begin(JsonObjectConst config)
 {
 	auto err = end();
-	if(!!err) {
+	if(err) {
 		return err;
 	}
 
@@ -57,7 +57,7 @@ bool DeviceManager::canStop()
 	return true;
 }
 
-Error DeviceManager::stop()
+ErrorCode DeviceManager::stop()
 {
 	if(!canStop()) {
 		return Error::busy;
@@ -72,10 +72,10 @@ Error DeviceManager::stop()
 	return Error::success;
 }
 
-Error DeviceManager::end()
+ErrorCode DeviceManager::end()
 {
 	auto err = stop();
-	if(!!err) {
+	if(err) {
 		return err;
 	}
 
@@ -102,7 +102,7 @@ Device* DeviceManager::findDevice(const String& id)
 	return nullptr;
 }
 
-Error DeviceManager::createRequest(const String& devid, Request*& request)
+ErrorCode DeviceManager::createRequest(const String& devid, Request*& request)
 {
 	if(!devid) {
 		return Error::no_device_id;
@@ -126,10 +126,10 @@ Error DeviceManager::createRequest(const String& devid, Request*& request)
  * DEVNODES[]
  *
  */
-Error DeviceManager::handleMessage(JsonObject json, Request::Callback callback)
+ErrorCode DeviceManager::handleMessage(JsonObject json, Request::Callback callback)
 {
 	Request* req;
-	Error err = Error::success;
+	ErrorCode err = Error::success;
 
 	// Command group ?
 	bool isDevnode = json.containsKey(FS_devnodes);
@@ -151,11 +151,10 @@ Error DeviceManager::handleMessage(JsonObject json, Request::Callback callback)
 		// Build requests then submit together
 		Controller::RequestQueue queue;
 
-		Error err = Error::success;
 		for(auto obj : arr) {
 			if(isDevnode) {
 				err = createRequest(obj[FS_device], req);
-				if(!!err) {
+				if(err) {
 					setError(obj, err);
 					break;
 				}
@@ -166,14 +165,14 @@ Error DeviceManager::handleMessage(JsonObject json, Request::Callback callback)
 					req->setCommand(cmd);
 				}
 				err = req->parseJson(obj);
-				if(!!err) {
+				if(err) {
 					delete req;
 					setError(obj, err);
 					break;
 				}
 			} else {
 				err = createRequest(obj, req);
-				if(!!err) {
+				if(err) {
 					setError(json, err);
 					break;
 				}
@@ -207,14 +206,14 @@ Error DeviceManager::handleMessage(JsonObject json, Request::Callback callback)
 			if(!err) {
 				err = req->submit();
 			}
-			if(!!err) {
+			if(err) {
 				delete req;
 			}
 		}
 	} else {
 		// Single request
 		err = createRequest(json[FS_device], req);
-		if(!!err) {
+		if(err) {
 			return setError(json, err, json[FS_device]);
 		}
 
@@ -224,7 +223,7 @@ Error DeviceManager::handleMessage(JsonObject json, Request::Callback callback)
 			err = req->submit();
 		}
 
-		if(!!err) {
+		if(err) {
 			delete req;
 			return setError(json, err);
 		}

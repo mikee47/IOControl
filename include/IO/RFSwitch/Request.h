@@ -31,7 +31,7 @@ public:
 		return reinterpret_cast<const Device&>(IO::Request::device());
 	}
 
-	Error parseJson(JsonObjectConst json) override;
+	ErrorCode parseJson(JsonObjectConst json) override;
 
 	void getJson(JsonObject json) const override;
 
@@ -59,7 +59,7 @@ protected:
 	void callback()
 	{
 		// No response to interpret here, so we're done
-		complete(Status::success);
+		complete(Error::success);
 	}
 
 private:

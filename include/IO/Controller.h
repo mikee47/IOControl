@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Status.h"
 #include "Device.h"
 #include <WHashMap.h>
 #include <WVector.h>
@@ -64,9 +63,9 @@ public:
 	bool verifyClass(const String& classname);
 
 	void freeDevices();
-	Error createDevice(JsonObjectConst config);
+	ErrorCode createDevice(JsonObjectConst config);
 
-	template <class DeviceClass> Error createDevice(DeviceClass* device, const typename DeviceClass::Config& config);
+	template <class DeviceClass> ErrorCode createDevice(DeviceClass* device, const typename DeviceClass::Config& config);
 
 	Device* findDevice(const String& id);
 
@@ -106,7 +105,7 @@ protected:
 	 * Returns false if request could not be queued. Caller may then either
 	 * delete the request or try again later.
 	 */
-	Error submit(Request* request);
+	ErrorCode submit(Request* request);
 
 	void startTimer();
 	void stopTimer();
@@ -127,21 +126,21 @@ private:
 };
 
 template <class DeviceClass>
-Error Controller::createDevice(DeviceClass* device, const typename DeviceClass::Config& config)
+ErrorCode Controller::createDevice(DeviceClass* device, const typename DeviceClass::Config& config)
 {
 	DeviceClassInfo cls = DeviceClass::deviceClass();
 	assert(cls.constructor);
 
 	Device* dev = nullptr;
 	dev = nullptr;
-	Error err = cls.constructor(*this, dev);
-	if(!!err) {
+	ErrorCode err = cls.constructor(*this, dev);
+	if(err) {
 		debug_err(err, String(cls.name));
 		return err;
 	}
 	assert(dev != nullptr);
 	err = reinterpret_cast<DeviceClass*>(dev)->init(config);
-	if(!!err) {
+	if(err) {
 		delete dev;
 		debug_err(err, String(cls.name));
 		return err;

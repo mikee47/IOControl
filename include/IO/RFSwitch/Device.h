@@ -41,8 +41,8 @@ public:
 		return DeviceType::RFSwitch;
 	}
 
-	Error init(const Config& config);
-	Error init(JsonObjectConst config) override;
+	ErrorCode init(const Config& config);
+	ErrorCode init(JsonObjectConst config) override;
 
 	Device(Controller& controller) : IO::Device(controller)
 	{

@@ -23,7 +23,7 @@ static constexpr uint8_t MODBUS_SLAVE_ID{10};
 HardwareSerial dbgser(UART_ID_1);
 
 // Called for execute or complete
-void devmgrCallback(IO::Request& request)
+void devmgrCallback(const IO::Request& request)
 {
 	//	if(request.device().isInstanceOf(R421A::Device)) {
 	//aaa
@@ -31,35 +31,39 @@ void devmgrCallback(IO::Request& request)
 
 	//	request.device().
 	if(request.device().id() == "mb1") {
-		auto& req = reinterpret_cast<IO::Modbus::R421A::Request&>(request);
+		auto& req = reinterpret_cast<const IO::Modbus::R421A::Request&>(request);
 		auto& response = req.response();
 		debug_i("%s: %08x / %08x", __FUNCTION__, response.channelMask, response.channelStates);
 	}
 
-	auto status = request.status();
-
-	auto& controller = request.device().controller();
-	if(&controller == &rs485_0) {
-		if(status == IO::Status::pending) {
+	switch(request.device().type()) {
+	case IO::DeviceType::Modbus:
+		if(request.isPending()) {
 			//			g_userio.setDot(dot_ModbusStatus, led_on);
 		} else {
 			// Request has completed
 			//			g_userio.setDot(dot_ModbusStatus, (status == Status::success) ? led_off : led_flash_slow);
 		}
+		break;
+
+	case IO::DeviceType::RFSwitch:
+		//#ifdef USERIO_ENABLE
+		//		g_userio.setDot(dot_RFStatus, request.isPending() ? led_on : led_off);
+		//		updatePanelStatus(request);
+		//#endif
+		//	}
+		break;
+
+	default:
+		break;
 	}
-	//	else if(&controller == &rfswitch0) {
-	//#ifdef USERIO_ENABLE
-	//		g_userio.setDot(dot_RFStatus, (request.status() == Status::pending) ? led_on : led_off);
-	//		updatePanelStatus(request);
-	//#endif
-	//	}
 }
 
 static void handleRS485Request(IO::RS485::Controller& controller)
 {
 	IO::Modbus::ADU adu;
 	auto err = IO::Modbus::readRequest(controller, adu);
-	if(!!err) {
+	if(err) {
 		return;
 	}
 
@@ -113,10 +117,10 @@ static void IRAM_ATTR setSerialDirection(IO::Direction direction)
 	digitalWrite(MBPIN_TX_EN, direction == IO::Direction::Outgoing);
 }
 
-IO::Error devmgrInit()
+IO::ErrorCode devmgrInit()
 {
 	auto err = serial0.open(UART0);
-	if(!!err) {
+	if(err) {
 		debug_e("Error opening serial port");
 		return err;
 	}
@@ -176,8 +180,8 @@ void systemReady()
 		cfg.id = "dmx1";
 		cfg.address = 1;
 		cfg.nodeCount = 10;
-		IO::Error err = dev->init(cfg);
-		if(!!err) {
+		auto err = dev->init(cfg);
+		if(err) {
 			// Failure
 			delete dev;
 		} else {

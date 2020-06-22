@@ -22,7 +22,7 @@ public:
 	/**
 	 * @brief Initialise the serial port with a default configuration
 	 */
-	Error open(uint8_t uart_nr);
+	ErrorCode open(uint8_t uart_nr);
 
 	/**
 	 * @brief Close the port

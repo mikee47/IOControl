@@ -131,7 +131,7 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
 
 		System.queueCallback([](uint32_t) {
 			m_transmitState = idle;
-			m_request->complete(Status::success);
+			m_request->complete(Error::success);
 		});
 
 		return;
@@ -153,7 +153,7 @@ bool Controller::execute(IO::Request& request)
 
 	if(request.command() != Command::set) {
 		debug_err(Error::bad_command, request.caption());
-		request.complete(Status::error);
+		request.complete(Error::bad_command);
 		return false;
 	}
 

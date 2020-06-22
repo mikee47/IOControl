@@ -91,14 +91,19 @@ public:
 		return m_device;
 	}
 
-	Status status() const
+	ErrorCode error() const
 	{
-		return m_status;
+		return m_error;
+	}
+
+	bool isPending() const
+	{
+		return m_error == Error::pending;
 	}
 
 	String caption();
 
-	virtual Error parseJson(JsonObjectConst json);
+	virtual ErrorCode parseJson(JsonObjectConst json);
 
 	/**
 	 * @brief Submit a request
@@ -109,16 +114,16 @@ public:
 	 * The request may be executed immediately or queued as appropriate. In either case
 	 * the result of the request is posted to the callback routine.
 	 *
-	 * @retval Error Indicates whether the request was accepted.
+	 * @retval ErrorCode Indicates whether the request was accepted.
 	 */
-	virtual Error submit();
+	virtual ErrorCode submit();
 
 	/*
 	 * Usually called by device or controller, but can also be used to
 	 * pass a request to its callback first, for example on a configuration
 	 * error.
 	 */
-	void complete(Status status);
+	void complete(ErrorCode err);
 
 	/*
 	 * Get response as JSON message, in textual format
@@ -212,7 +217,7 @@ private:
 	Device& m_device;
 	Callback m_callback;
 	Command m_command{Command::undefined}; ///< Active command
-	Status m_status{Status::pending};
+	ErrorCode m_error{Error::pending};
 	String m_id; ///< User assigned request ID
 };
 

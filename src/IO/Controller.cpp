@@ -38,7 +38,7 @@ bool Controller::verifyClass(const String& classname)
 	return false;
 }
 
-Error Controller::createDevice(JsonObjectConst config)
+ErrorCode Controller::createDevice(JsonObjectConst config)
 {
 	String cls = config[FS_class];
 	auto devclass = m_deviceClasses[cls];
@@ -50,14 +50,14 @@ Error Controller::createDevice(JsonObjectConst config)
 	assert(create);
 
 	Device* device = nullptr;
-	Error err = create(*this, device);
-	if(!!err) {
+	auto err = create(*this, device);
+	if(err) {
 		debug_err(err, cls);
 		return err;
 	}
 	assert(device != nullptr);
 	err = device->init(config);
-	if(!!err) {
+	if(err) {
 		delete device;
 		debug_err(err, cls);
 		return err;
@@ -130,13 +130,13 @@ void Controller::startDevices()
 	unsigned failCount = 0;
 	for(unsigned i = 0; i < m_devices.count(); ++i) {
 		Device* device = m_devices[i];
-		Error err = device->start();
+		auto err = device->start();
 
-		debug_i("%s->start(): %s", device->caption().c_str(), toString(err).c_str());
+		debug_i("%s->start(): %s", device->caption().c_str(), Error::toString(err).c_str());
 
 		PRINT_HEAP();
 
-		if(!!err) {
+		if(err) {
 			++failCount;
 		}
 	}
@@ -163,7 +163,7 @@ void Controller::deviceError(Device& device)
 	startTimer();
 }
 
-Error Controller::submit(Request* request)
+ErrorCode Controller::submit(Request* request)
 {
 	if(request->command() == Command::undefined) {
 		delete request;
@@ -218,7 +218,7 @@ void Controller::handleEvent(Request* request, Event event)
 		break;
 
 	case Event::Timeout:
-		request->complete(Status::error);
+		request->complete(Error::timeout);
 		break;
 	}
 }

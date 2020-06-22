@@ -20,17 +20,17 @@ namespace IO
 {
 namespace Modbus
 {
-Error readRequest(RS485::Controller& controller, ADU& adu)
+ErrorCode readRequest(RS485::Controller& controller, ADU& adu)
 {
 	// Read packet
 	auto& serial = controller.getSerial();
 	auto receivedSize = serial.read(adu.buffer, ADU::MaxSize);
 
 	// Parse the received packet
-	Error err = adu.parseRequest(receivedSize);
+	ErrorCode err = adu.parseRequest(receivedSize);
 
-	if(!!err) {
-		debug_e("MB: %s", toString(err).c_str());
+	if(err) {
+		debug_e("MB: %s", Error::toString(err).c_str());
 	} else {
 		debug_d("MB: received '%s': %s", toString(adu.pdu.function()).c_str(), toString(adu.pdu.exception()).c_str());
 	}

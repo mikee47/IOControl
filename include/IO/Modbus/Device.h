@@ -38,8 +38,8 @@ public:
 		return DeviceType::Modbus;
 	}
 
-	Error init(const Config& config);
-	Error init(JsonObjectConst config) override;
+	ErrorCode init(const Config& config);
+	ErrorCode init(JsonObjectConst config) override;
 
 	/**
 	 * @brief Handle a broadcast message
@@ -71,8 +71,8 @@ protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 private:
-	bool execute(Request* request);
-	bool readResponse(Request* request);
+	ErrorCode execute(Request* request);
+	ErrorCode readResponse(Request* request);
 
 	Config::Slave m_config;
 	Function requestFunction{};

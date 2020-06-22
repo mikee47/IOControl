@@ -5,7 +5,7 @@
 
 namespace IO
 {
-Error Device::init(const Config& config)
+ErrorCode Device::init(const Config& config)
 {
 	if(!config.id) {
 		return Error::no_device_id;
@@ -31,7 +31,7 @@ void Device::parseJson(JsonObjectConst json, Config& cfg)
  * first. That is only called if, for example, controller is being restarted
  * or configuration reloaded.
  */
-Error Device::start()
+ErrorCode Device::start()
 {
 	if(m_state == devstate_normal || m_state == devstate_starting) {
 		return Error::success;
@@ -60,12 +60,12 @@ Error Device::start()
 /*
  * Inherited classes might override this method to place device in a low-power state.
  */
-Error Device::stop()
+ErrorCode Device::stop()
 {
 	return Error::success;
 }
 
-Error Device::submit(Request* request)
+ErrorCode Device::submit(Request* request)
 {
 	return m_controller.submit(request);
 }
@@ -73,10 +73,10 @@ Error Device::submit(Request* request)
 void Device::handleEvent(Request* request, Event event)
 {
 	if(event == Event::RequestComplete) {
-		if(request->status() == Status::error) {
+		if(request->error()) {
 			m_state = devstate_fault;
 			m_controller.deviceError(*this);
-		} else if(request->status() == Status::success && m_state == devstate_starting) {
+		} else if(m_state == devstate_starting) {
 			m_state = devstate_normal;
 		}
 	}

@@ -32,16 +32,16 @@ union ADU {
 	/**
 	 * @name Parse a received packet
 	 * @param receivedSize How much data was received
-	 * @retval Error Result of parsing
+	 * @retval ErrorCode Result of parsing
 	 * @{
 	 */
-	Error parseRequest(size_t receivedSize);
-	Error parseResponse(size_t receivedSize);
+	ErrorCode parseRequest(size_t receivedSize);
+	ErrorCode parseResponse(size_t receivedSize);
 	/** @} */
 
 private:
 	size_t preparePacket(size_t pduSize);
-	Error parsePacket(size_t receivedSize, size_t pduSize);
+	ErrorCode parsePacket(size_t receivedSize, size_t pduSize);
 };
 
 static_assert(offsetof(ADU, pdu) == 1, "ADU alignment error");

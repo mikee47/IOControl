@@ -121,8 +121,8 @@ public:
 		return DeviceType::DMX512;
 	}
 
-	Error init(const Config& config);
-	Error init(JsonObjectConst config) override;
+	ErrorCode init(const Config& config);
+	ErrorCode init(JsonObjectConst config) override;
 
 	IO::Request* createRequest() override;
 
@@ -157,7 +157,7 @@ public:
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
-	Error start() override
+	ErrorCode start() override
 	{
 		return Error::success;
 	}
@@ -170,7 +170,7 @@ protected:
 
 	void updateSlaves();
 
-	Error execute(Request& request);
+	ErrorCode execute(Request& request);
 
 private:
 	uint16_t m_address = 0x01;		///< Start address for this device, may occupy more than one slot

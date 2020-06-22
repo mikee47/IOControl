@@ -20,7 +20,7 @@ namespace
 {
 DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "rfswitch")
 
-Error createDevice(IO::Controller& controller, IO::Device*& device)
+ErrorCode createDevice(IO::Controller& controller, IO::Device*& device)
 {
 	if(!controller.verifyClass(CONTROLLER_CLASSNAME)) {
 		return Error::bad_controller_class;
@@ -37,10 +37,10 @@ const DeviceClassInfo deviceClass()
 	return {DEVICE_CLASSNAME, createDevice};
 }
 
-Error Device::init(const Config& config)
+ErrorCode Device::init(const Config& config)
 {
-	Error err = IO::Device::init(config.base);
-	if(!!err) {
+	auto err = IO::Device::init(config.base);
+	if(err) {
 		return err;
 	}
 
@@ -50,7 +50,7 @@ Error Device::init(const Config& config)
 	return Error::success;
 }
 
-Error Device::init(JsonObjectConst config)
+ErrorCode Device::init(JsonObjectConst config)
 {
 	Config cfg{};
 	parseJson(config, cfg);

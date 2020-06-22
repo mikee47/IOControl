@@ -27,7 +27,7 @@ public:
 		return reinterpret_cast<Device&>(IO::Request::device());
 	}
 
-	Error parseJson(JsonObjectConst json) override;
+	ErrorCode parseJson(JsonObjectConst json) override;
 
 	void getJson(JsonObject json) const override;
 
@@ -55,7 +55,7 @@ public:
 		return m_value;
 	}
 
-	Error submit() override;
+	ErrorCode submit() override;
 
 private:
 	int m_value{};

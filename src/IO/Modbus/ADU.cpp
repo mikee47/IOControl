@@ -72,21 +72,21 @@ size_t ADU::preparePacket(size_t pduSize)
 	return size;
 }
 
-Error ADU::parseRequest(size_t receivedSize)
+ErrorCode ADU::parseRequest(size_t receivedSize)
 {
 	auto err = parsePacket(receivedSize, pdu.getRequestSize());
 	pdu.swapRequestByteOrder();
 	return err;
 }
 
-Error ADU::parseResponse(size_t receivedSize)
+ErrorCode ADU::parseResponse(size_t receivedSize)
 {
 	auto err = parsePacket(receivedSize, pdu.getResponseSize());
 	pdu.swapResponseByteOrder();
 	return err;
 }
 
-Error ADU::parsePacket(size_t receivedSize, size_t pduSize)
+ErrorCode ADU::parsePacket(size_t receivedSize, size_t pduSize)
 {
 	if(receivedSize < MinSize) {
 		if(receivedSize != 0) {

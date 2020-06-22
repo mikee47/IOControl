@@ -141,7 +141,7 @@ void Request::callback(PDU& pdu)
 		assert(false);
 	}
 
-	complete(Status::success);
+	complete(Error::success);
 }
 
 bool Request::setNode(DevNode node)
@@ -165,7 +165,7 @@ DevNode::States Request::getNodeStates(DevNode node)
 {
 	DevNode::States states;
 	if(node == DevNode_ALL) {
-		auto mask = (status() == Status::pending) ? m_data.channelMask : m_response.channelMask;
+		auto mask = isPending() ? m_data.channelMask : m_response.channelMask;
 		for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
 			if(mask[ch]) {
 				states += device().getNodeStates(DevNode{ch});
@@ -178,9 +178,9 @@ DevNode::States Request::getNodeStates(DevNode node)
 	return states;
 }
 
-Error Request::parseJson(JsonObjectConst json)
+ErrorCode Request::parseJson(JsonObjectConst json)
 {
-	Error err = Modbus::Request::parseJson(json);
+	auto err = Modbus::Request::parseJson(json);
 	if(!err) {
 		unsigned delay = json[FS_delay];
 		if(delay <= 255) {
@@ -197,7 +197,7 @@ void Request::getJson(JsonObject json) const
 {
 	Modbus::Request::getJson(json);
 
-	auto mask = (status() == Status::pending) ? m_data.channelMask : m_response.channelMask;
+	auto mask = isPending() ? m_data.channelMask : m_response.channelMask;
 
 	JsonArray nodes = json.createNestedArray(FS_nodes);
 	for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {

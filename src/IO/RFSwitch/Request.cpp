@@ -12,10 +12,10 @@ void Request::send(uint32_t code, uint8_t repeats)
 	m_repeats = repeats ?: device().repeats();
 }
 
-Error Request::parseJson(JsonObjectConst json)
+ErrorCode Request::parseJson(JsonObjectConst json)
 {
-	Error err = IO::Request::parseJson(json);
-	if(!!err) {
+	auto err = IO::Request::parseJson(json);
+	if(err) {
 		return err;
 	}
 	const char* s = json[FS_code];

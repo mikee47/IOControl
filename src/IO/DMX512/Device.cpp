@@ -32,7 +32,7 @@ constexpr uint8_t DMX_SERIAL_CONFIG{SERIAL_8N2};
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
 #define DMX_UPDATE_PERIODIC_MS 1000 // 5000	///< Periodic update interval
 
-Error createDevice(IO::Controller& controller, IO::Device*& device)
+ErrorCode createDevice(IO::Controller& controller, IO::Device*& device)
 {
 	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
 		return Error::bad_controller_class;
@@ -142,10 +142,10 @@ void Device::updateSlaves()
 	m_changed = false;
 }
 
-Error Device::init(const Config& config)
+ErrorCode Device::init(const Config& config)
 {
-	Error err = IO::Device::init(config.base);
-	if(!!err) {
+	ErrorCode err = IO::Device::init(config.base);
+	if(err) {
 		return err;
 	}
 	m_address = config.address;
@@ -185,7 +185,7 @@ void Device::parseJson(JsonObjectConst json, Config& cfg)
 	cfg.nodeCount = json[FS_count] | 1;
 }
 
-Error Device::init(JsonObjectConst config)
+ErrorCode Device::init(JsonObjectConst config)
 {
 	Config cfg{};
 	parseJson(config, cfg);
@@ -224,7 +224,7 @@ void Device::handleEvent(IO::Request* request, Event event)
 			m_timer.setIntervalMs<DMX_UPDATE_PERIODIC_MS>();
 			m_timer.startOnce();
 		}
-		request->complete(Status::success);
+		request->complete(Error::success);
 		return;
 
 	case Event::ReceiveComplete:
@@ -236,14 +236,14 @@ void Device::handleEvent(IO::Request* request, Event event)
 	IO::RS485::Device::handleEvent(request, event);
 }
 
-Error Device::execute(Request& request)
+ErrorCode Device::execute(Request& request)
 {
 	auto node = request.node();
 	if(!isValid(node)) {
 		return Error::bad_node;
 	}
 
-	Error err{};
+	ErrorCode err{};
 
 	// Apply request to device data
 	auto apply = [&](unsigned nodeId) {
