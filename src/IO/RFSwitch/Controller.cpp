@@ -63,7 +63,9 @@ HardwareTimer Controller::m_hardwareTimer;
 void Controller::handleEvent(IO::Request* request, Event event)
 {
 	if(event == Event::Execute) {
-		execute(*request);
+		if(!execute(*request)) {
+			return;
+		}
 	}
 
 	IO::Controller::handleEvent(request, event);
@@ -145,14 +147,14 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
  * Might want to update this in future to take a byte array. It's likely
  * though that a single code is sufficient.
  */
-void Controller::execute(IO::Request& request)
+bool Controller::execute(IO::Request& request)
 {
 	assert(m_transmitState == TransmitState::idle);
 
 	if(request.command() != Command::set) {
 		debug_err(Error::bad_command, request.caption());
 		request.complete(Status::error);
-		return;
+		return false;
 	}
 
 	m_request = reinterpret_cast<Request*>(&request);
@@ -162,6 +164,7 @@ void Controller::execute(IO::Request& request)
 
 	m_hardwareTimer.setCallback(transmitInterruptHandler);
 	setTransmit(startHigh, true, m_request->device().timing().starth);
+	return true;
 }
 
 } // namespace RFSwitch

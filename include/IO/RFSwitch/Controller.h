@@ -41,7 +41,7 @@ private:
 
 	static void setTransmit(TransmitState state, bool output, unsigned duration);
 	static void transmitInterruptHandler();
-	void execute(IO::Request& request);
+	bool execute(IO::Request& request);
 
 	static uint32_t m_transmitData; //< The data to transmit
 	static uint32_t m_transmitMask; //< Position of bit to transmit next
