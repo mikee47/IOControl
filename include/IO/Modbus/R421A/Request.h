@@ -104,7 +104,7 @@ public:
 	}
 
 	Function fillRequestData(PDU::Data& data) override;
-	void callback(PDU& pdu) override;
+	ErrorCode callback(PDU& pdu) override;
 
 private:
 	// Associated command data

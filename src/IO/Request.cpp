@@ -67,7 +67,7 @@ void Request::getJson(JsonObject json) const
 	}
 	json[FS_command] = toString(m_command);
 	json[FS_device] = m_device.id();
-	setError(json, m_error, Error::toString(m_error));
+	setError(json, m_error);
 }
 
 ErrorCode Request::submit()
@@ -86,6 +86,7 @@ void Request::handleEvent(Event event)
 void Request::complete(ErrorCode err)
 {
 	debug_i("Request %p (%s) complete - %s", this, m_id.c_str(), Error::toString(err).c_str());
+	assert(err != Error::pending);
 	m_error = err;
 	if(m_callback) {
 		m_callback(*this);

@@ -88,7 +88,7 @@ Function Request::fillRequestData(PDU::Data& data)
 	return Function::None;
 }
 
-void Request::callback(PDU& pdu)
+ErrorCode Request::callback(PDU& pdu)
 {
 	//	if(m_command == Command::query) {
 	switch(pdu.function()) {
@@ -131,7 +131,7 @@ void Request::callback(PDU& pdu)
 		// Re-submit request for next channel, if any, otherwise we're done
 		if(m_data.channelMask.any()) {
 			submit();
-			return;
+			return Error::pending;
 		}
 
 		break;
@@ -139,9 +139,10 @@ void Request::callback(PDU& pdu)
 
 	default:
 		assert(false);
+		return Error::bad_command;
 	}
 
-	complete(Error::success);
+	return Error::success;
 }
 
 bool Request::setNode(DevNode node)

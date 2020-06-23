@@ -70,7 +70,7 @@ IO::Request* Device::createRequest()
 
 void Device::handleEvent(IO::Request* request, Event event)
 {
-	if(event == Event::RequestComplete && request->error() == Error::success) {
+	if(event == Event::RequestComplete && !request->error()) {
 		// Keep track of channel states
 		auto& rsp = reinterpret_cast<Request*>(request)->response();
 		m_states.channelMask += rsp.channelMask;

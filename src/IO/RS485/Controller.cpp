@@ -14,7 +14,7 @@ constexpr unsigned TRANSACTION_TIMEOUT_MS = 800;
 
 void Controller::start()
 {
-	serial.setCallback(uartCallback, this);
+	serial.setCallback(uartCallbackStatic, this);
 	request = nullptr;
 	IO::Controller::start();
 }
@@ -28,38 +28,40 @@ void Controller::stop()
 	serial.setCallback(nullptr, nullptr);
 }
 
-void Controller::uartCallback(uart_t* uart, uint32_t status)
+void Controller::uartCallbackStatic(uart_t* uart, uint32_t status)
 {
 	auto controller = static_cast<Controller*>(uart_get_callback_param(uart));
 	// Guard against spurious interrupts
-	if(controller == nullptr) {
-		return;
+	if(controller != nullptr) {
+		controller->uartCallback(status);
 	}
+}
 
+void Controller::uartCallback(uint32_t status)
+{
 	// Tx FIFO empty
 	if(status & UART_TXFIFO_EMPTY_INT_ST) {
-		controller->setDirection(Direction::Incoming);
-		if(controller->request != nullptr) {
+		setDirection(Direction::Incoming);
+		if(request != nullptr) {
 			System.queueCallback(
 				[](void* param) {
 					auto req = static_cast<Request*>(param);
 					req->handleEvent(Event::TransmitComplete);
 				},
-				controller->request);
+				request);
 		}
 	}
 
 	// Rx FIFO full or timeout
 	if(status & (UART_RXFIFO_FULL_INT_ST | UART_RXFIFO_TOUT_INT_ST)) {
 		// Wait a bit before processing the response. This enforces a minimum inter-message delay
-		controller->timer
-			.initializeMs<50>(
-				[](void* param) {
-					auto ctrl = static_cast<Controller*>(param);
-					ctrl->receiveComplete();
-				},
-				controller)
-			.startOnce();
+		timer.initializeMs<50>(
+			[](void* param) {
+				auto ctrl = static_cast<Controller*>(param);
+				ctrl->receiveComplete();
+			},
+			this);
+		timer.startOnce();
 	}
 }
 

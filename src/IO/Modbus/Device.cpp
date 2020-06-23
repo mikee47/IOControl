@@ -76,9 +76,13 @@ void Device::handleEvent(IO::Request* request, Event event)
 		break;
 	}
 
-	case Event::ReceiveComplete:
-		request->complete(readResponse(req));
+	case Event::ReceiveComplete: {
+		auto err = readResponse(req);
+		if(err != Error::pending) {
+			request->complete(err);
+		}
 		break;
+	}
 
 	case Event::TransmitComplete:
 	case Event::Timeout:
@@ -136,28 +140,25 @@ ErrorCode Device::readResponse(Request* request)
 
 	// Parse the received packet
 	ErrorCode err = adu.parseResponse(receivedSize);
-	if(err) {
-		return err;
+
+	if(!err) {
+		// In master mode, check for consistency with current request
+		if(adu.slaveAddress != request->device().address()) {
+			// Mismatch with command slave ID
+			err = Error::bad_param;
+		} else if(adu.pdu.function() != requestFunction) {
+			// Mismatch with command function
+			err = Error::bad_command;
+		}
 	}
 
-	// In master mode, check for consistency with current request
-	if(adu.slaveAddress != request->device().address()) {
-		// Mismatch with command slave ID
-		err = Error::bad_param;
-	} else if(adu.pdu.function() != requestFunction) {
-		// Mismatch with command function
-		err = Error::bad_command;
-	}
-
 	if(err) {
-		debug_e("MB: %s", Error::toString(err).c_str());
+		debug_i("MB: Received %u bytes, err = %d (%s)", receivedSize, err, Error::toString(err).c_str());
 	} else {
 		debug_d("MB: received '%s': %s", toString(adu.pdu.function()).c_str(), toString(adu.pdu.exception()).c_str());
 		switch(adu.pdu.exception()) {
 		case Exception::Success:
-			break;
-		case Exception::IllegalDataAddress:
-			err = Error::bad_node;
+			err = request->callback(adu.pdu);
 			break;
 		case Exception::IllegalDataValue:
 			err = Error::bad_param;
@@ -165,11 +166,13 @@ ErrorCode Device::readResponse(Request* request)
 		case Exception::IllegalFunction:
 			err = Error::bad_command;
 			break;
+		case Exception::IllegalDataAddress:
 		case Exception::SlaveDeviceFailure:
+		default:
 			err = Error::bad_node;
 		}
-		request->callback(adu.pdu);
 	}
+
 	return err;
 }
 

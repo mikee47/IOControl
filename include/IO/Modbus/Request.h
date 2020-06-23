@@ -21,7 +21,14 @@ public:
 	}
 
 	virtual Function fillRequestData(PDU::Data& data) = 0;
-	virtual void callback(PDU& pdu) = 0;
+
+	/**
+	 * @brief Process a received PDU
+	 * @param pdu
+	 * @retval ErrorCode If request is re-submitted, return Error::pending,
+	 * otherwise request will be completed with given error.
+	 */
+	virtual ErrorCode callback(PDU& pdu) = 0;
 };
 
 } // namespace Modbus

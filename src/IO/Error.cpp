@@ -51,9 +51,7 @@ ErrorCode setError(JsonObject json, ErrorCode err, const String& text, const Str
 		json[FS_status] = FS_error;
 		JsonObject obj = json.createNestedObject(FS_error);
 		obj[FS_code] = err;
-		if(text) {
-			obj[FS_text] = text;
-		}
+		obj[FS_text] = text ?: Error::toString(err);
 		if(arg) {
 			obj[FS_arg] = arg;
 		}

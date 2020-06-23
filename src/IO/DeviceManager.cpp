@@ -214,7 +214,7 @@ ErrorCode DeviceManager::handleMessage(JsonObject json, Request::Callback callba
 		// Single request
 		err = createRequest(json[FS_device], req);
 		if(err) {
-			return setError(json, err, json[FS_device]);
+			return setError(json, err, nullptr, json[FS_device]);
 		}
 
 		req->onComplete(callback);
