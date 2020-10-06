@@ -7,8 +7,6 @@ namespace IO
 {
 namespace Modbus
 {
-constexpr unsigned DEFAULT_BAUDRATE = 9600;
-
 class Request;
 
 /*
@@ -21,25 +19,14 @@ class Request;
 class Device : public RS485::Device
 {
 public:
-	struct Config {
-		IO::Device::Config base;
-		struct Slave {
-			uint8_t address;
-			unsigned baudrate;
-			unsigned timeout; ///< Max time between command/response
-		};
-		Slave slave;
-	};
-
 	using RS485::Device::Device;
+
+	ErrorCode init(const RS485::Device::Config& config);
 
 	const DeviceType type() const override
 	{
 		return DeviceType::Modbus;
 	}
-
-	ErrorCode init(const Config& config);
-	ErrorCode init(JsonObjectConst config) override;
 
 	/**
 	 * @brief Handle a broadcast message
@@ -55,26 +42,12 @@ public:
 	{
 	}
 
-	uint16_t address() const override
-	{
-		return m_config.address;
-	}
-
-	unsigned baudrate() const
-	{
-		return m_config.baudrate ?: DEFAULT_BAUDRATE;
-	}
-
 	void handleEvent(IO::Request* request, Event event) override;
-
-protected:
-	void parseJson(JsonObjectConst json, Config& cfg);
 
 private:
 	ErrorCode execute(Request* request);
 	ErrorCode readResponse(Request* request);
 
-	Config::Slave m_config;
 	Function requestFunction{};
 };
 

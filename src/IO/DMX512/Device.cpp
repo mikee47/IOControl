@@ -144,11 +144,10 @@ void Device::updateSlaves()
 
 ErrorCode Device::init(const Config& config)
 {
-	ErrorCode err = IO::Device::init(config.base);
+	ErrorCode err = IO::RS485::Device::init(config.base);
 	if(err) {
 		return err;
 	}
-	m_address = config.address;
 	m_nodeCount = config.nodeCount ?: 1;
 	assert(m_nodeData == nullptr);
 	m_nodeData = new NodeData[m_nodeCount];
@@ -180,8 +179,10 @@ IO::Request* Device::createRequest()
 
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
-	IO::Device::parseJson(json, cfg.base);
-	cfg.address = json[FS_address] | 0x01;
+	IO::RS485::Device::parseJson(json, cfg.base);
+	if(cfg.base.slave.address == 0) {
+		cfg.base.slave.address = 0x01;
+	}
 	cfg.nodeCount = json[FS_count] | 1;
 }
 

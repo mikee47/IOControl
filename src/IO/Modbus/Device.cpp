@@ -1,15 +1,8 @@
 /*
- * IOModbus.cpp
+ * Device.cpp
  *
  *  Created on: 1 May 2018
  *      Author: mikee47
- *
- * Modbus uses UART0 via MAX485 chip with extra GPIO to control direction.
- * We use custom serial port code because it's actually simpler and much more efficient
- * than using the framework.
- *
- *  - Transactions will easily fit into hardware FIFO so no need for additional memory overhead;
- *  - ISR set to trigger on completion of transmit/receive packets rather than individual bytes;
  *
  */
 
@@ -21,44 +14,15 @@ namespace IO
 {
 namespace Modbus
 {
-ErrorCode Device::init(const Config& config)
+ErrorCode Device::init(const RS485::Device::Config& config)
 {
-	auto err = IO::Device::init(config.base);
-	if(err) {
-		return err;
-	}
-
-	if(config.slave.address == 0) {
-		return Error::no_address;
-	}
-
-	if(config.slave.baudrate == 0) {
-		return Error::no_baudrate;
-	}
-
-	m_config = config.slave;
-
 	auto& ctrl = reinterpret_cast<IO::RS485::Controller&>(controller());
 	if(!ctrl.getSerial().resizeBuffers(ADU::MaxSize, ADU::MaxSize)) {
 		debug_e("Failed to resize serial buffers");
 		//		return Error::no_mem;
 	}
 
-	return Error::success;
-}
-
-ErrorCode Device::init(JsonObjectConst config)
-{
-	Config cfg{};
-	parseJson(config, cfg);
-	return init(cfg);
-}
-
-void Device::parseJson(JsonObjectConst json, Config& cfg)
-{
-	IO::Device::parseJson(json, cfg.base);
-	cfg.slave.address = json[FS_address];
-	cfg.slave.baudrate = json[FS_baudrate];
+	return IO::RS485::Device::init(config);
 }
 
 void Device::handleEvent(IO::Request* request, Event event)

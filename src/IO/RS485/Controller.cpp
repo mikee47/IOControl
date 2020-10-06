@@ -83,6 +83,7 @@ void Controller::handleEvent(Request* request, Event event)
 
 	case Event::RequestComplete:
 		timer.stop();
+		setDirection(IO::Direction::Idle);
 		this->request = nullptr;
 		serial.setConfig(m_savedConfig);
 		break;
@@ -119,7 +120,7 @@ void Controller::send(const void* data, size_t size)
 {
 	setDirection(Direction::Outgoing);
 	serial.write(data, size);
-	// NUL pad so we don'final byte doesn't get cut off
+	// NUL pad so final byte doesn't get cut off
 	uint8_t nul{0};
 	serial.write(&nul, 1);
 

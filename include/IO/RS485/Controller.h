@@ -33,9 +33,10 @@ public:
 	/**
 	 * @brief Callback to handle hardware transmit/receive selection
 	 * Typically called from interrupt context so implementation MUST be marked IRAM_ATTR
+	 * @param segment Identifies physical connection for shared/multiplexed port
 	 * @param direction
 	 */
-	using SetDirectionCallback = void (*)(Direction direction);
+	using SetDirectionCallback = void (*)(uint8_t segment, Direction direction);
 
 	/**
 	 * @brief Set the transmit callback handler
@@ -59,7 +60,7 @@ public:
 	void IRAM_ATTR setDirection(IO::Direction direction)
 	{
 		if(setDirectionCallback != nullptr) {
-			setDirectionCallback(direction);
+			setDirectionCallback(segment, direction);
 		}
 	}
 
@@ -75,6 +76,11 @@ public:
 	void onRequest(OnRequestDelegate callback)
 	{
 		requestCallback = callback;
+	}
+
+	void setSegment(uint8_t segment)
+	{
+		this->segment = segment;
 	}
 
 	void send(const void* data, size_t size);
@@ -96,6 +102,7 @@ private:
 	Serial& serial;
 	SetDirectionCallback setDirectionCallback{nullptr};
 	Request* request{nullptr}; ///< Current outgoing request (if any)
+	uint8_t segment{0}; ///< Active bus segment
 	OnRequestDelegate requestCallback;
 	SimpleTimer timer; ///< Use to schedule callback and timeout
 	Serial::Config m_savedConfig{};

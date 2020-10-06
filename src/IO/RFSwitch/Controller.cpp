@@ -8,7 +8,7 @@ namespace RFSwitch
 DEFINE_FSTR(CONTROLLER_CLASSNAME, "rfswitch")
 
 // TODO: Pass as parameter to Controller init() or constructor
-#define RC_OUTPUT_PIN 0
+#define RC_OUTPUT_PIN 15
 
 uint32_t Controller::m_transmitData;
 uint32_t Controller::m_transmitMask;

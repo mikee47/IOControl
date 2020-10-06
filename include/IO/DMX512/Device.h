@@ -99,8 +99,7 @@ public:
 	static constexpr size_t MaxPacketSize{520};
 
 	struct Config {
-		IO::Device::Config base;
-		uint16_t address;
+		IO::RS485::Device::Config base;
 		uint8_t nodeCount;
 	};
 
@@ -125,11 +124,6 @@ public:
 	ErrorCode init(JsonObjectConst config) override;
 
 	IO::Request* createRequest() override;
-
-	uint16_t address() const override
-	{
-		return m_address;
-	}
 
 	DevNode::ID nodeIdMax() const override
 	{
@@ -173,12 +167,11 @@ protected:
 	ErrorCode execute(Request& request);
 
 private:
-	uint16_t m_address = 0x01;		///< Start address for this device, may occupy more than one slot
-	uint8_t m_nodeCount = 1;		///< Number of DMX slots managed by this device
-	NodeData* m_nodeData = nullptr; ///< Data for each slot, starting at `address`
-	static SimpleTimer m_timer;		///< For slave update cycle timing
-	static bool m_changed;			///< Data has changed
-	static bool m_updating;			///< Currently sending update
+	uint8_t m_nodeCount{1};		   ///< Number of DMX slots managed by this device
+	NodeData* m_nodeData{nullptr}; ///< Data for each slot, starting at `address`
+	static SimpleTimer m_timer;	///< For slave update cycle timing
+	static bool m_changed;		   ///< Data has changed
+	static bool m_updating;		   ///< Currently sending update
 };
 
 } // namespace DMX512

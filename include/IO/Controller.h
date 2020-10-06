@@ -21,6 +21,7 @@ using IODeviceList = Vector<Device*>;
 enum class Direction {
 	Incoming,
 	Outgoing,
+	Idle,
 };
 
 /*
@@ -65,7 +66,8 @@ public:
 	void freeDevices();
 	ErrorCode createDevice(JsonObjectConst config);
 
-	template <class DeviceClass> ErrorCode createDevice(DeviceClass* device, const typename DeviceClass::Config& config);
+	template <class DeviceClass>
+	ErrorCode createDevice(DeviceClass* device, const typename DeviceClass::Config& config);
 
 	Device* findDevice(const String& id);
 

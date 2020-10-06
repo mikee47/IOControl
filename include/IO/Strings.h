@@ -12,6 +12,7 @@ namespace IO
 	XX(devices)                                                                                                        \
 	XX(id)                                                                                                             \
 	XX(address)                                                                                                        \
+	XX(segment)                                                                                                        \
 	XX(baudrate)                                                                                                       \
 	XX(value)                                                                                                          \
 	XX(channels)                                                                                                       \
