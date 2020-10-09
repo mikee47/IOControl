@@ -28,9 +28,9 @@ void Controller::stop()
 	serial.setCallback(nullptr, nullptr);
 }
 
-void Controller::uartCallbackStatic(uart_t* uart, uint32_t status)
+void Controller::uartCallbackStatic(smg_uart_t* uart, uint32_t status)
 {
-	auto controller = static_cast<Controller*>(uart_get_callback_param(uart));
+	auto controller = static_cast<Controller*>(smg_uart_get_callback_param(uart));
 	// Guard against spurious interrupts
 	if(controller != nullptr) {
 		controller->uartCallback(status);

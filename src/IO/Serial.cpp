@@ -8,19 +8,19 @@ ErrorCode Serial::open(uint8_t uart_nr)
 		return Error::access_denied;
 	}
 
-	uart_config cfg{
+	smg_uart_config cfg{
 		.uart_nr = uart_nr,
 		.tx_pin = 1,
 		.mode = UART_FULL,
 		.baudrate = activeConfig.baudrate,
 		.config = activeConfig.config,
 	};
-	uart = uart_init_ex(cfg);
+	uart = smg_uart_init_ex(cfg);
 	if(uart == nullptr) {
 		return Error::bad_config;
 	}
 
-	uart_intr_config_t intr_cfg{
+	smg_uart_intr_config_t intr_cfg{
 		// Allow a suitable timeout for receive packets
 		.rx_timeout_thresh = 16,
 		// Don't callback unless FIFO is actually empty
@@ -28,7 +28,7 @@ ErrorCode Serial::open(uint8_t uart_nr)
 		// Use max value
 		.rxfifo_full_thresh = 0xff,
 	};
-	uart_intr_config(uart, &intr_cfg);
+	smg_uart_intr_config(uart, &intr_cfg);
 	// Don't report 'buffer full' early, but only when buffer is actually full
 	uart->rx_headroom = 0;
 
@@ -37,7 +37,7 @@ ErrorCode Serial::open(uint8_t uart_nr)
 
 void Serial::close()
 {
-	uart_uninit(uart);
+	smg_uart_uninit(uart);
 	uart = nullptr;
 }
 
@@ -48,11 +48,11 @@ bool Serial::resizeBuffers(size_t rxSize, size_t txSize)
 	}
 
 	// Expand buffers if required
-	if(rxSize > uart_rx_buffer_size(uart) && !uart_resize_rx_buffer(uart, rxSize)) {
+	if(rxSize > smg_uart_rx_buffer_size(uart) && !smg_uart_resize_rx_buffer(uart, rxSize)) {
 		debug_e("Serial: Failed to set RX buffer size to %u", rxSize);
 		return false;
 	}
-	if(txSize > uart_tx_buffer_size(uart) && !uart_resize_tx_buffer(uart, txSize)) {
+	if(txSize > smg_uart_tx_buffer_size(uart) && !smg_uart_resize_tx_buffer(uart, txSize)) {
 		debug_e("Serial: Failed to set TX buffer size to %u", txSize);
 		return false;
 	}
@@ -62,8 +62,8 @@ bool Serial::resizeBuffers(size_t rxSize, size_t txSize)
 
 void Serial::setConfig(const Config& cfg)
 {
-	uart_set_config(uart, cfg.config);
-	uart_set_baudrate(uart, cfg.baudrate);
+	smg_uart_set_config(uart, cfg.config);
+	smg_uart_set_baudrate(uart, cfg.baudrate);
 }
 
 } // namespace IO

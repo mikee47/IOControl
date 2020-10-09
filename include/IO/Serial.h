@@ -40,34 +40,34 @@ public:
 	 */
 	bool resizeBuffers(size_t rxSize, size_t txSize);
 
-	void setCallback(uart_callback_t callback, void* param)
+	void setCallback(smg_uart_callback_t callback, void* param)
 	{
-		uart_set_callback(uart, callback, param);
+		smg_uart_set_callback(uart, callback, param);
 	}
 
 	void setBreak(bool state)
 	{
-		uart_set_break(uart, true);
+		smg_uart_set_break(uart, true);
 	}
 
 	size_t read(void* buffer, size_t size)
 	{
-		return uart_read(uart, buffer, size);
+		return smg_uart_read(uart, buffer, size);
 	}
 
 	size_t write(const void* data, size_t len)
 	{
-		return uart_write(uart, data, len);
+		return smg_uart_write(uart, data, len);
 	}
 
 	void swap(uint8_t txPin = 1)
 	{
-		uart_swap(uart, txPin);
+		smg_uart_swap(uart, txPin);
 	}
 
-	void clear(uart_mode_t mode = UART_FULL)
+	void clear(smg_uart_mode_t mode = UART_FULL)
 	{
-		uart_flush(uart, mode);
+		smg_uart_flush(uart, mode);
 	}
 
 	const Config& getConfig() const
@@ -79,7 +79,7 @@ public:
 
 private:
 	Config activeConfig{9600, UART_8N1};
-	uart_t* uart{nullptr};
+	smg_uart_t* uart{nullptr};
 };
 
 } // namespace IO

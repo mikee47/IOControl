@@ -94,7 +94,7 @@ protected:
 	}
 
 private:
-	static void IRAM_ATTR uartCallbackStatic(uart_t* uart, uint32_t status);
+	static void IRAM_ATTR uartCallbackStatic(smg_uart_t* uart, uint32_t status);
 	void IRAM_ATTR uartCallback(uint32_t status);
 	void receiveComplete();
 
@@ -102,7 +102,7 @@ private:
 	Serial& serial;
 	SetDirectionCallback setDirectionCallback{nullptr};
 	Request* request{nullptr}; ///< Current outgoing request (if any)
-	uint8_t segment{0}; ///< Active bus segment
+	uint8_t segment{0};		   ///< Active bus segment
 	OnRequestDelegate requestCallback;
 	SimpleTimer timer; ///< Use to schedule callback and timeout
 	Serial::Config m_savedConfig{};
