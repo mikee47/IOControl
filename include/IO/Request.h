@@ -34,22 +34,6 @@ bool fromString(Command& cmd, const char* str);
 class Device;
 class Request;
 
-///**
-// * @brief Implemented to support per-request callbacks, typically by client connection object
-// */
-//class IRequestCallbacks
-//{
-//public:
-//	/**
-//	 * @brief Request has completed
-//	 *
-//	 * Where a request is initiated from a client connection, for example,
-//	 * that connection object can now return status to the caller via this
-//	 * callback.
-//	 */
-//	virtual void requestComplete(const Request& request) = 0;
-//};
-
 /**
  * @brief Request represents a single user request/response over a bus.
  *

@@ -200,7 +200,7 @@ void systemReady()
 				req->nodeToggle(IO::DevNode_ALL);
 				//										req->setID("Toggle output #1");
 				//										req->nodeToggle(IO::DevNode{1});
-				req->submit();
+				err = req->submit();
 			}
 		}
 
@@ -213,7 +213,7 @@ void systemReady()
 		assert(!err);
 		req->setID("Adjust output #7");
 		req->nodeAdjust(IO::DevNode{7}, 2);
-		req->submit();
+		err = req->submit();
 
 		testTimer.startOnce();
 	}));
