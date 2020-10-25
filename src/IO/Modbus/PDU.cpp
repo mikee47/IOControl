@@ -10,7 +10,7 @@ namespace
 // Perform unaligned byteswap on array of uint16_t
 void bswap(void* values, unsigned count)
 {
-	auto p{static_cast<uint8_t*>(values)};
+	auto p = static_cast<uint8_t*>(values);
 	while(count--) {
 		std::swap(p[0], p[1]);
 		p += 2;
@@ -47,7 +47,7 @@ String toString(Function function)
 	DEFINE_FSTR_MAP_LOCAL(map, Function, FSTR::String, MODBUS_FUNCTION_MAP(XX))
 #undef XX
 
-	auto v{map[function]};
+	auto v = map[function];
 	return v ? String(v) : F("Unknown_") + String(unsigned(function));
 }
 
@@ -146,7 +146,7 @@ void PDU::swapRequestByteOrder()
 		break;
 
 	case Function::WriteMultipleRegisters: {
-		auto& req{data.writeMultipleRegisters.request};
+		auto& req = data.writeMultipleRegisters.request;
 		bswap(&req.startAddress, 2);
 		bswap(req.values, req.byteCount / 2);
 		break;
@@ -158,7 +158,7 @@ void PDU::swapRequestByteOrder()
 	}
 
 	case Function::ReadWriteMultipleRegisters: {
-		auto& req{data.readWriteMultipleRegisters.request};
+		auto& req = data.readWriteMultipleRegisters.request;
 		bswap(&req.readAddress, 4);
 		bswap(&req.writeValues, req.writeByteCount / 2);
 		break;
@@ -183,7 +183,7 @@ void PDU::swapResponseByteOrder()
 	case Function::ReadHoldingRegisters: {
 	case Function::ReadInputRegisters:
 	case Function::ReadWriteMultipleRegisters:
-		auto& req{data.readHoldingRegisters.response};
+		auto& req = data.readHoldingRegisters.response;
 		bswap(req.values, req.byteCount / 2);
 		break;
 	}

@@ -12,6 +12,7 @@ ErrorCode Serial::open(uint8_t uart_nr)
 		.uart_nr = uart_nr,
 		.tx_pin = 1,
 		.mode = UART_FULL,
+		.options = 0,
 		.baudrate = activeConfig.baudrate,
 		.config = activeConfig.config,
 	};

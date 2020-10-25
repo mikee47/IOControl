@@ -100,14 +100,14 @@ size_t printRequest(Print& p, const PDU& pdu)
 		break;
 
 	case Function::ReadCoils: {
-		auto& req{pdu.data.readCoils.request};
+		auto& req = pdu.data.readCoils.request;
 		printField(startAddress);
 		printField(quantityOfCoils);
 		break;
 	}
 
 	case Function::ReadDiscreteInputs: {
-		auto& req{pdu.data.readDiscreteInputs.request};
+		auto& req = pdu.data.readDiscreteInputs.request;
 		printField(startAddress);
 		printField(quantityOfInputs);
 		break;
@@ -115,14 +115,14 @@ size_t printRequest(Print& p, const PDU& pdu)
 
 	case Function::ReadHoldingRegisters:
 	case Function::ReadInputRegisters: {
-		auto& req{pdu.data.readInputRegisters.request};
+		auto& req = pdu.data.readInputRegisters.request;
 		printField(startAddress);
 		printField(quantityOfRegisters);
 		break;
 	}
 
 	case Function::ReadWriteMultipleRegisters: {
-		auto& req{pdu.data.readWriteMultipleRegisters.request};
+		auto& req = pdu.data.readWriteMultipleRegisters.request;
 		printField(readAddress);
 		printField(quantityToRead);
 		printField(writeAddress);
@@ -133,21 +133,21 @@ size_t printRequest(Print& p, const PDU& pdu)
 	}
 
 	case Function::WriteSingleCoil: {
-		auto& req{pdu.data.writeSingleCoil.request};
+		auto& req = pdu.data.writeSingleCoil.request;
 		printField(outputAddress);
 		printField(outputValue);
 		break;
 	}
 
 	case Function::WriteSingleRegister: {
-		auto& req{pdu.data.writeSingleRegister.request};
+		auto& req = pdu.data.writeSingleRegister.request;
 		printField(address);
 		printField(value);
 		break;
 	}
 
 	case Function::WriteMultipleCoils: {
-		auto& req{pdu.data.writeMultipleCoils.request};
+		auto& req = pdu.data.writeMultipleCoils.request;
 		printField(startAddress);
 		printField(quantityOfOutputs);
 		printField(byteCount);
@@ -156,7 +156,7 @@ size_t printRequest(Print& p, const PDU& pdu)
 	}
 
 	case Function::WriteMultipleRegisters: {
-		auto& req{pdu.data.writeMultipleRegisters.request};
+		auto& req = pdu.data.writeMultipleRegisters.request;
 		printField(startAddress);
 		printField(quantityOfRegisters);
 		printField(byteCount);
@@ -165,7 +165,7 @@ size_t printRequest(Print& p, const PDU& pdu)
 	}
 
 	case Function::MaskWriteRegister: {
-		auto& req{pdu.data.maskWriteRegister.request};
+		auto& req = pdu.data.maskWriteRegister.request;
 		printField(address);
 		printField(andMask);
 		printField(orMask);
@@ -191,13 +191,13 @@ size_t printResponse(Print& p, const PDU& pdu)
 		break;
 
 	case Function::ReadExceptionStatus: {
-		auto& rsp{pdu.data.readExceptionStatus.response};
+		auto& rsp = pdu.data.readExceptionStatus.response;
 		printField(outputData);
 		break;
 	}
 
 	case Function::ReportServerId: {
-		auto& rsp{pdu.data.reportServerId.response};
+		auto& rsp = pdu.data.reportServerId.response;
 		printField(byteCount);
 		printField(serverId);
 		printField(runStatus);
@@ -206,14 +206,14 @@ size_t printResponse(Print& p, const PDU& pdu)
 	}
 
 	case Function::GetComEventCounter: {
-		auto& rsp{pdu.data.getComEventCounter.response};
+		auto& rsp = pdu.data.getComEventCounter.response;
 		printField(status);
 		printField(eventCount);
 		break;
 	}
 
 	case Function::GetComEventLog: {
-		auto& rsp{pdu.data.getComEventLog.response};
+		auto& rsp = pdu.data.getComEventLog.response;
 		printField(byteCount);
 		printField(status);
 		printField(eventCount);
@@ -223,14 +223,14 @@ size_t printResponse(Print& p, const PDU& pdu)
 	}
 
 	case Function::ReadCoils: {
-		auto& rsp{pdu.data.readCoils.response};
+		auto& rsp = pdu.data.readCoils.response;
 		printField(byteCount);
 		n += printValues(p, _F("coilStatus"), rsp.coilStatus, rsp.byteCount * 8, ValueFormat::bit);
 		break;
 	}
 
 	case Function::ReadDiscreteInputs: {
-		auto& rsp{pdu.data.readDiscreteInputs.response};
+		auto& rsp = pdu.data.readDiscreteInputs.response;
 		printField(byteCount);
 		n += printValues(p, _F("inputStatus"), rsp.inputStatus, rsp.byteCount * 8, ValueFormat::bit);
 		break;
@@ -238,43 +238,43 @@ size_t printResponse(Print& p, const PDU& pdu)
 
 	case Function::ReadHoldingRegisters:
 	case Function::ReadInputRegisters: {
-		auto& rsp{pdu.data.readHoldingRegisters.response};
+		auto& rsp = pdu.data.readHoldingRegisters.response;
 		printField(byteCount);
 		n += printValues(p, _F("values"), rsp.values, rsp.byteCount / 2, ValueFormat::word);
 		break;
 	}
 
 	case Function::ReadWriteMultipleRegisters: {
-		auto& rsp{pdu.data.readWriteMultipleRegisters.response};
+		auto& rsp = pdu.data.readWriteMultipleRegisters.response;
 		break;
 	}
 
 	case Function::WriteSingleCoil: {
-		auto& rsp{pdu.data.writeSingleCoil.response};
+		auto& rsp = pdu.data.writeSingleCoil.response;
 		printField(outputAddress);
 		printField(outputValue);
 		break;
 	}
 
 	case Function::WriteSingleRegister: {
-		auto& rsp{pdu.data.writeSingleRegister.response};
+		auto& rsp = pdu.data.writeSingleRegister.response;
 		printField(address);
 		printField(value);
 		break;
 	}
 
 	case Function::WriteMultipleCoils: {
-		auto& rsp{pdu.data.writeMultipleCoils.response};
+		auto& rsp = pdu.data.writeMultipleCoils.response;
 		break;
 	}
 
 	case Function::WriteMultipleRegisters: {
-		auto& rsp{pdu.data.writeMultipleRegisters.response};
+		auto& rsp = pdu.data.writeMultipleRegisters.response;
 		break;
 	}
 
 	case Function::MaskWriteRegister: {
-		auto& rsp{pdu.data.maskWriteRegister.response};
+		auto& rsp = pdu.data.maskWriteRegister.response;
 		printField(address);
 		printField(andMask);
 		printField(orMask);

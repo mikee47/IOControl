@@ -52,7 +52,7 @@ size_t ADU::preparePacket(size_t pduSize)
 		return 0;
 	}
 
-	auto size{1 + pduSize}; // slave ID
+	auto size = 1 + pduSize; // slave ID
 	if(size + 2 > MaxSize) {
 		debug_e("MB: ADU too big");
 		return 0;

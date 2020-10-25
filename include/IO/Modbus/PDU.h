@@ -46,6 +46,7 @@ struct PDU {
 			struct ATTR_PACKED Response {
 				uint8_t byteCount;		 ///< Use setCount()
 				uint8_t coilStatus[250]; ///< Use setCoil()
+				static constexpr uint16_t MaxCoils{sizeof(coilStatus) * 8};
 
 				void setCoil(uint16_t coil, bool value)
 				{
@@ -66,8 +67,6 @@ struct PDU {
 				}
 			};
 
-			static constexpr uint16_t MaxCoils{sizeof(Response::coilStatus) * 8};
-
 			Request request;
 			Response response;
 		};
@@ -83,6 +82,7 @@ struct PDU {
 			struct ATTR_PACKED Response {
 				uint8_t byteCount; ///< Calculated
 				uint8_t inputStatus[250];
+				static constexpr uint16_t MaxInputs{sizeof(inputStatus) * 8};
 
 				void setInput(uint16_t input, bool value)
 				{
@@ -103,8 +103,6 @@ struct PDU {
 				}
 			};
 
-			static constexpr uint16_t MaxInputs{sizeof(Response::inputStatus) * 8};
-
 			Request request;
 			Response response;
 		};
@@ -113,13 +111,13 @@ struct PDU {
 		// 16-bit access
 		// ReadHoldingRegisters = 0x03,
 		union ReadHoldingRegisters {
-			static constexpr uint16_t MaxRegisters{250 / 2};
 			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
 			};
 
 			struct ATTR_PACKED Response {
+				static constexpr uint16_t MaxRegisters{250 / 2};
 				uint8_t byteCount; ///< Calculated
 				uint16_t values[MaxRegisters];
 
@@ -141,14 +139,13 @@ struct PDU {
 
 		// ReadInputRegisters = 0x04,
 		union ReadInputRegisters {
-			static constexpr uint16_t MaxRegisters{250 / 2};
-
 			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
 			};
 
 			struct ATTR_PACKED Response {
+				static constexpr uint16_t MaxRegisters{250 / 2};
 				uint8_t byteCount; ///< Calculated
 				uint16_t values[MaxRegisters];
 
@@ -224,8 +221,8 @@ struct PDU {
 
 		// GetComEventLog = 0x0c,
 		union GetComEventLog {
-			static constexpr uint16_t MaxEvents{64};
 			struct ATTR_PACKED Response {
+				static constexpr uint16_t MaxEvents{64};
 				uint8_t byteCount; ///< Calculated
 				uint16_t status;
 				uint16_t eventCount;
@@ -250,6 +247,7 @@ struct PDU {
 				uint16_t quantityOfOutputs;
 				uint8_t byteCount; ///< Calculated
 				uint8_t values[246];
+				static constexpr uint16_t MaxCoils{sizeof(values) * 8};
 
 				void setCoil(uint16_t coil, bool state)
 				{
@@ -264,7 +262,7 @@ struct PDU {
 					byteCount = (quantityOfOutputs + 7) / 8;
 				}
 			};
-			static constexpr uint16_t MaxCoils{sizeof(Request::values) * 8};
+
 			struct ATTR_PACKED Response {
 				uint16_t startAddress;
 				uint16_t quantityOfOutputs;
@@ -277,9 +275,8 @@ struct PDU {
 
 		// WriteMultipleRegisters = 0x10,
 		union WriteMultipleRegisters {
-			static constexpr uint16_t MaxRegisters{123};
-
 			struct ATTR_PACKED Request {
+				static constexpr uint16_t MaxRegisters{123};
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
 				uint8_t byteCount; ///< Calculated
@@ -291,6 +288,7 @@ struct PDU {
 					byteCount = quantityOfRegisters * 2;
 				}
 			};
+
 			struct ATTR_PACKED Response {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
@@ -345,9 +343,8 @@ struct PDU {
 
 		// ReadWriteMultipleRegisters = 0x17,
 		union ReadWriteMultipleRegisters {
-			static constexpr uint16_t MaxReadRegisters{125};
-			static constexpr uint16_t MaxWriteRegisters{121};
 			struct ATTR_PACKED Request {
+				static constexpr uint16_t MaxWriteRegisters{121};
 				uint16_t readAddress;
 				uint16_t quantityToRead;
 				uint16_t writeAddress;
@@ -362,6 +359,7 @@ struct PDU {
 				}
 			};
 			struct ATTR_PACKED Response {
+				static constexpr uint16_t MaxReadRegisters{125};
 				uint8_t byteCount;
 				uint16_t values[MaxReadRegisters];
 

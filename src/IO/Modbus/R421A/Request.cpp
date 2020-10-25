@@ -149,7 +149,7 @@ bool Request::setNode(DevNode node)
 {
 	if(node == DevNode_ALL) {
 		for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
-			m_data.channelMask += ch;
+			m_data.channelMask += uint8_t(ch);
 		}
 		return true;
 	}
@@ -158,7 +158,7 @@ bool Request::setNode(DevNode node)
 		return false;
 	}
 
-	m_data.channelMask += node.id;
+	m_data.channelMask += uint8_t(node.id);
 	return true;
 }
 

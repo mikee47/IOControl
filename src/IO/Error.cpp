@@ -4,16 +4,13 @@
 
 namespace IO
 {
-namespace
-{
-#define XX(tag, value) DEFINE_FSTR(errstr_##tag, #tag);
+#define XX(tag, value) DEFINE_FSTR_LOCAL(errstr_##tag, #tag);
 IOERROR_STD_MAP(XX)
 #undef XX
 
 #define XX(tag, value) &errstr_##tag,
-DEFINE_FSTR_VECTOR(errorStrings, FSTR::String, IOERROR_STD_MAP(XX))
+DEFINE_FSTR_VECTOR_LOCAL(errorStrings, FSTR::String, IOERROR_STD_MAP(XX))
 #undef XX
-} // namespace
 
 String Error::toString(ErrorCode err)
 {

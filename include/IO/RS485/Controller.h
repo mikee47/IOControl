@@ -13,7 +13,7 @@ DECLARE_FSTR(CONTROLLER_CLASSNAME)
 class Controller : public IO::Controller
 {
 public:
-	Controller(Serial& serial, uint8_t instance) : IO::Controller(instance), serial{serial}
+	Controller(Serial& serial, uint8_t instance) : IO::Controller(instance), serial(serial)
 	{
 	}
 

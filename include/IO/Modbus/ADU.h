@@ -8,16 +8,18 @@ namespace IO
 namespace Modbus
 {
 // Buffer to construct RTU requests and process responses
-union ADU {
+struct ADU {
 	static constexpr uint8_t BROADCAST_ADDRESS{0x00};
 	static constexpr size_t MinSize{4};
 	static constexpr size_t MaxSize{256};
 
-	struct {
-		uint8_t slaveAddress;
-		PDU pdu;
+	union {
+		struct {
+			uint8_t slaveAddress;
+			PDU pdu;
+		};
+		uint8_t buffer[MaxSize];
 	};
-	uint8_t buffer[MaxSize];
 
 	/**
 	 * @name Prepare outgoing packet
