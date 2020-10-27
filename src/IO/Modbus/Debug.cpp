@@ -49,7 +49,6 @@ static size_t printValues(Print& p, const char* name, const void* values, size_t
 	n += p.print(name);
 	n += p.print(" =");
 	auto valptr = static_cast<const uint8_t*>(values);
-	bool sep = false;
 	for(size_t i = 0; i < count; ++i) {
 		if(i > 0) {
 			n += p.print(", ");
@@ -225,14 +224,14 @@ size_t printResponse(Print& p, const PDU& pdu)
 	case Function::ReadCoils: {
 		auto& rsp = pdu.data.readCoils.response;
 		printField(byteCount);
-		n += printValues(p, _F("coilStatus"), rsp.coilStatus, rsp.byteCount * 8, ValueFormat::bit);
+		n += printValues(p, _F("coilStatus"), rsp.coilStatus, rsp.getCount(), ValueFormat::bit);
 		break;
 	}
 
 	case Function::ReadDiscreteInputs: {
 		auto& rsp = pdu.data.readDiscreteInputs.response;
 		printField(byteCount);
-		n += printValues(p, _F("inputStatus"), rsp.inputStatus, rsp.byteCount * 8, ValueFormat::bit);
+		n += printValues(p, _F("inputStatus"), rsp.inputStatus, rsp.getCount(), ValueFormat::bit);
 		break;
 	}
 
@@ -240,12 +239,14 @@ size_t printResponse(Print& p, const PDU& pdu)
 	case Function::ReadInputRegisters: {
 		auto& rsp = pdu.data.readHoldingRegisters.response;
 		printField(byteCount);
-		n += printValues(p, _F("values"), rsp.values, rsp.byteCount / 2, ValueFormat::word);
+		n += printValues(p, _F("values"), rsp.values, rsp.getCount(), ValueFormat::word);
 		break;
 	}
 
 	case Function::ReadWriteMultipleRegisters: {
 		auto& rsp = pdu.data.readWriteMultipleRegisters.response;
+		printField(byteCount);
+		n += printValues(p, _F("values"), rsp.values, rsp.getCount(), ValueFormat::word);
 		break;
 	}
 
@@ -265,11 +266,15 @@ size_t printResponse(Print& p, const PDU& pdu)
 
 	case Function::WriteMultipleCoils: {
 		auto& rsp = pdu.data.writeMultipleCoils.response;
+		printField(startAddress);
+		printField(quantityOfOutputs);
 		break;
 	}
 
 	case Function::WriteMultipleRegisters: {
 		auto& rsp = pdu.data.writeMultipleRegisters.response;
+		printField(startAddress);
+		printField(quantityOfRegisters);
 		break;
 	}
 
