@@ -17,9 +17,10 @@ struct DevNode {
 		on,
 		someon,
 		unknown,
+		MAX,
 	};
 
-	using States = BitSet<uint8_t, State>;
+	using States = BitSet<uint8_t, State, size_t(State::MAX)>;
 
 	bool operator==(const DevNode& other) const
 	{
