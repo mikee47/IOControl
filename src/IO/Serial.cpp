@@ -8,7 +8,7 @@ ErrorCode Serial::open(uint8_t uart_nr)
 		return Error::access_denied;
 	}
 
-	smg_uart_config cfg{
+	smg_uart_config_t cfg{
 		.uart_nr = uart_nr,
 		.tx_pin = 1,
 		.mode = UART_FULL,

@@ -26,7 +26,7 @@ DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "dmx")
 constexpr unsigned DMX_BREAK{92};
 constexpr unsigned DMX_MAB{12}; // Mark After Break
 constexpr uint32_t DMX_BAUDRATE{250000};
-constexpr uint8_t DMX_SERIAL_CONFIG{SERIAL_8N2};
+constexpr uint8_t DMX_SERIAL_CONFIG{UART_8N2};
 
 //
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
