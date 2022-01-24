@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Data/BitSet.h>
+#include <vector>
 
 namespace IO
 {
@@ -8,6 +9,7 @@ namespace IO
  * @brief Identifies a device node
  */
 struct DevNode {
+	using List = std::vector<DevNode>;
 	using ID = uint16_t;
 	ID id;
 

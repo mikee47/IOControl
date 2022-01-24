@@ -41,15 +41,15 @@ ErrorCode DeviceManager::begin(JsonObjectConst config)
 void DeviceManager::start()
 {
 	// Start all controllers
-	for(unsigned i = 0; i < m_controllers.count(); ++i) {
-		m_controllers.valueAt(i)->start();
+	for(auto controller : m_controllers) {
+		(*controller)->start();
 	}
 }
 
-bool DeviceManager::canStop()
+bool DeviceManager::canStop() const
 {
-	for(unsigned i = 0; i < m_controllers.count(); ++i) {
-		if(!m_controllers.valueAt(i)->canStop()) {
+	for(auto controller : m_controllers) {
+		if(!(*controller)->canStop()) {
 			return false;
 		}
 	}
@@ -88,11 +88,10 @@ ErrorCode DeviceManager::end()
 	return Error::success;
 }
 
-Device* DeviceManager::findDevice(const String& id)
+Device* DeviceManager::findDevice(const String& id) const
 {
-	for(unsigned i = 0; i < m_controllers.count(); ++i) {
-		auto controller = m_controllers.valueAt(i);
-		auto device = controller->findDevice(id);
+	for(auto controller : m_controllers) {
+		auto device = (*controller)->findDevice(id);
 		if(device != nullptr) {
 			return device;
 		}

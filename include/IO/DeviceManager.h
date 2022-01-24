@@ -54,9 +54,9 @@ public:
 
 	ErrorCode stop();
 
-	bool canStop();
+	bool canStop() const;
 
-	Device* findDevice(const String& id);
+	Device* findDevice(const String& id) const;
 
 	ErrorCode createRequest(const String& devid, Request*& request);
 
