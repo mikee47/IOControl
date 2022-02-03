@@ -1,19 +1,18 @@
 {
-	"devices": [
-		{
-			"controller": "RS485#0",
+	"devices": {
+		"mb1": {
+			"controller": "rs485#0",
 			"class": "r421a",
-			"id": "mb1",
 			"address": 1,
 			"baudrate": 9600,
 			"channels": 8
 		},
-		{
-			"controller": "RS485#0",
+		"dmx1": {
+			"controller": "rs485#0",
 			"class": "dmx",
-			"id": "dmx1",
 			"address": 1,
+			"baudrate": 9600,
 			"count": 10
 		}
-	]
+	}
 }

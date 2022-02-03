@@ -7,18 +7,16 @@ namespace IO
 {
 ErrorCode Device::init(const Config& config)
 {
-	if(!config.id) {
+	if(!m_id) {
 		return Error::no_device_id;
 	}
 
-	m_id = config.id;
 	m_name = config.name;
 	return Error::success;
 }
 
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
-	cfg.id = json[FS_id].as<const char*>();
 	cfg.name = json[FS_name].as<const char*>();
 }
 

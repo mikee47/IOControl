@@ -19,9 +19,9 @@ ErrorCode DeviceManager::begin(JsonObjectConst config)
 	}
 
 	// Create devices
-	JsonArrayConst devices = config[FS_devices];
-	for(auto dev : devices) {
-		String ctrl = dev[FS_controller];
+	JsonObjectConst devices = config[FS_devices];
+	for(JsonPairConst dev : devices) {
+		String ctrl = dev.value()[FS_controller];
 		auto controller = findController(ctrl);
 		if(controller == nullptr) {
 			// Not a fatal error - keep going as other devices might be OK
@@ -30,7 +30,7 @@ ErrorCode DeviceManager::begin(JsonObjectConst config)
 			continue;
 		}
 
-		controller->createDevice(dev);
+		controller->createDevice(dev.key().c_str(), dev.value());
 	}
 
 	start();

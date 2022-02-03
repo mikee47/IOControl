@@ -64,10 +64,10 @@ public:
 	bool verifyClass(const String& classname);
 
 	void freeDevices();
-	ErrorCode createDevice(JsonObjectConst config);
+	ErrorCode createDevice(const char* id, JsonObjectConst config);
 
 	template <class DeviceClass>
-	ErrorCode createDevice(DeviceClass* device, const typename DeviceClass::Config& config);
+	ErrorCode createDevice(DeviceClass* device, const char* id, const typename DeviceClass::Config& config);
 
 	Device* findDevice(const String& id);
 
@@ -128,7 +128,7 @@ private:
 };
 
 template <class DeviceClass>
-ErrorCode Controller::createDevice(DeviceClass* device, const typename DeviceClass::Config& config)
+ErrorCode Controller::createDevice(DeviceClass* device, const char* id, const typename DeviceClass::Config& config)
 {
 	DeviceClassInfo cls = DeviceClass::deviceClass();
 	assert(cls.constructor);

@@ -24,7 +24,7 @@ bool Controller::verifyClass(const String& classname)
 	return false;
 }
 
-ErrorCode Controller::createDevice(JsonObjectConst config)
+ErrorCode Controller::createDevice(const char* id, JsonObjectConst config)
 {
 	String cls = config[FS_class];
 	auto devclass = m_deviceClasses[cls];
@@ -42,6 +42,7 @@ ErrorCode Controller::createDevice(JsonObjectConst config)
 		return err;
 	}
 	assert(device != nullptr);
+	device->m_id = id;
 	err = device->init(config);
 	if(err) {
 		delete device;

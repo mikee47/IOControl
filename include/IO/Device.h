@@ -59,7 +59,6 @@ class Device
 
 public:
 	struct Config {
-		String id;
 		String name;
 	};
 
