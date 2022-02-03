@@ -185,7 +185,7 @@ public:
 		return setNode(node);
 	}
 
-	const String& id() const
+	const CString& id() const
 	{
 		return m_id;
 	}
@@ -202,7 +202,7 @@ private:
 	Callback m_callback;
 	Command m_command{Command::undefined}; ///< Active command
 	ErrorCode m_error{Error::pending};
-	String m_id; ///< User assigned request ID
+	CString m_id; ///< User assigned request ID
 };
 
 } // namespace IO

@@ -27,7 +27,10 @@ bool fromString(Command& cmd, const char* str)
 
 ErrorCode Request::parseJson(JsonObjectConst json)
 {
-	Json::getValue(json[FS_id], m_id);
+	const char* id;
+	if(Json::getValue(json[FS_id], id)) {
+		m_id = id;
+	}
 
 	// Command is optional - may have already been set
 	const char* cmd;
@@ -63,10 +66,10 @@ ErrorCode Request::parseJson(JsonObjectConst json)
 void Request::getJson(JsonObject json) const
 {
 	if(m_id.length() != 0) {
-		json[FS_id] = m_id;
+		json[FS_id] = m_id.c_str();
 	}
 	json[FS_command] = toString(m_command);
-	json[FS_device] = m_device.id();
+	json[FS_device] = m_device.id().c_str();
 	setError(json, m_error);
 }
 
@@ -100,7 +103,7 @@ String Request::caption()
 	s += " (";
 	s += m_device.caption();
 	s += '/';
-	s += m_id;
+	s += m_id.c_str();
 	s += ')';
 	return s;
 }

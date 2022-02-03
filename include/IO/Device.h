@@ -83,12 +83,12 @@ public:
 
 	virtual Request* createRequest() = 0;
 
-	const String& id() const
+	const CString& id() const
 	{
 		return m_id;
 	}
 
-	const String& name() const
+	const CString& name() const
 	{
 		return m_name ?: m_id;
 	}
@@ -143,8 +143,8 @@ protected:
 	ErrorCode submit(Request* request);
 
 private:
-	String m_id;
-	String m_name;
+	CString m_id;
+	CString m_name;
 	Controller& m_controller;
 	device_state_t m_state = devstate_stopped;
 };

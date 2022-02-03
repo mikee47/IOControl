@@ -84,7 +84,11 @@ void Device::handleEvent(Request* request, Event event)
 
 String Device::caption()
 {
-	return m_controller.id() + '/' + m_id;
+	String s;
+	s += m_controller.id();
+	s += '/';
+	s += m_id.c_str();
+	return s;
 }
 
 } // namespace IO
