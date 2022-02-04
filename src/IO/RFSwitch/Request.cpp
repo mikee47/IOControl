@@ -24,7 +24,9 @@ ErrorCode Request::parseJson(JsonObjectConst json)
 	}
 	m_code = strtoul(s, nullptr, 16);
 
-	Json::getValue(json[ATTR_REPEATS], m_repeats);
+	if(!Json::getValue(json[ATTR_REPEATS], m_repeats)) {
+		m_repeats = device().repeats();
+	}
 
 	return Error::success;
 }

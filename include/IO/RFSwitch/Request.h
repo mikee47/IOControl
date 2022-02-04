@@ -63,8 +63,8 @@ protected:
 	}
 
 private:
-	uint32_t m_code = 0;
-	uint8_t m_repeats;
+	uint32_t m_code{0};
+	uint8_t m_repeats{0};
 };
 
 } // namespace RFSwitch
