@@ -47,7 +47,7 @@ private:
 	static uint32_t m_transmitMask; //< Position of bit to transmit next
 	static uint16_t m_lowDuration;  //< Calculated when high started to balance bit period
 	static uint8_t m_repeats;		//< How many remaining code repeats
-	static TransmitState m_transmitState;
+	static volatile TransmitState m_transmitState;
 	static Request* m_request; //< Active request
 	static HardwareTimer m_hardwareTimer;
 };

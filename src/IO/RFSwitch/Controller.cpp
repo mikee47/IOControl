@@ -14,7 +14,7 @@ uint32_t Controller::m_transmitData;
 uint32_t Controller::m_transmitMask;
 uint16_t Controller::m_lowDuration;
 uint8_t Controller::m_repeats;
-Controller::TransmitState Controller::m_transmitState;
+volatile Controller::TransmitState Controller::m_transmitState;
 Request* Controller::m_request;
 HardwareTimer Controller::m_hardwareTimer;
 
@@ -62,10 +62,22 @@ HardwareTimer Controller::m_hardwareTimer;
 
 void Controller::handleEvent(IO::Request* request, Event event)
 {
-	if(event == Event::Execute) {
+	switch(event) {
+	case Event::Execute:
 		if(!execute(*request)) {
 			return;
 		}
+		break;
+
+	case Event::RequestComplete:
+		m_request = nullptr;
+		m_transmitState = idle;
+		break;
+
+	case Event::Timeout:
+	case Event::TransmitComplete:
+	case Event::ReceiveComplete:
+		break;
 	}
 
 	IO::Controller::handleEvent(request, event);
@@ -92,6 +104,10 @@ void IRAM_ATTR Controller::setTransmit(TransmitState state, bool output, unsigne
 
 void IRAM_ATTR Controller::transmitInterruptHandler()
 {
+	if(m_request == nullptr) {
+		return;
+	}
+
 	auto& timing = m_request->device().timing();
 	if(m_transmitState == startHigh) {
 		setTransmit(startLow, false, timing.startl);
@@ -120,25 +136,20 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
 
 	// Packet sent, again ?
 	--m_repeats;
-	if(m_repeats == 0) {
-		// All done
-		setOutput(false);
-
-		// 1/7/18 This seems to help, perhaps by allowing output to settle a little bit higher than when driven
-		pinMode(RC_OUTPUT_PIN, INPUT);
-
-		m_hardwareTimer.stop();
-
-		System.queueCallback([](uint32_t) {
-			m_transmitState = idle;
-			m_request->complete(Error::success);
-		});
-
-		return;
+	if(m_repeats != 0) {
+		// Send again
+		return setTransmit(startHigh, true, timing.starth);
 	}
 
-	// Send again
-	setTransmit(startHigh, true, timing.starth);
+	// All done
+	setOutput(false);
+
+	// 1/7/18 This seems to help, perhaps by allowing output to settle a little bit higher than when driven
+	pinMode(RC_OUTPUT_PIN, INPUT);
+
+	m_hardwareTimer.stop();
+
+	System.queueCallback([](void*) { m_request->complete(Error::success); });
 }
 
 /*
@@ -150,6 +161,7 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
 bool Controller::execute(IO::Request& request)
 {
 	assert(m_transmitState == TransmitState::idle);
+	assert(m_request == nullptr);
 
 	if(request.command() != Command::set) {
 		debug_err(Error::bad_command, request.caption());
