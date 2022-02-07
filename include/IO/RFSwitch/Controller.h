@@ -14,8 +14,10 @@ class Request;
 class Controller : public IO::Controller
 {
 public:
-	Controller(uint8_t instance) : IO::Controller(instance)
+	Controller(uint8_t instance, uint8_t outputPin, bool outputInvert) : IO::Controller(instance)
 	{
+		this->outputPin = outputPin;
+		this->outputInvert = outputInvert;
 	}
 
 	String classname() override
@@ -39,6 +41,11 @@ private:
 		dataLow,   ///< Sending data bit
 	};
 
+	static void __forceinline setOutput(bool state)
+	{
+		digitalWrite(outputPin, state ^ outputInvert);
+	}
+
 	static void setTransmit(TransmitState state, bool output, unsigned duration);
 	static void transmitInterruptHandler();
 	bool execute(IO::Request& request);
@@ -47,9 +54,11 @@ private:
 	static uint32_t m_transmitMask; //< Position of bit to transmit next
 	static uint16_t m_lowDuration;  //< Calculated when high started to balance bit period
 	static uint8_t m_repeats;		//< How many remaining code repeats
-	static volatile TransmitState m_transmitState;
-	static Request* m_request; //< Active request
+	static Request* m_request;		//< Active request
 	static HardwareTimer m_hardwareTimer;
+	static uint8_t outputPin;
+	static bool outputInvert;
+	static volatile TransmitState m_transmitState;
 };
 
 } // namespace RFSwitch

@@ -7,9 +7,8 @@ namespace RFSwitch
 {
 DEFINE_FSTR(CONTROLLER_CLASSNAME, "rfswitch")
 
-// TODO: Pass as parameter to Controller init() or constructor
-#define RC_OUTPUT_PIN 15
-
+uint8_t Controller::outputPin;
+bool Controller::outputInvert;
 uint32_t Controller::m_transmitData;
 uint32_t Controller::m_transmitMask;
 uint16_t Controller::m_lowDuration;
@@ -83,9 +82,6 @@ void Controller::handleEvent(IO::Request* request, Event event)
 	IO::Controller::handleEvent(request, event);
 }
 
-// Transistor buffer inverts output sense, so low to turn on
-#define setOutput(state) digitalWrite(RC_OUTPUT_PIN, !state)
-
 void IRAM_ATTR Controller::setTransmit(TransmitState state, bool output, unsigned duration)
 {
 	setOutput(output);
@@ -145,7 +141,7 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
 	setOutput(false);
 
 	// 1/7/18 This seems to help, perhaps by allowing output to settle a little bit higher than when driven
-	pinMode(RC_OUTPUT_PIN, INPUT);
+	pinMode(outputPin, INPUT);
 
 	m_hardwareTimer.stop();
 
@@ -172,7 +168,7 @@ bool Controller::execute(IO::Request& request)
 	m_request = reinterpret_cast<Request*>(&request);
 	m_transmitData = m_request->code();
 	m_repeats = m_request->repeats();
-	pinMode(RC_OUTPUT_PIN, OUTPUT);
+	pinMode(outputPin, OUTPUT);
 
 	m_hardwareTimer.setCallback(transmitInterruptHandler);
 	setTransmit(startHigh, true, m_request->device().timing().starth);
