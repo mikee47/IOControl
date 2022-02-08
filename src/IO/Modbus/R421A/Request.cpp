@@ -94,7 +94,7 @@ ErrorCode Request::callback(PDU& pdu)
 	switch(pdu.function()) {
 	case Function::ReadHoldingRegisters: {
 		auto& rsp = pdu.data.readHoldingRegisters.response;
-		auto valueCount = rsp.byteCount /= 2;
+		auto valueCount = rsp.getCount();
 
 		//    assert (mbt.function == MB_ReadHoldingRegisters);
 		// data[0] is response size, in bytes: should correspond with mbt.dataSize + 1
@@ -105,7 +105,7 @@ ErrorCode Request::callback(PDU& pdu)
 			}
 
 			auto ch = device().nodeIdMin() + i;
-			m_response.channelMask += ch;
+			m_response.channelMask[ch] = true;
 			m_response.channelStates[ch] = (val == relay_closed);
 		}
 
@@ -120,12 +120,12 @@ ErrorCode Request::callback(PDU& pdu)
 		m_data.channelMask[ch] = false;
 		//  debug_i("Channel = %u, mask = %08x", channel, m_data.channelMask);
 		// Report back which bits were affected
-		m_response.channelMask += ch;
+		m_response.channelMask[ch] = true;
 		if(command() == Command::toggle) {
 			// Use current states held by IODevice to determine effect of toggle command
 			m_response.channelStates[ch] = !device().states().channelStates[ch];
 		} else if(command() == Command::on) {
-			m_response.channelStates += ch;
+			m_response.channelStates[ch] = true;
 		}
 
 		// Re-submit request for next channel, if any, otherwise we're done
@@ -149,7 +149,7 @@ bool Request::setNode(DevNode node)
 {
 	if(node == DevNode_ALL) {
 		for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
-			m_data.channelMask += uint8_t(ch);
+			m_data.channelMask[ch] = true;
 		}
 		return true;
 	}
@@ -158,7 +158,7 @@ bool Request::setNode(DevNode node)
 		return false;
 	}
 
-	m_data.channelMask += uint8_t(node.id);
+	m_data.channelMask[node.id] = true;
 	return true;
 }
 
