@@ -84,7 +84,7 @@ ErrorCode Device::execute(Request* request)
 	// Prepare UART for comms
 	IO::Serial::Config cfg{
 		.baudrate = baudrate(),
-		.config = UART_8N1,
+		.format = UART_8N1,
 	};
 	auto& serial = controller().getSerial();
 	serial.setConfig(cfg);

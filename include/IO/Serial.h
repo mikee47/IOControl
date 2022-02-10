@@ -2,7 +2,6 @@
 
 #include "Error.h"
 #include <driver/uart.h>
-#include <espinc/uart_register.h>
 
 namespace IO
 {
@@ -11,7 +10,7 @@ class Serial
 public:
 	struct Config {
 		uint32_t baudrate;
-		uint8_t config; // uart config values such as start/stop bits, parity, etc.
+		smg_uart_format_t format;
 	};
 
 	virtual ~Serial()

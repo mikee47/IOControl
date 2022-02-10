@@ -40,7 +40,7 @@ void Controller::uartCallbackStatic(smg_uart_t* uart, uint32_t status)
 void Controller::uartCallback(uint32_t status)
 {
 	// Tx FIFO empty
-	if(status & UART_TXFIFO_EMPTY_INT_ST) {
+	if(status & UART_STATUS_TXFIFO_EMPTY) {
 		setDirection(Direction::Incoming);
 		if(request != nullptr) {
 			System.queueCallback(
@@ -53,7 +53,7 @@ void Controller::uartCallback(uint32_t status)
 	}
 
 	// Rx FIFO full or timeout
-	if(status & (UART_RXFIFO_FULL_INT_ST | UART_RXFIFO_TOUT_INT_ST)) {
+	if(status & (UART_STATUS_RXFIFO_FULL | UART_STATUS_RXFIFO_TOUT)) {
 		// Wait a bit before processing the response. This enforces a minimum inter-message delay
 		timer.initializeMs<50>(
 			[](void* param) {

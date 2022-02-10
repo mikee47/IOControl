@@ -26,7 +26,7 @@ DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "dmx")
 constexpr unsigned DMX_BREAK{92};
 constexpr unsigned DMX_MAB{12}; // Mark After Break
 constexpr uint32_t DMX_BAUDRATE{250000};
-constexpr uint8_t DMX_SERIAL_CONFIG{UART_8N2};
+constexpr auto DMX_SERIAL_FORMAT{UART_8N2};
 
 //
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
@@ -96,7 +96,7 @@ void Device::updateSlaves()
 
 	Serial::Config cfg{
 		.baudrate = DMX_BAUDRATE,
-		.config = DMX_SERIAL_CONFIG,
+		.format = DMX_SERIAL_FORMAT,
 	};
 	serial.setConfig(cfg);
 
@@ -127,7 +127,7 @@ void Device::updateSlaves()
 		}
 	}
 
-	debug_hex(INFO, ">", data, dataSize, 0, 32);
+	debug_hex(DBG, ">", data, dataSize, 0, 32);
 
 	controller().setDirection(Direction::Outgoing);
 	serial.setBreak(true);

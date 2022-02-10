@@ -14,7 +14,7 @@ ErrorCode Serial::open(uint8_t uart_nr)
 		.mode = UART_FULL,
 		.options = 0,
 		.baudrate = activeConfig.baudrate,
-		.config = activeConfig.config,
+		.format = activeConfig.format,
 	};
 	uart = smg_uart_init_ex(cfg);
 	if(uart == nullptr) {
@@ -63,7 +63,7 @@ bool Serial::resizeBuffers(size_t rxSize, size_t txSize)
 
 void Serial::setConfig(const Config& cfg)
 {
-	smg_uart_set_config(uart, cfg.config);
+	smg_uart_set_format(uart, cfg.format);
 	smg_uart_set_baudrate(uart, cfg.baudrate);
 }
 
