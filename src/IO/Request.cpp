@@ -19,21 +19,25 @@
 
 #include <IO/Request.h>
 #include <IO/Strings.h>
+#include <FlashString/Vector.hpp>
 
 namespace IO
 {
-#define XX(tag, comment) #tag "\0"
-DEFINE_FSTR_LOCAL(IOCOMMAND_STRINGS, IOCOMMAND_MAP(XX))
+#define XX(tag, comment) DEFINE_FSTR(cmdstr_##tag, #tag)
+IOCOMMAND_MAP(XX)
+#undef XX
+
+#define XX(tag, comment) &cmdstr_##tag,
+DEFINE_FSTR_VECTOR(commandStrings, FSTR::String, IOCOMMAND_MAP(XX))
 #undef XX
 
 String toString(Command cmd)
 {
-	return CStringArray(IOCOMMAND_STRINGS)[unsigned(cmd)];
+	return commandStrings[unsigned(cmd)];
 }
 
 bool fromString(Command& cmd, const char* str)
 {
-	CStringArray commandStrings(IOCOMMAND_STRINGS);
 	auto i = commandStrings.indexOf(str);
 	if(i < 0) {
 		debug_w("Unknown IO command '%s'", str);
