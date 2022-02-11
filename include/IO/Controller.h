@@ -154,7 +154,7 @@ ErrorCode Controller::createDevice(DeviceClass* device, const char* id, const ty
 
 	Device* dev = nullptr;
 	dev = nullptr;
-	ErrorCode err = cls.constructor(*this, dev);
+	ErrorCode err = cls.constructor(*this, id, dev);
 	if(err) {
 		debug_err(err, String(cls.name));
 		return err;

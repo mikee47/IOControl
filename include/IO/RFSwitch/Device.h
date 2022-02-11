@@ -63,7 +63,7 @@ public:
 	ErrorCode init(const Config& config);
 	ErrorCode init(JsonObjectConst config) override;
 
-	Device(Controller& controller) : IO::Device(controller)
+	Device(Controller& controller, const char* id) : IO::Device(controller, id)
 	{
 	}
 

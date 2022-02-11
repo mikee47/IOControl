@@ -31,7 +31,7 @@ class Request;
 class Device;
 class Controller;
 
-using DeviceConstructor = ErrorCode (&)(Controller& controller, Device*& device);
+using DeviceConstructor = ErrorCode (&)(Controller& controller, const char* id, Device*& device);
 
 struct DeviceClassInfo {
 	const FlashString& name;
@@ -85,7 +85,7 @@ public:
 	 * Inherited classes should implement this method.
 	 * User code then registers required device classes
 	 */
-	Device(Controller& controller) : m_controller(controller)
+	Device(Controller& controller, const char* id) : m_controller(controller), m_id(id)
 	{
 	}
 
@@ -162,10 +162,10 @@ protected:
 	ErrorCode submit(Request* request);
 
 private:
+	Controller& m_controller;
 	CString m_id;
 	CString m_name;
-	Controller& m_controller;
-	device_state_t m_state = devstate_stopped;
+	device_state_t m_state{devstate_stopped};
 };
 
 } // namespace IO

@@ -42,7 +42,7 @@ public:
 		Slave slave;
 	};
 
-	Device(Controller& controller) : IO::Device(controller)
+	Device(Controller& controller, const char* id) : IO::Device(controller, id)
 	{
 	}
 

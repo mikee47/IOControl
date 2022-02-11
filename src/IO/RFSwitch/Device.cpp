@@ -39,13 +39,13 @@ namespace
 {
 DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "rfswitch")
 
-ErrorCode createDevice(IO::Controller& controller, IO::Device*& device)
+ErrorCode createDevice(IO::Controller& controller, const char* id, IO::Device*& device)
 {
 	if(!controller.verifyClass(CONTROLLER_CLASSNAME)) {
 		return Error::bad_controller_class;
 	}
 
-	device = new Device(reinterpret_cast<Controller&>(controller));
+	device = new Device(reinterpret_cast<Controller&>(controller), id);
 	return device ? Error::success : Error::no_mem;
 }
 

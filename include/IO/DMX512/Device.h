@@ -112,7 +112,7 @@ public:
 	static constexpr size_t MaxPacketSize{520};
 
 	struct Config {
-		IO::RS485::Device::Config base;
+		IO::RS485::Device::Config rs485;
 		uint8_t nodeCount;
 	};
 

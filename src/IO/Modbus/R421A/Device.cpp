@@ -33,13 +33,13 @@ namespace
 {
 DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "r421a")
 
-ErrorCode createDevice(IO::Controller& controller, IO::Device*& device)
+ErrorCode createDevice(IO::Controller& controller, const char* id, IO::Device*& device)
 {
 	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
 		return Error::bad_controller_class;
 	}
 
-	device = new Device(reinterpret_cast<RS485::Controller&>(controller));
+	device = new Device(reinterpret_cast<RS485::Controller&>(controller), id);
 	return device ? Error::success : Error::no_mem;
 }
 

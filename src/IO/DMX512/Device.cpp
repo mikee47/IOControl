@@ -46,13 +46,13 @@ constexpr auto DMX_SERIAL_FORMAT{UART_8N2};
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
 #define DMX_UPDATE_PERIODIC_MS 1000 // 5000	///< Periodic update interval
 
-ErrorCode createDevice(IO::Controller& controller, IO::Device*& device)
+ErrorCode createDevice(IO::Controller& controller, const char* id, IO::Device*& device)
 {
 	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
 		return Error::bad_controller_class;
 	}
 
-	device = new Device(reinterpret_cast<IO::RS485::Controller&>(controller));
+	device = new Device(reinterpret_cast<IO::RS485::Controller&>(controller), id);
 	return device ? Error::success : Error::no_mem;
 }
 
@@ -158,7 +158,7 @@ void Device::updateSlaves()
 
 ErrorCode Device::init(const Config& config)
 {
-	ErrorCode err = IO::RS485::Device::init(config.base);
+	ErrorCode err = IO::RS485::Device::init(config.rs485);
 	if(err) {
 		return err;
 	}
@@ -193,9 +193,9 @@ IO::Request* Device::createRequest()
 
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
-	IO::RS485::Device::parseJson(json, cfg.base);
-	if(cfg.base.slave.address == 0) {
-		cfg.base.slave.address = 0x01;
+	IO::RS485::Device::parseJson(json, cfg.rs485);
+	if(cfg.rs485.slave.address == 0) {
+		cfg.rs485.slave.address = 0x01;
 	}
 	cfg.nodeCount = json[FS_count] | 1;
 }

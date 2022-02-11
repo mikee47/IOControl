@@ -55,13 +55,12 @@ ErrorCode Controller::createDevice(const char* id, JsonObjectConst config)
 	assert(create);
 
 	Device* device = nullptr;
-	auto err = create(*this, device);
+	auto err = create(*this, id, device);
 	if(err) {
 		debug_err(err, cls);
 		return err;
 	}
 	assert(device != nullptr);
-	device->m_id = id;
 	err = device->init(config);
 	if(err) {
 		delete device;
