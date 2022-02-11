@@ -1,10 +1,7 @@
-COMPONENT_SEARCH_DIRS := $(PROJECT_DIR)/../../..
-
 ARDUINO_LIBRARIES := \
     IOControl \
     ArduinoJson6
 
-ifeq ($(ENABLE_MALLOC_COUNT),1)
-	COMPONENT_DEPENDS += malloc_count
-	USER_CFLAGS += -DENABLE_MALLOC_COUNT
-endif
+DISABLE_NETWORK := 1
+
+HOST_UART_OPTIONS := --uart=1 --device=console
