@@ -1,3 +1,22 @@
+/**
+ * Serial.h
+ *
+ * Copyright 2022 mikee47 <mike@sillyhouse.net>
+ *
+ * This file is part of the IOControl Library
+ *
+ * This library is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, version 3 or later.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this library.
+ * If not, see <https://www.gnu.org/licenses/>.
+ *
+ ****/
+
 #pragma once
 
 #include "Error.h"
@@ -5,6 +24,14 @@
 
 namespace IO
 {
+/**
+ * @brief This class provides arbitration for serial hardware which may be used by multiple controllers.
+ *
+ * For example:
+ * 
+ * 		- Modbus and DMX512 devices can co-exist on the same wire.
+ * 		- One serial port can be split into multiple segments, each with a dedicated RS485 line driver
+ */
 class Serial
 {
 public:

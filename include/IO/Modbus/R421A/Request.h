@@ -1,40 +1,28 @@
-/*
- * R421A.h
+/**
+ * Modbus/R421A/Request.h
  *
  *  Created on: 1 May 2018
- *      Author: mikee47
- */
+ *
+ * Copyright 2022 mikee47 <mike@sillyhouse.net>
+ *
+ * This file is part of the IOControl Library
+ *
+ * This library is free software: you can redistribute it and/or modify it under the terms of the
+ * GNU General Public License as published by the Free Software Foundation, version 3 or later.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with this library.
+ * If not, see <https://www.gnu.org/licenses/>.
+ *
+ ****/
 
 #pragma once
 
 #include <IO/Modbus/Request.h>
 #include "Device.h"
-
-/**
- *  R421A08 modbus 8-channel relay board
- *
- *  Channels are numbered 1 - 8. This is the 16-bit address field
- *  in a request.
- *
- *  To simplify operation we use a bitmask to specify relay states.
- *  We use the channel number directly so values can
- *  range between 0x0001 and 0x01FE
- *
- * The query command returns a range of states, but other commands
- * work with only a single channel. We therefore implement a
- * mechanism to iterate through all requested channels using
- * the same request.
- *
- *  There is a similar 4-channel board but with no markings and
- *  (as yet) no documentation. However all commands appear to work
- *  so a designation of R421A04 seems appropriate. Some typos
- *  in the 8-channel datasheet indicate that it was adapted from
- *  that of a 4-channel version.
- *
- *  R421A04 - 32 addresses set with DIP1-5, DIP6 ON for RTU mode
- *  R421A08 - 64 addresses set with DIP1-6, RTU mode only
- *
- */
 
 namespace IO
 {
