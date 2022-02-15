@@ -19,16 +19,13 @@
 
 #pragma once
 
-#include "Error.h"
-#include "DevNode.h"
+#include "Request.h"
 #include "DeviceType.h"
-#include "Event.h"
 #include <ArduinoJson.h>
 #include <Data/LinkedObjectList.h>
 
 namespace IO
 {
-class Request;
 class Device;
 class Controller;
 
@@ -161,7 +158,7 @@ protected:
 	virtual ErrorCode start();
 	virtual ErrorCode stop();
 
-	ErrorCode submit(Request* request);
+	void submit(Request* request);
 
 private:
 	Controller& m_controller;

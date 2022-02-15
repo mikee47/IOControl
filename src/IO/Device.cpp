@@ -54,7 +54,7 @@ ErrorCode Device::start()
 		return Error::success;
 	}
 
-	Request* req = createRequest();
+	auto req = createRequest();
 	if(req == nullptr) {
 		return Error::no_mem;
 	}
@@ -66,12 +66,10 @@ ErrorCode Device::start()
 		return Error::success;
 	}
 
-	auto err = req->submit();
-	if(!err) {
-		m_state = devstate_starting;
-	}
+	req->submit();
+	m_state = devstate_starting;
 
-	return err;
+	return Error::success;
 }
 
 /*
@@ -82,9 +80,9 @@ ErrorCode Device::stop()
 	return Error::success;
 }
 
-ErrorCode Device::submit(Request* request)
+void Device::submit(Request* request)
 {
-	return m_controller.submit(request);
+	m_controller.submit(request);
 }
 
 void Device::handleEvent(Request* request, Event event)

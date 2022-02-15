@@ -68,7 +68,7 @@ public:
 		return m_value;
 	}
 
-	ErrorCode submit() override;
+	void submit() override;
 
 private:
 	int m_value{};

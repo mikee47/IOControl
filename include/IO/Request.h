@@ -19,8 +19,9 @@
 
 #pragma once
 
-#include <WString.h>
-#include "Device.h"
+#include "Error.h"
+#include "DevNode.h"
+#include "Event.h"
 #include <debug_progmem.h>
 
 namespace IO
@@ -71,9 +72,11 @@ class Request;
  * In brief, ownership of a request belongs with the user up until submit()
  * is called, which passes ownership to the IO mechanism.
  */
-class Request
+class Request : public LinkedObjectTemplate<Request>
 {
 public:
+	using OwnedList = OwnedLinkedObjectListTemplate<Request>;
+
 	/**
 	 * @brief Per-request callback
 	 * A request goes through the following states:
@@ -124,15 +127,11 @@ public:
 	/**
 	 * @brief Submit a request
 	 *
-	 * If the request cannot be submitted (invalid, queue full) then it is destroyed
-	 * immediately and an error returned; the completion routines is not called.
-	 *
-	 * The request may be executed immediately or queued as appropriate. In either case
-	 * the result of the request is posted to the callback routine.
-	 *
-	 * @retval ErrorCode Indicates whether the request was accepted.
+	 * The request is added to the controller's queue.
+	 * If the queue is empty, it starts execution immediately.
+	 * The result of the request is posted to the callback routine.
 	 */
-	virtual ErrorCode submit();
+	virtual void submit();
 
 	/*
 	 * Usually called by device or controller, but can also be used to

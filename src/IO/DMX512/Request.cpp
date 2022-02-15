@@ -31,7 +31,7 @@ namespace DMX512
  * We don't need to use the queue as requests do not perform any I/O.
  * Instead, device state is updated and echoed on next slave update.
  */
-ErrorCode Request::submit()
+void Request::submit()
 {
 	// Only update command gets queued
 	if(command() == Command::update) {
@@ -44,8 +44,6 @@ ErrorCode Request::submit()
 		debug_e("Request failed, %s", Error::toString(err).c_str());
 	}
 	complete(err);
-
-	return err;
 }
 
 ErrorCode Request::parseJson(JsonObjectConst json)

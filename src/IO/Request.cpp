@@ -18,6 +18,7 @@
  ****/
 
 #include <IO/Request.h>
+#include <IO/Device.h>
 #include <IO/Strings.h>
 #include <FlashString/Vector.hpp>
 
@@ -96,9 +97,9 @@ void Request::getJson(JsonObject json) const
 	setError(json, m_error);
 }
 
-ErrorCode Request::submit()
+void Request::submit()
 {
-	return m_device.submit(this);
+	m_device.submit(this);
 }
 
 void Request::handleEvent(Event event)

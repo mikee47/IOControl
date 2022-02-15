@@ -175,34 +175,28 @@ void Controller::deviceError(Device& device)
 	startTimer();
 }
 
-ErrorCode Controller::submit(Request* request)
+void Controller::submit(Request* request)
 {
-	if(request->command() == Command::undefined) {
-		delete request;
-		return Error::no_command;
-	}
+	bool idle = m_queue.isEmpty();
 
 	/* Can re-submit a request instead of completing it to retry or progress
 	 * a multi-IO call without having to create a new request object.
 	 * So we only need to be in the queue once.
 	 * Callback is invoked only at initial execution.
 	 */
-	// Same request might be submitted multiple times before completing
-	if(m_queue.count() && m_queue.peek() == request) {
+	if(!idle && m_queue.head() == request) {
 		debug_d("Re-submitting request %s", request->caption().c_str());
 		// Execute directly, don't invoke callback
 		request->handleEvent(Event::Execute);
-		return Error::success;
+		return;
 	}
 
 	debug_d("Queueing request %s", request->caption().c_str());
-	if(!m_queue.enqueue(request)) {
-		delete request;
-		return Error::queue_full;
-	}
+	m_queue.add(request);
 
-	executeNext();
-	return Error::success;
+	if(idle) {
+		executeNext();
+	}
 }
 
 void Controller::handleEvent(Request* request, Event event)
@@ -215,10 +209,8 @@ void Controller::handleEvent(Request* request, Event event)
 	case Event::RequestComplete:
 		devmgr.callback(*request);
 
-		assert(m_queue.peek() == request);
-		m_queue.dequeue();
-
-		delete request;
+		assert(m_queue.head() == request);
+		m_queue.remove(request);
 
 		executeNext();
 		break;
@@ -235,13 +227,11 @@ void Controller::handleEvent(Request* request, Event event)
 
 void Controller::executeNext()
 {
-	if(m_queue.count() == 0) {
-		return;
+	auto req = m_queue.head();
+	if(req != nullptr) {
+		debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->command()).c_str());
+		req->handleEvent(Event::Execute);
 	}
-
-	Request* req = m_queue.peek();
-	debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->command()).c_str());
-	req->handleEvent(Event::Execute);
 }
 
 } // namespace IO

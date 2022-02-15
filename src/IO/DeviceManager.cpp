@@ -160,14 +160,10 @@ ErrorCode DeviceManager::handleMessage(JsonObject json, Request::Callback callba
 		}
 
 		JsonArray arr = json[isDevnode ? FS_devnodes : FS_devices];
-		if(arr.size() > IOCONTROL_MAX_REQUESTS) {
-			return setError(json, Error::queue_full);
-		}
-
 		String requestId = json[FS_id];
 
 		// Build requests then submit together
-		Controller::RequestQueue queue;
+		Request::OwnedList queue;
 
 		for(auto obj : arr) {
 			if(isDevnode) {
@@ -201,7 +197,7 @@ ErrorCode DeviceManager::handleMessage(JsonObject json, Request::Callback callba
 				req->setNode(DevNode_ALL);
 			}
 
-			queue.enqueue(req);
+			queue.add(req);
 		}
 
 		if(!err) {
@@ -209,24 +205,20 @@ ErrorCode DeviceManager::handleMessage(JsonObject json, Request::Callback callba
 				// Change request to an explicit on or off command
 				// For toggle command, first node gives state
 				DevNode::States states{};
-				for(unsigned i = 0; i < queue.count(); ++i) {
-					states += queue[i]->getNodeStates(DevNode_ALL);
+				for(auto& req : queue) {
+					states += req.getNodeStates(DevNode_ALL);
 				}
-				for(unsigned i = 0; i < queue.count(); ++i) {
-					queue[i]->setCommand(states[DevNode::State::on] ? Command::off : Command::on);
+				auto cmd = states[DevNode::State::on] ? Command::off : Command::on;
+				for(auto& req : queue) {
+					req.setCommand(cmd);
 				}
 			}
 		}
 
-		// Submit requests, or delete them all if there was an error
-		while(queue.count()) {
-			req = queue.dequeue();
-			if(!err) {
-				err = req->submit();
-			}
-			if(err) {
-				delete req;
-			}
+		// Submit requests
+		Request* req;
+		while((req = queue.pop())) {
+			req->submit();
 		}
 	} else {
 		// Single request
@@ -237,14 +229,12 @@ ErrorCode DeviceManager::handleMessage(JsonObject json, Request::Callback callba
 
 		req->onComplete(callback);
 		err = req->parseJson(json);
-		if(!err) {
-			err = req->submit();
-		}
-
 		if(err) {
 			delete req;
 			return setError(json, err);
 		}
+
+		req->submit();
 	}
 
 	return err;

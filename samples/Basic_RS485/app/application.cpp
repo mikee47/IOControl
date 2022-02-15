@@ -192,7 +192,7 @@ void systemReady()
 				// Setting a request ID is optional, could use for webpage state management in request callback
 				// req->setID("toggle#1");
 				// req->nodeToggle(IO::DevNode{1});
-				err = req->submit();
+				req->submit();
 			}
 		}
 
@@ -203,7 +203,7 @@ void systemReady()
 		} else {
 			req->setID("adjust#7");
 			req->nodeAdjust(IO::DevNode{7}, 2);
-			err = req->submit();
+			req->submit();
 		}
 
 		testTimer.startOnce();

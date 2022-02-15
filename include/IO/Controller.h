@@ -26,11 +26,6 @@ namespace IO
 {
 using DeviceFactoryList = Vector<const Device::Factory*>;
 
-// Maximum queued requests per controller
-#ifndef IOCONTROL_MAX_REQUESTS
-#define IOCONTROL_MAX_REQUESTS 16
-#endif
-
 /**
  * @brief Some controllers specify a transfer direction
  */
@@ -48,8 +43,6 @@ class Controller
 	friend Device;
 
 public:
-	using RequestQueue = FIFO<Request*, IOCONTROL_MAX_REQUESTS>;
-
 	Controller(uint8_t instance) : m_instance(instance)
 	{
 	}
@@ -109,14 +102,13 @@ public:
 		return s;
 	}
 
+protected:
+	/**
+	 * @brief Implementations override this method to process events as they pass through the stack
+	 */
 	virtual void handleEvent(Request* request, Event event);
 
-protected:
-	/*
-	 * Returns false if request could not be queued. Caller may then either
-	 * delete the request or try again later.
-	 */
-	ErrorCode submit(Request* request);
+	void submit(Request* request);
 
 	void startTimer();
 	void stopTimer();
@@ -134,7 +126,7 @@ private:
 	const Device::Factory* findDeviceClass(const String& className);
 
 	Device::OwnedList m_devices;
-	RequestQueue m_queue;
+	Request::OwnedList m_queue;
 	static DeviceFactoryList m_deviceClasses;
 	std::unique_ptr<SimpleTimer> m_deviceCheckTimer;
 	uint8_t m_instance;
