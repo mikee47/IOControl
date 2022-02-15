@@ -62,22 +62,37 @@ namespace Modbus
 {
 namespace R421A
 {
-const DeviceClassInfo deviceClass();
-
 class Device : public Modbus::Device
 {
 public:
+	class Factory : public IO::Device::Factory
+	{
+	public:
+		IO::Device* createDevice(IO::Controller& controller, const char* id) const override
+		{
+			return new Device(reinterpret_cast<RS485::Controller&>(controller), id);
+		}
+
+		const FlashString& controllerClass() const override
+		{
+			return RS485::CONTROLLER_CLASSNAME;
+		}
+
+		const FlashString& deviceClass() const override
+		{
+			DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "r421a")
+			return DEVICE_CLASSNAME;
+		}
+	};
+
+	static const Factory factory;
+
 	struct Config {
 		Modbus::Device::Config modbus;
 		uint8_t channels;
 	};
 
 	using Modbus::Device::Device;
-
-	const DeviceClassInfo classInfo() const override
-	{
-		return deviceClass();
-	}
 
 	ErrorCode init(const Config& config);
 	ErrorCode init(JsonObjectConst config) override;

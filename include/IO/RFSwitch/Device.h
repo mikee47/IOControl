@@ -40,8 +40,6 @@ struct Timing {
 	uint16_t gap;	///< Gap after final bit before repeating
 };
 
-const DeviceClassInfo deviceClass();
-
 /*
  * A specific type of RF device protocol.
  * Actual RF I/O is performed by Controller.
@@ -49,6 +47,28 @@ const DeviceClassInfo deviceClass();
 class Device : public IO::Device
 {
 public:
+	class Factory : public IO::Device::Factory
+	{
+	public:
+		IO::Device* createDevice(IO::Controller& controller, const char* id) const override
+		{
+			return new Device(reinterpret_cast<Controller&>(controller), id);
+		}
+
+		const FlashString& controllerClass() const override
+		{
+			return CONTROLLER_CLASSNAME;
+		}
+
+		const FlashString& deviceClass() const override
+		{
+			DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "rfswitch")
+			return DEVICE_CLASSNAME;
+		}
+	};
+
+	static const Factory factory;
+
 	struct Config {
 		IO::Device::Config base;
 		Timing timing;
@@ -65,11 +85,6 @@ public:
 
 	Device(Controller& controller, const char* id) : IO::Device(controller, id)
 	{
-	}
-
-	const DeviceClassInfo classInfo() const override
-	{
-		return deviceClass();
 	}
 
 	IO::Request* createRequest() override;

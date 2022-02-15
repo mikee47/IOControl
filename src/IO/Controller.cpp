@@ -28,42 +28,55 @@
 
 namespace IO
 {
-DeviceClassMap Controller::m_deviceClasses;
+DeviceFactoryList Controller::m_deviceClasses;
 
-/*
- * Before constructing a device instance, verify the controller class
- */
-bool Controller::verifyClass(const String& classname)
+const Device::Factory* Controller::findDeviceClass(const String& className)
 {
-	if(this->classname() == classname) {
-		return true;
+	for(auto& factory : m_deviceClasses) {
+		if(*factory == className) {
+			return factory;
+		}
 	}
 
-	debug_e("verifyClass(%s) - wrong controller class, require '%s'", this->classname().c_str(), classname.c_str());
-	return false;
+	return nullptr;
 }
 
-ErrorCode Controller::createDevice(const char* id, JsonObjectConst config)
+ErrorCode Controller::constructDevice(const Device::Factory& factory, const char* id, Device*& device)
+{
+	if(factory.controllerClass() != this->classname()) {
+		debug_e("[IO] Wrong controller class '%s' for device '%s', require '%s'", String(factory.deviceClass()).c_str(),
+				String(classname()).c_str(), String(factory.controllerClass()).c_str());
+		return Error::bad_controller_class;
+	}
+
+	device = factory.createDevice(*this, id);
+	if(device == nullptr) {
+		auto err = IO::Error::no_mem;
+		debug_err(err, String(factory.deviceClass()));
+		return err;
+	}
+
+	return Error::success;
+}
+
+ErrorCode Controller::createDevice(const char* id, JsonObjectConst config, Device*& device)
 {
 	String cls = config[FS_class];
-	auto devclass = m_deviceClasses[cls];
-	if(devclass == nullptr) {
+	auto factory = findDeviceClass(cls);
+	if(factory == nullptr) {
 		debug_e("Device class '%s' not registered", cls.c_str());
 		return Error::bad_device_class;
 	}
-	auto create = devclass().constructor;
-	assert(create);
 
-	Device* device = nullptr;
-	auto err = create(*this, id, device);
+	auto err = constructDevice(*factory, id, device);
 	if(err) {
-		debug_err(err, cls);
 		return err;
 	}
-	assert(device != nullptr);
+
 	err = device->init(config);
 	if(err) {
 		delete device;
+		device = nullptr;
 		debug_err(err, cls);
 		return err;
 	}
@@ -128,10 +141,10 @@ void Controller::startDevices()
 
 	stopTimer();
 	unsigned failCount = 0;
-	for(Device& device : m_devices) {
+	for(auto& device : m_devices) {
 		auto err = device.start();
 
-		debug_i("%s->start(): %s", device->caption().c_str(), Error::toString(err).c_str());
+		debug_i("%s->start(): %s", device.caption().c_str(), Error::toString(err).c_str());
 
 		PRINT_HEAP();
 

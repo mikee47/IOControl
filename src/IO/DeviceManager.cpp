@@ -49,7 +49,8 @@ ErrorCode DeviceManager::begin(JsonObjectConst config)
 			continue;
 		}
 
-		controller->createDevice(dev.key().c_str(), dev.value());
+		Device* inst;
+		controller->createDevice(dev.key().c_str(), dev.value(), inst);
 	}
 
 	start();

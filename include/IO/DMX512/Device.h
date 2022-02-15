@@ -102,13 +102,33 @@ struct NodeData {
 	}
 };
 
-const DeviceClassInfo deviceClass();
-
 class Device : public RS485::Device
 {
 	friend Request;
 
 public:
+	class Factory : public IO::Device::Factory
+	{
+	public:
+		IO::Device* createDevice(IO::Controller& controller, const char* id) const override
+		{
+			return new Device(reinterpret_cast<RS485::Controller&>(controller), id);
+		}
+
+		const FlashString& controllerClass() const override
+		{
+			return RS485::CONTROLLER_CLASSNAME;
+		}
+
+		const FlashString& deviceClass() const override
+		{
+			DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "dmx")
+			return DEVICE_CLASSNAME;
+		}
+	};
+
+	static const Factory factory;
+
 	static constexpr size_t MaxPacketSize{520};
 
 	struct Config {
@@ -121,11 +141,6 @@ public:
 	~Device()
 	{
 		delete m_nodeData;
-	}
-
-	const DeviceClassInfo classInfo() const override
-	{
-		return deviceClass();
 	}
 
 	const DeviceType type() const override

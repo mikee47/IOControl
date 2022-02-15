@@ -28,14 +28,13 @@ namespace IO
 {
 namespace DMX512
 {
+const Device::Factory Device::factory;
 SimpleTimer Device::m_timer;
 bool Device::m_changed{false};
 bool Device::m_updating{false};
 
 namespace
 {
-DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "dmx")
-
 /* DMX minimum timings per E1.11 */
 constexpr unsigned DMX_BREAK{92};
 constexpr unsigned DMX_MAB{12}; // Mark After Break
@@ -46,22 +45,7 @@ constexpr auto DMX_SERIAL_FORMAT{UART_8N2};
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
 #define DMX_UPDATE_PERIODIC_MS 1000 // 5000	///< Periodic update interval
 
-ErrorCode createDevice(IO::Controller& controller, const char* id, IO::Device*& device)
-{
-	if(!controller.verifyClass(RS485::CONTROLLER_CLASSNAME)) {
-		return Error::bad_controller_class;
-	}
-
-	device = new Device(reinterpret_cast<IO::RS485::Controller&>(controller), id);
-	return device ? Error::success : Error::no_mem;
-}
-
 } // namespace
-
-const DeviceClassInfo deviceClass()
-{
-	return {DEVICE_CLASSNAME, createDevice};
-}
 
 /*
  *  TODO

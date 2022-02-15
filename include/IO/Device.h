@@ -32,18 +32,6 @@ class Request;
 class Device;
 class Controller;
 
-using DeviceConstructor = ErrorCode (&)(Controller& controller, const char* id, Device*& device);
-
-struct DeviceClassInfo {
-	const FlashString& name;
-	DeviceConstructor constructor;
-
-	bool operator==(const DeviceClassInfo& other) const
-	{
-		return &name == &other.name;
-	}
-};
-
 /*
  * Device state is used to automate initialisation and fault recovery.
  *
@@ -78,6 +66,19 @@ class Device : public LinkedObjectTemplate<Device>
 	friend Controller;
 
 public:
+	class Factory
+	{
+	public:
+		virtual Device* createDevice(IO::Controller& controller, const char* id) const = 0;
+		virtual const FlashString& controllerClass() const = 0;
+		virtual const FlashString& deviceClass() const = 0;
+
+		bool operator==(const String& className) const
+		{
+			return this->deviceClass() == className;
+		}
+	};
+
 	using OwnedList = OwnedLinkedObjectListTemplate<Device>;
 
 	struct Config {
@@ -95,8 +96,6 @@ public:
 	virtual ~Device()
 	{
 	}
-
-	virtual const DeviceClassInfo classInfo() const = 0;
 
 	virtual const DeviceType type() const = 0;
 

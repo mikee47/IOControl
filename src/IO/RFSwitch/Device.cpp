@@ -33,28 +33,9 @@ DEFINE_FSTR_LOCAL(ATTR_BIT1, "bit1")
 DEFINE_FSTR_LOCAL(ATTR_GAP, "gap")
 DEFINE_FSTR(ATTR_REPEATS, "repeats")
 
+const Device::Factory Device::factory;
+
 const unsigned RF_DEFAULT_REPEATS = 20;
-
-namespace
-{
-DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "rfswitch")
-
-ErrorCode createDevice(IO::Controller& controller, const char* id, IO::Device*& device)
-{
-	if(!controller.verifyClass(CONTROLLER_CLASSNAME)) {
-		return Error::bad_controller_class;
-	}
-
-	device = new Device(reinterpret_cast<Controller&>(controller), id);
-	return device ? Error::success : Error::no_mem;
-}
-
-} // namespace
-
-const DeviceClassInfo deviceClass()
-{
-	return {DEVICE_CLASSNAME, createDevice};
-}
 
 ErrorCode Device::init(const Config& config)
 {

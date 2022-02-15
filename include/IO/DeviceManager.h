@@ -42,7 +42,7 @@ public:
 	/**
 	 * @brief Device classes call this to register themselves
 	 */
-	void registerDeviceClass(GetDeviceClass devclass);
+	void registerDeviceClass(const Device::Factory& devclass);
 
 	Controller* findController(const String& name) const
 	{

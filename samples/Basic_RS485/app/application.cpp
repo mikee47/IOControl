@@ -137,8 +137,8 @@ IO::ErrorCode devmgrInit()
 	serial0.swap();
 
 	// Setup modbus stack
-	rs485_0.registerDeviceClass(IO::Modbus::R421A::deviceClass);
-	rs485_0.registerDeviceClass(IO::DMX512::deviceClass);
+	rs485_0.registerDeviceClass(IO::Modbus::R421A::Device::factory);
+	rs485_0.registerDeviceClass(IO::DMX512::Device::factory);
 	IO::devmgr.registerController(rs485_0);
 	rs485_0.onRequest(handleRS485Request);
 
@@ -161,21 +161,23 @@ void systemReady()
 	/*
 	{
 		// Example of manual device creation
-		auto dev = new IO::DMX512::Device(rs485_0, "dmx1");
-		IO::DMX512::Device::Config cfg;
-		cfg.rs485.slave = {
-			.address = 1,
-			.baudrate = 9600,
+		IO::DMX512::Device::Config cfg{
+			.rs485 =
+				{
+					.base = {.name = F("Example DMX device")},
+					.slave = {.address = 1, .baudrate = 9600},
+				},
+			.nodeCount = 10,
 		};
-		cfg.nodeCount = 10;
-		auto err = dev->init(cfg);
+		IO::DMX512::Device* dev;
+		auto err = rs485_0.createDevice("dmx1", cfg, dev);
 		if(err) {
 			// Failure
-			delete dev;
 		} else {
 			// Success
 			auto req = new IO::DMX512::Request(*dev);
-			// ...
+			req->nodeToggle(IO::DevNode_ALL);
+			req->submit();
 		}
 	}
 	*/

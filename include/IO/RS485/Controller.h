@@ -36,7 +36,7 @@ public:
 	{
 	}
 
-	String classname() override
+	const FlashString& classname() const override
 	{
 		return CONTROLLER_CLASSNAME;
 	}

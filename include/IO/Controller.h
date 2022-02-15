@@ -20,13 +20,11 @@
 #pragma once
 
 #include "Device.h"
-#include <WHashMap.h>
 #include <WVector.h>
 
 namespace IO
 {
-using GetDeviceClass = const DeviceClassInfo (*)();
-using DeviceClassMap = HashMap<String, GetDeviceClass>;
+using DeviceFactoryList = Vector<const Device::Factory*>;
 
 // Maximum queued requests per controller
 #ifndef IOCONTROL_MAX_REQUESTS
@@ -60,11 +58,10 @@ public:
 	{
 	}
 
-	static void registerDeviceClass(const GetDeviceClass devclass)
+	static void registerDeviceClass(const Device::Factory& factory)
 	{
-		String classname = devclass().name;
-		m_deviceClasses[classname] = devclass;
-		debug_i("Device class '%s' registered", classname.c_str());
+		m_deviceClasses.addElement(&factory);
+		debug_i("Device class '%s' registered", String(factory.deviceClass()).c_str());
 	}
 
 	uint8_t instance() const
@@ -77,17 +74,15 @@ public:
 		return m_devices;
 	}
 
-	bool verifyClass(const String& classname);
-
 	void freeDevices();
-	ErrorCode createDevice(const char* id, JsonObjectConst config);
 
+	ErrorCode createDevice(const char* id, JsonObjectConst config, Device*& device);
 	template <class DeviceClass>
-	ErrorCode createDevice(DeviceClass* device, const char* id, const typename DeviceClass::Config& config);
+	ErrorCode createDevice(const char* id, const typename DeviceClass::Config& config, DeviceClass*& device);
 
 	Device* findDevice(const String& id);
 
-	virtual String classname() = 0;
+	virtual const FlashString& classname() const = 0;
 
 	virtual void start()
 	{
@@ -100,12 +95,12 @@ public:
 		stopDevices();
 	}
 
-	virtual bool canStop()
+	virtual bool canStop() const
 	{
 		return m_queue.count() == 0;
 	}
 
-	String id()
+	String id() const
 	{
 		String s;
 		s += classname();
@@ -129,6 +124,8 @@ protected:
 	void stopTimer();
 
 private:
+	ErrorCode constructDevice(const Device::Factory& factory, const char* id, Device*& device);
+
 	void executeNext();
 
 	void deviceError(Device& device);
@@ -136,38 +133,36 @@ private:
 	void startDevices();
 	void stopDevices();
 
+	const Device::Factory* findDeviceClass(const String& className);
+
 	Device::OwnedList m_devices;
 	RequestQueue m_queue;
-	static DeviceClassMap m_deviceClasses;
+	static DeviceFactoryList m_deviceClasses;
 	std::unique_ptr<SimpleTimer> m_deviceCheckTimer;
 	uint8_t m_instance;
 };
 
 template <class DeviceClass>
-ErrorCode Controller::createDevice(DeviceClass* device, const char* id, const typename DeviceClass::Config& config)
+ErrorCode Controller::createDevice(const char* id, const typename DeviceClass::Config& config, DeviceClass*& device)
 {
-	DeviceClassInfo cls = DeviceClass::deviceClass();
-	assert(cls.constructor);
-
-	Device* dev = nullptr;
-	dev = nullptr;
-	ErrorCode err = cls.constructor(*this, id, dev);
+	auto& factory = DeviceClass::factory;
+	Device* dev;
+	auto err = constructDevice(factory, id, dev);
 	if(err) {
-		debug_err(err, String(cls.name));
-		return err;
-	}
-	assert(dev != nullptr);
-	err = reinterpret_cast<DeviceClass*>(dev)->init(config);
-	if(err) {
-		delete dev;
-		debug_err(err, String(cls.name));
 		return err;
 	}
 
-	m_devices.add(dev);
-	debug_d("Device %s created, class %s", dev->caption().c_str(), String(cls.name).c_str());
+	device = static_cast<DeviceClass*>(device);
+	err = device->init(config);
+	if(err) {
+		delete device;
+		device = nullptr;
+		debug_err(err, String(factory.deviceClass()));
+		return err;
+	}
 
-	device = reinterpret_cast<DeviceClass*>(dev);
+	m_devices.add(device);
+	debug_d("Device %s created, class %s", device->caption().c_str(), String(factory.deviceClass()).c_str());
 
 	return err;
 }
