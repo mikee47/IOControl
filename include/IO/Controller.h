@@ -109,8 +109,6 @@ public:
 		return s;
 	}
 
-	virtual bool busy() const = 0;
-
 	virtual void handleEvent(Request* request, Event event);
 
 protected:

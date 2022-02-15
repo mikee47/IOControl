@@ -44,11 +44,6 @@ public:
 	void start() override;
 	void stop() override;
 
-	bool busy() const override
-	{
-		return request != nullptr;
-	}
-
 	/**
 	 * @brief Callback to handle hardware transmit/receive selection
 	 * Typically called from interrupt context so implementation MUST be marked IRAM_ATTR

@@ -215,10 +215,8 @@ void Controller::handleEvent(Request* request, Event event)
 	case Event::RequestComplete:
 		devmgr.callback(*request);
 
-		// If this was a queued request, remove it
-		if(m_queue.peek() == request) {
-			m_queue.dequeue();
-		}
+		assert(m_queue.peek() == request);
+		m_queue.dequeue();
 
 		delete request;
 
@@ -235,17 +233,15 @@ void Controller::handleEvent(Request* request, Event event)
 	}
 }
 
-/*
- *
- */
 void Controller::executeNext()
 {
-	// If we're busy, we'll get called again when current transaction has completed
-	if(!busy() && m_queue.count()) {
-		Request* req = m_queue.peek();
-		debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->command()).c_str());
-		req->handleEvent(Event::Execute);
+	if(m_queue.count() == 0) {
+		return;
 	}
+
+	Request* req = m_queue.peek();
+	debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->command()).c_str());
+	req->handleEvent(Event::Execute);
 }
 
 } // namespace IO

@@ -46,11 +46,6 @@ public:
 
 	void handleEvent(IO::Request* request, Event event) override;
 
-	bool busy() const override
-	{
-		return m_transmitState != TransmitState::idle;
-	}
-
 private:
 	enum TransmitState {
 		idle,	  ///< Not transmitting
