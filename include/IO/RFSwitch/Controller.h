@@ -30,6 +30,13 @@ DECLARE_FSTR(CONTROLLER_CLASSNAME)
 
 class Request;
 
+/**
+ * @brief Controller for 433MHz transmitter.
+ *
+ * Protocol is flexible but tested only with i-Lumos light switches.
+ * Written specifically for ESP8266 and uses the hardware timer to generate PWM
+ * signal via interrupts.
+ */
 class Controller : public IO::Controller
 {
 public:

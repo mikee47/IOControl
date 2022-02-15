@@ -59,9 +59,9 @@ class Request;
  *
  * Inherited classes provide additional methods to encapsulate
  * specific commands or functions.
- * Create the appropriate object using new(), or using the device manager,
+ * Create the appropriate object using new() or the device manager,
  * then configure the request. Finally, call submit(). If submit() is not
- * called then the request object must be delete()ed.
+ * called then the request object must be deleted.
  * When the request has completed the callback is invoked, after
  * which the request object is destroyed.
  *
@@ -110,6 +110,9 @@ public:
 		return m_device;
 	}
 
+	/**
+	 * @brief Request error code defaults to 'pending' and is set on completion
+	 */
 	ErrorCode error() const
 	{
 		return m_error;
@@ -120,8 +123,14 @@ public:
 		return m_error == Error::pending;
 	}
 
+	/**
+	 * @brief Get a descriptive caption for this request
+	 */
 	String caption();
 
+	/**
+	 * @brief Fill this request from a JSON description
+	 */
 	virtual ErrorCode parseJson(JsonObjectConst json);
 
 	/**
@@ -140,22 +149,31 @@ public:
 	 */
 	void complete(ErrorCode err);
 
-	/*
-	 * Get response as JSON message, in textual format
+	/**
+	 * @brief Get result of a completed request in JSON format
 	 */
 	virtual void getJson(JsonObject json) const;
 
+	/**
+	 * @brief Request identifiers are optional, useful for tracking remote requests
+	 */
 	void setID(const String& value)
 	{
 		m_id = value;
 	}
 
+	/**
+	 * @brief Set the command code
+	 */
 	void setCommand(Command cmd)
 	{
 		debug_d("setCommand(0x%08x: %s)", cmd, toString(cmd).c_str());
 		m_command = cmd;
 	}
 
+	/**
+	 * @brief Set the request completion callback
+	 */
 	void onComplete(Callback callback)
 	{
 		m_callback = callback;
@@ -185,16 +203,25 @@ public:
 		return setNode(node);
 	}
 
+	/**
+	 * @brief If nodes support analogue state (e.g. brightness) the implement this method
+	 */
 	virtual bool nodeAdjust(DevNode node, int value)
 	{
 		return false;
 	}
 
+	/**
+	 * @brief If nodes are supported, implemented this method
+	 */
 	virtual bool setNode(DevNode node)
 	{
 		return false;
 	}
 
+	/**
+	 * @brief Query node status from response
+	 */
 	virtual DevNode::States getNodeStates(DevNode node)
 	{
 		return DevNode::State::unknown;
@@ -216,6 +243,9 @@ public:
 		return setNode(node);
 	}
 
+	/**
+	 * @brief Get the request ID, if there is one
+	 */
 	const CString& id() const
 	{
 		return m_id;
@@ -226,6 +256,9 @@ public:
 		return m_command;
 	}
 
+	/**
+	 * @brief Implementations may override this method as required
+	 */
 	virtual void handleEvent(Event event);
 
 private:

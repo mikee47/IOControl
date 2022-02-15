@@ -179,7 +179,8 @@ void Controller::submit(Request* request)
 {
 	bool idle = m_queue.isEmpty();
 
-	/* Can re-submit a request instead of completing it to retry or progress
+	/*
+	 * Can re-submit a request instead of completing it to retry or progress
 	 * a multi-IO call without having to create a new request object.
 	 * So we only need to be in the queue once.
 	 * Callback is invoked only at initial execution.

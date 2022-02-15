@@ -35,14 +35,18 @@ enum class Direction {
 	Idle,
 };
 
-/*
- * Serialises hardware requests on a physical bus.
+/**
+ * @brief A Controller is responsible for serialising requests for a physical bus
  */
 class Controller
 {
 	friend Device;
 
 public:
+	/**
+	 * @brief Construct a controller instance
+	 * @param instance Instance number, must be unique for each class of controller
+	 */
 	Controller(uint8_t instance) : m_instance(instance)
 	{
 	}
@@ -51,48 +55,106 @@ public:
 	{
 	}
 
+	/**
+	 * @brief Register a device factory
+	 *
+	 * Each factory has a class name which allows the device manager to dynamically
+	 * construct Device instances as directed by configuration.
+	 */
 	static void registerDeviceClass(const Device::Factory& factory)
 	{
 		m_deviceClasses.addElement(&factory);
 		debug_i("Device class '%s' registered", String(factory.deviceClass()).c_str());
 	}
 
+	/**
+	 * @brief Get the controller instance number
+	 */
 	uint8_t instance() const
 	{
 		return m_instance;
 	}
 
+	/**
+	 * @brief Get list of devices for this controller
+	 */
 	Device::OwnedList& devices()
 	{
 		return m_devices;
 	}
 
+	/**
+	 * @brief Destroy all devices for this controller
+	 */
 	void freeDevices();
 
+	/**
+	 * @brief Create a new devicce
+	 * @param id Unique identifier for the device
+	 * @param config Device configuration
+	 * @param device (OUT) The constructed device
+	 * @retval ErrorCode
+	 * 
+	 * @note Created devices are owned by this controller. DO NOT delete them manually!
+	 */
 	ErrorCode createDevice(const char* id, JsonObjectConst config, Device*& device);
+
+	/**
+	 * @brief Create a new device as a concrete type
+	 * @param id Unique identifier for the device
+	 * @param config Device configuration
+	 * @param device (OUT) The constructed device, owned by this controller
+	 * @retval ErrorCode
+	 *
+	 * This method template is used to manually constructing device instances.
+	 */
 	template <class DeviceClass>
 	ErrorCode createDevice(const char* id, const typename DeviceClass::Config& config, DeviceClass*& device);
 
+	/**
+	 * @brief Locate a device from its identifier
+	 */
 	Device* findDevice(const String& id);
 
+	/**
+	 * @brief Get the class name for this Controller
+	 */
 	virtual const FlashString& classname() const = 0;
 
+	/**
+	 * @brief Start the controller
+	 *
+	 * Controllers may now initiate communications with registered devices.
+	 * Typically they'll query device status, etc.
+	 */
 	virtual void start()
 	{
 		startDevices();
 	}
 
-	// MUST call canStop() first to ensure it's safe to stop
+	/**
+	 * @brief Stop all controllers
+	 *
+	 * This method is called by the Device Manager, applications shouldn't need it.
+	 *
+	 * @note MUST call canStop() first to ensure it's safe to stop!
+	 */
 	virtual void stop()
 	{
 		stopDevices();
 	}
 
+	/**
+	 * @brief Check if it's OK to stop this controller
+	 */
 	virtual bool canStop() const
 	{
 		return m_queue.count() == 0;
 	}
 
+	/**
+	 * @brief Get the fully-qualified unique controller identifier
+	 */
 	String id() const
 	{
 		String s;
@@ -108,6 +170,11 @@ protected:
 	 */
 	virtual void handleEvent(Request* request, Event event);
 
+	/**
+	 * @brief Queue a request
+	 *
+	 * The request is started immediately if the queue is empty.
+	 */
 	void submit(Request* request);
 
 	void startTimer();

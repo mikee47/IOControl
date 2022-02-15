@@ -25,12 +25,9 @@
 namespace IO
 {
 /**
- * @brief This class provides arbitration for serial hardware which may be used by multiple controllers.
+ * @brief Wrapper class for the UART driver
  *
- * For example:
- * 
- * 		- Modbus and DMX512 devices can co-exist on the same wire.
- * 		- One serial port can be split into multiple segments, each with a dedicated RS485 line driver
+ * RS485 requires efficient burst transfer access to the serial hardware, so uses the UART driver directly.
  */
 class Serial
 {
