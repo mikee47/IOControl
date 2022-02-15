@@ -24,6 +24,7 @@
 #include "DeviceType.h"
 #include "Event.h"
 #include <ArduinoJson.h>
+#include <Data/LinkedObjectList.h>
 
 namespace IO
 {
@@ -71,12 +72,14 @@ enum __attribute__((packed)) device_state_t {
  * Handles requests for a specific device; the requests are executed by the relevant
  * controller.
  */
-class Device
+class Device : public LinkedObjectTemplate<Device>
 {
 	friend Request;
 	friend Controller;
 
 public:
+	using OwnedList = OwnedLinkedObjectListTemplate<Device>;
+
 	struct Config {
 		String name;
 	};

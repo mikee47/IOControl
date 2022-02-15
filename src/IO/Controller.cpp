@@ -68,7 +68,7 @@ ErrorCode Controller::createDevice(const char* id, JsonObjectConst config)
 		return err;
 	}
 
-	m_devices.addElement(device);
+	m_devices.add(device);
 	debug_d("Device %s created, class %s", device->caption().c_str(), cls.c_str());
 
 	return err;
@@ -76,18 +76,14 @@ ErrorCode Controller::createDevice(const char* id, JsonObjectConst config)
 
 void Controller::freeDevices()
 {
-	unsigned i = m_devices.count();
-	while(i--) {
-		delete m_devices[i];
-		m_devices.remove(i);
-	}
+	m_devices.clear();
 }
 
 Device* Controller::findDevice(const String& id)
 {
-	for(unsigned i = 0; i < m_devices.count(); ++i) {
-		if(m_devices[i]->id() == id) {
-			return m_devices[i];
+	for(auto& dev : m_devices) {
+		if(dev.id() == id) {
+			return &dev;
 		}
 	}
 
@@ -102,9 +98,9 @@ void Controller::startTimer()
 {
 	PRINT_HEAP();
 
-	if(m_deviceCheckTimer == nullptr) {
-		m_deviceCheckTimer = new SimpleTimer();
-		if(m_deviceCheckTimer == nullptr) {
+	if(!m_deviceCheckTimer) {
+		m_deviceCheckTimer.reset(new SimpleTimer);
+		if(!m_deviceCheckTimer) {
 			return;
 		}
 
@@ -117,8 +113,7 @@ void Controller::startTimer()
 
 void Controller::stopTimer()
 {
-	delete m_deviceCheckTimer;
-	m_deviceCheckTimer = nullptr;
+	m_deviceCheckTimer.reset();
 }
 
 /*
@@ -133,9 +128,8 @@ void Controller::startDevices()
 
 	stopTimer();
 	unsigned failCount = 0;
-	for(unsigned i = 0; i < m_devices.count(); ++i) {
-		Device* device = m_devices[i];
-		auto err = device->start();
+	for(Device& device : m_devices) {
+		auto err = device.start();
 
 		debug_i("%s->start(): %s", device->caption().c_str(), Error::toString(err).c_str());
 
@@ -155,8 +149,8 @@ void Controller::startDevices()
 void Controller::stopDevices()
 {
 	stopTimer();
-	for(unsigned i = 0; i < m_devices.count(); ++i) {
-		m_devices[i]->stop();
+	for(auto& dev : m_devices) {
+		dev.stop();
 	}
 }
 

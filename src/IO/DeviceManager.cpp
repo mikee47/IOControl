@@ -99,9 +99,8 @@ ErrorCode DeviceManager::end()
 	}
 
 	// Destroy devices
-	for(unsigned i = 0; i < m_controllers.count(); ++i) {
-		auto controller = m_controllers.valueAt(i);
-		controller->freeDevices();
+	for(auto controller : m_controllers) {
+		(*controller)->freeDevices();
 	}
 
 	return Error::success;

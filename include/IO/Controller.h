@@ -27,7 +27,6 @@ namespace IO
 {
 using GetDeviceClass = const DeviceClassInfo (*)();
 using DeviceClassMap = HashMap<String, GetDeviceClass>;
-using IODeviceList = Vector<Device*>;
 
 // Maximum queued requests per controller
 #ifndef IOCONTROL_MAX_REQUESTS
@@ -53,14 +52,12 @@ class Controller
 public:
 	using RequestQueue = FIFO<Request*, IOCONTROL_MAX_REQUESTS>;
 
-	Controller(uint8_t instance) : m_devices(4, 4), m_instance(instance)
+	Controller(uint8_t instance) : m_instance(instance)
 	{
 	}
 
 	virtual ~Controller()
 	{
-		freeDevices();
-		stopTimer();
 	}
 
 	static void registerDeviceClass(const GetDeviceClass devclass)
@@ -75,7 +72,7 @@ public:
 		return m_instance;
 	}
 
-	IODeviceList& devices()
+	Device::OwnedList& devices()
 	{
 		return m_devices;
 	}
@@ -139,10 +136,10 @@ private:
 	void startDevices();
 	void stopDevices();
 
-	IODeviceList m_devices;
+	Device::OwnedList m_devices;
 	RequestQueue m_queue;
 	static DeviceClassMap m_deviceClasses;
-	SimpleTimer* m_deviceCheckTimer{nullptr};
+	std::unique_ptr<SimpleTimer> m_deviceCheckTimer;
 	uint8_t m_instance;
 };
 
@@ -167,7 +164,7 @@ ErrorCode Controller::createDevice(DeviceClass* device, const char* id, const ty
 		return err;
 	}
 
-	m_devices.addElement(dev);
+	m_devices.add(dev);
 	debug_d("Device %s created, class %s", dev->caption().c_str(), String(cls.name).c_str());
 
 	device = reinterpret_cast<DeviceClass*>(dev);

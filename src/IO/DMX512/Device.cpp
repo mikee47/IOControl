@@ -121,19 +121,19 @@ void Device::updateSlaves()
 	uint8_t data[dataSize];
 	memset(data, 0, dataSize);
 	data[0] = 0x00; // Lighting start code
-	for(unsigned i = 0; i < controller().devices().count(); ++i) {
-		auto dev = reinterpret_cast<Device*>(controller().devices()[i]);
-		if(dev->type() != DeviceType::DMX512) {
+	for(auto& dev : controller().devices()) {
+		if(dev.type() != DeviceType::DMX512) {
 			continue;
 		}
 
-		if(dev->update()) {
+		Device& dmxDevice = static_cast<Device&>(dev);
+		if(dmxDevice.update()) {
 			m_changed = true;
 		}
 
-		for(unsigned nodeId = dev->nodeIdMin(); nodeId <= dev->nodeIdMax(); ++nodeId) {
-			auto& nodeData = dev->getNodeData(nodeId);
-			unsigned addr = dev->address() + nodeId;
+		for(unsigned nodeId = dev.nodeIdMin(); nodeId <= dev.nodeIdMax(); ++nodeId) {
+			auto& nodeData = dmxDevice.getNodeData(nodeId);
+			unsigned addr = dev.address() + nodeId;
 			assert(addr > 0 && addr <= maxAddr);
 			// @todo: Device should perform any necessary translation
 			//			data[addr] = led(nodeData.value);
