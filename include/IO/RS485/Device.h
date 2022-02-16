@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <IO/Device.h>
+#include "../Device.h"
 #include "Controller.h"
 
 namespace IO

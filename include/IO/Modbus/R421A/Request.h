@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <IO/Modbus/Request.h>
+#include "../Request.h"
 #include "Device.h"
 
 namespace IO

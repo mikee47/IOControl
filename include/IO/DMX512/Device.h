@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <IO/RS485/Device.h>
+#include "../RS485/Device.h"
 
 namespace IO
 {

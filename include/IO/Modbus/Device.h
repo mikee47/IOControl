@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <IO/RS485/Device.h>
+#include "../RS485/Device.h"
 #include "ADU.h"
 
 namespace IO

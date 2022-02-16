@@ -40,7 +40,7 @@
 
 #pragma once
 
-#include <IO/Modbus/Device.h>
+#include "../Device.h"
 
 /**
  * @brief Tracks state of multiple relays

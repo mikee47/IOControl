@@ -1,2 +1,2 @@
 COMPONENT_DEPENDS := ArduinoJson6
-COMPONENT_SRCDIRS := $(call ListAllSubDirs,$(COMPONENT_PATH)/src)
+COMPONENT_SRCDIRS := src $(call ListAllSubDirsSingle,$(COMPONENT_PATH)/src)

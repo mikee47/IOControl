@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <IO/Modbus/ADU.h>
+#include "ADU.h"
 #include <Print.h>
 
 namespace IO

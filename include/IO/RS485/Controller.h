@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include <IO/Controller.h>
-#include <IO/Serial.h>
+#include "../Controller.h"
+#include "../Serial.h"
 #include <SimpleTimer.h>
 
 namespace IO

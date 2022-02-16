@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include <IO/RS485/Controller.h>
-#include <IO/Modbus/ADU.h>
+#include "../RS485/Controller.h"
+#include "ADU.h"
 
 namespace IO
 {
