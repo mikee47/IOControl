@@ -22,6 +22,7 @@
 #pragma once
 
 #include "../RS485/Device.h"
+#include <Data/Range.h>
 
 namespace IO
 {
@@ -62,13 +63,7 @@ struct NodeData {
 
 	void setTarget(int newTarget)
 	{
-		if(newTarget < 0) {
-			target = 0;
-		} else if(newTarget > 0xFF) {
-			target = 0xFF;
-		} else {
-			target = uint8_t(newTarget);
-		}
+		target = TRange(0, 0xff).clip(newTarget);
 	}
 
 	void setValue(uint8_t newValue)
@@ -97,7 +92,7 @@ struct NodeData {
 
 		int step = (state == State::enabled) ? 1 : 4;
 		int newValue = value + ((value < adjustTarget) ? step : -step);
-		value = (newValue <= 0) ? 0 : (newValue >= 0xFF) ? 0xFF : newValue;
+		value = TRange(0, 0xff).clip(newValue);
 		return true;
 	}
 };

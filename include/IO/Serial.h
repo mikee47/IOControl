@@ -70,7 +70,7 @@ public:
 
 	void setBreak(bool state)
 	{
-		smg_uart_set_break(uart, true);
+		smg_uart_set_break(uart, state);
 	}
 
 	size_t read(void* buffer, size_t size)

@@ -123,7 +123,6 @@ void Device::updateSlaves()
 	serial.write(&c, 1);
 
 	m_updating = true;
-	m_changed = false;
 }
 
 ErrorCode Device::init(const Config& config)
@@ -162,6 +161,9 @@ IO::Request* Device::createRequest()
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
 	IO::RS485::Device::parseJson(json, cfg.rs485);
+	if(cfg.rs485.slave.baudrate == 0) {
+		cfg.rs485.slave.baudrate = DMX_BAUDRATE;
+	}
 	if(cfg.rs485.slave.address == 0) {
 		cfg.rs485.slave.address = 0x01;
 	}
@@ -207,6 +209,7 @@ void Device::handleEvent(IO::Request* request, Event event)
 			m_timer.setIntervalMs<DMX_UPDATE_PERIODIC_MS>();
 			m_timer.startOnce();
 		}
+		m_changed = false;
 		request->complete(Error::success);
 		return;
 
@@ -241,11 +244,10 @@ ErrorCode Device::execute(Request& request)
 			}
 			data.enable();
 			break;
-		case Command::adjust: {
+		case Command::adjust:
 			data.setTarget(data.target + request.value());
 			data.enable();
 			break;
-		}
 		case Command::set:
 			data.setValue(request.value());
 			break;

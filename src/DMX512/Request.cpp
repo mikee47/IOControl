@@ -52,7 +52,7 @@ ErrorCode Request::parseJson(JsonObjectConst json)
 	if(err) {
 		return err;
 	}
-	m_value = json[FS_value].as<unsigned>();
+	m_value = json[FS_value].as<int>();
 	return Error::success;
 }
 
