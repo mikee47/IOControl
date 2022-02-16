@@ -87,9 +87,12 @@ public:
 
 	static const Factory factory;
 
+	/**
+	 * @brief R421A device configuration
+	 */
 	struct Config {
-		Modbus::Device::Config modbus;
-		uint8_t channels;
+		Modbus::Device::Config modbus; ///< Basic modbus configuration
+		uint8_t channels;			   ///< Number of channels (typically 4 or 8)
 	};
 
 	using Modbus::Device::Device;

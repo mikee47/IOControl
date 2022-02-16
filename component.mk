@@ -1,2 +1,5 @@
 COMPONENT_DEPENDS := ArduinoJson6
 COMPONENT_SRCDIRS := src $(call ListAllSubDirsSingle,$(COMPONENT_PATH)/src)
+COMPONENT_DOXYGEN_INPUT := include
+COMPONENT_DOCFILES := $(call ListAllFiles,$(COMPONENT_PATH)/docs,*.rst *.png *.jpg)
+COMPONENT_DOCFILES := $(patsubst $(COMPONENT_PATH)/%,%,$(COMPONENT_DOCFILES))

@@ -28,16 +28,38 @@ namespace RS485
 {
 constexpr unsigned DEFAULT_BAUDRATE = 9600;
 
+/**
+ * @brief Base device class for communicating with an RS485 slave
+ */
 class Device : public IO::Device
 {
 public:
+	/**
+	 * @brief RS485 configuration
+	 */
 	struct Config {
 		IO::Device::Config base;
 		struct Slave {
+			/**
+			 * Network device address or 'slave ID'
+			 */
 			uint16_t address;
+			/**
+			 * Application-defined value for multiplexed serial ports.
+			 * For example, several MAX485 transceivers can be connected to one
+			 * serial port with appropriate multiplexing logic.
+			 *
+			 * See `IO::RS485::Controller::SetDirectionCallback`
+			 */
 			uint8_t segment;
+			/**
+			 * Serial link speed
+			 */
 			unsigned baudrate;
-			unsigned timeout; ///< Max time between command/response
+			/**
+			 * Max time between command/response in milliseconds.
+			 */
+			unsigned timeout;
 		};
 		Slave slave;
 	};
