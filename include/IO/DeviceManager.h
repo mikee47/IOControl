@@ -77,7 +77,7 @@ public:
 		Request* req;
 		auto err = createRequest(devid, req);
 		if(!err) {
-			request = reinterpret_cast<RequestClass*>(req);
+			request = static_cast<RequestClass*>(req);
 		} else {
 			debug_w("createRequest('%s'): %s", devid.c_str(), Error::toString(err).c_str());
 		}

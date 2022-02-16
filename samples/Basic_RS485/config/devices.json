@@ -13,6 +13,13 @@
 			"address": 1,
 			"baudrate": 9600,
 			"count": 10
+		},
+		"dmx2": {
+			"controller": "rs485#0",
+			"class": "dmx",
+			"address": 2,
+			"baudrate": 9600,
+			"count": 5
 		}
 	}
 }

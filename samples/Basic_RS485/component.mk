@@ -4,4 +4,5 @@ ARDUINO_LIBRARIES := \
 
 DISABLE_NETWORK := 1
 
-HOST_UART_OPTIONS := --uart=1 --device=console
+ENABLE_HOST_UARTID := 0
+HOST_UART_OPTIONS := --uart=0 --uart=1 --device=console

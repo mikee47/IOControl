@@ -108,13 +108,12 @@ void Controller::handleEvent(Request* request, Event event)
 		break;
 
 	case Event::Timeout: {
-		//
 		uint8_t buffer[256];
 		auto receivedSize = serial.read(buffer, sizeof(buffer));
-		debug_hex(INFO, "TIMEOUT", buffer, receivedSize);
-		//
-
-		debug_w("RS485: Timeout");
+		if(receivedSize != 0) {
+			debug_hex(INFO, "TIMEOUT", buffer, receivedSize);
+		}
+		debug_w("[RS485] Request '%s' timeout", request->caption().c_str());
 		break;
 	}
 

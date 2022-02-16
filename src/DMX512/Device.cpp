@@ -43,14 +43,12 @@ constexpr auto DMX_SERIAL_FORMAT{UART_8N2};
 
 //
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
-#define DMX_UPDATE_PERIODIC_MS 1000 // 5000	///< Periodic update interval
+#define DMX_UPDATE_PERIODIC_MS 1000 ///< Periodic update interval
 
 } // namespace
 
 /*
- *  TODO
- *
- *  Devices should maintain state. Controller iterates all devices during an update, marks outstanding
+ *  Devices maintain state. Controller iterates all devices during an update, marks outstanding
  *  requests as pending and completes them when done.
  *  DMX spec. says we should be pumping out updates continuously, so need to decide on update interval.
  *  That would be set as a parameter of the controller.
@@ -76,20 +74,8 @@ constexpr auto DMX_SERIAL_FORMAT{UART_8N2};
 
 void Device::updateSlaves()
 {
-	debug_i("DMX512: updateSlaves()");
+	debug_i("[DMX512] updateSlaves()");
 
-	/*
-	// Determine how many slots we need
-	uint16_t maxAddr = 0;
-	for (unsigned i = 0; i < m_devices.count(); ++i) {
-		auto dev = reinterpret_cast<Device*>(m_devices[i]);
-		uint16_t addr = dev->address() + dev->nodeIdMax();
-		maxAddr = max(maxAddr, addr);
-	}
-
-	debug_i("maxaddr = %u", maxAddr);
-
-*/
 	auto& serial = controller().getSerial();
 
 	Serial::Config cfg{
@@ -125,7 +111,7 @@ void Device::updateSlaves()
 		}
 	}
 
-	debug_hex(DBG, ">", data, dataSize, 0, 32);
+	debug_hex(INFO, ">", data, dataSize, 0, 32);
 
 	controller().setDirection(Direction::Outgoing);
 	serial.setBreak(true);
@@ -147,9 +133,7 @@ ErrorCode Device::init(const Config& config)
 		return err;
 	}
 	m_nodeCount = config.nodeCount ?: 1;
-	assert(m_nodeData == nullptr);
-	m_nodeData = new NodeData[m_nodeCount];
-	memset(m_nodeData, 0, sizeof(NodeData) * m_nodeCount);
+	m_nodeData.reset(new NodeData[m_nodeCount]{});
 
 	auto& serial = controller().getSerial();
 	if(!serial.resizeBuffers(0, MaxPacketSize)) {

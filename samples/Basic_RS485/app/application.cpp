@@ -27,7 +27,7 @@ constexpr uint8_t MODBUS_SLAVE_ID{10};
 void devmgrCallback(const IO::Request& request)
 {
 	if(request.device().id() == "mb1") {
-		auto& req = reinterpret_cast<const IO::Modbus::R421A::Request&>(request);
+		auto& req = static_cast<const IO::Modbus::R421A::Request&>(request);
 		auto& response = req.response();
 		debug_i("%s: %08x / %08x", __FUNCTION__, response.channelMask, response.channelStates);
 	}
@@ -154,6 +154,60 @@ IO::ErrorCode devmgrInit()
 	return IO::devmgr.begin(doc.as<JsonObjectConst>());
 }
 
+void issueRequests()
+{
+	{
+		IO::Request* req;
+		auto err = IO::devmgr.createRequest("mb1", req);
+		if(!err) {
+			req->setID("Toggle all outputs");
+			req->nodeToggle(IO::DevNode_ALL);
+			// Setting a request ID is optional, could use for webpage state management in request callback
+			// req->setID("toggle#1");
+			// req->nodeToggle(IO::DevNode{1});
+			req->submit();
+		}
+	}
+
+	// Submit a request using code
+	IO::Request* req;
+	auto err = IO::devmgr.createRequest("dmx1", req);
+	if(err) {
+		debug_e("Error creating request: %s", IO::Error::toString(err).c_str());
+	} else {
+		req->setID("adjust#7");
+		req->nodeAdjust(IO::DevNode{7}, 2);
+		req->submit();
+	}
+
+	auto webRequestCallback = [](const IO::Request& request) {
+		if(request.isPending()) {
+			debug_i("Web request '%s' pending...", request.caption().c_str());
+		} else {
+			debug_i("Web request '%s' complete, %s", request.caption().c_str(),
+					IO::Error::toString(request.error()).c_str());
+		}
+	};
+
+	// This might be a request received from web client
+	StaticJsonDocument<512> doc;
+	auto json = doc.to<JsonObject>();
+	json["id"] = F("adjust#1");
+	json["device"] = "dmx2";
+	json["node"] = 1;
+	json["command"] = "adjust";
+	json["value"] = 3;
+	IO::devmgr.handleMessage(json, webRequestCallback);
+
+	json["id"] = F("toggle#5");
+	json["device"] = "mb1";
+	json["node"] = 5;
+	json["command"] = "toggle";
+	IO::devmgr.handleMessage(json, webRequestCallback);
+
+	testTimer.startOnce();
+}
+
 void systemReady()
 {
 	auto err = devmgrInit();
@@ -182,33 +236,7 @@ void systemReady()
 	}
 	*/
 
-	testTimer.initializeMs<2000>(InterruptCallback([]() {
-		{
-			IO::Request* req;
-			auto err = IO::devmgr.createRequest("mb1", req);
-			if(!err) {
-				req->setID("Toggle all outputs");
-				req->nodeToggle(IO::DevNode_ALL);
-				// Setting a request ID is optional, could use for webpage state management in request callback
-				// req->setID("toggle#1");
-				// req->nodeToggle(IO::DevNode{1});
-				req->submit();
-			}
-		}
-
-		IO::Request* req;
-		auto err = IO::devmgr.createRequest("dmx1", req);
-		if(err) {
-			debug_e("Error creating request: %s", IO::Error::toString(err).c_str());
-		} else {
-			req->setID("adjust#7");
-			req->nodeAdjust(IO::DevNode{7}, 2);
-			req->submit();
-		}
-
-		testTimer.startOnce();
-	}));
-
+	testTimer.initializeMs<2000>(issueRequests);
 	testTimer.startOnce();
 }
 

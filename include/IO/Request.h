@@ -126,7 +126,7 @@ public:
 	/**
 	 * @brief Get a descriptive caption for this request
 	 */
-	String caption();
+	String caption() const;
 
 	/**
 	 * @brief Fill this request from a JSON description

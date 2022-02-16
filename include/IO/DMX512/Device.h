@@ -131,17 +131,18 @@ public:
 
 	static constexpr size_t MaxPacketSize{520};
 
+	/**
+	 * @brief DMX512 Device Configuration
+	 */
 	struct Config {
-		IO::RS485::Device::Config rs485;
+		IO::RS485::Device::Config rs485; ///< RS485 config
+		/**
+		 * @brief Number of nodes controlled by this device
+		 */
 		uint8_t nodeCount;
 	};
 
 	using IO::RS485::Device::Device;
-
-	~Device()
-	{
-		delete m_nodeData;
-	}
 
 	const DeviceType type() const override
 	{
@@ -195,11 +196,11 @@ protected:
 	ErrorCode execute(Request& request);
 
 private:
-	uint8_t m_nodeCount{1};		   ///< Number of DMX slots managed by this device
-	NodeData* m_nodeData{nullptr}; ///< Data for each slot, starting at `address`
-	static SimpleTimer m_timer;	///< For slave update cycle timing
-	static bool m_changed;		   ///< Data has changed
-	static bool m_updating;		   ///< Currently sending update
+	uint8_t m_nodeCount{1};					///< Number of DMX slots managed by this device
+	std::unique_ptr<NodeData[]> m_nodeData; ///< Data for each slot, starting at `address`
+	static SimpleTimer m_timer;				///< For slave update cycle timing
+	static bool m_changed;					///< Data has changed
+	static bool m_updating;					///< Currently sending update
 };
 
 } // namespace DMX512

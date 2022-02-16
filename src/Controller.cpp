@@ -210,8 +210,12 @@ void Controller::handleEvent(Request* request, Event event)
 	case Event::RequestComplete:
 		devmgr.callback(*request);
 
-		assert(m_queue.head() == request);
-		m_queue.remove(request);
+		// Requests don't need to be queued (e.g. DMX512 handles them immediately as it only updates internal state)
+		if(m_queue.head() == request) {
+			m_queue.remove(request);
+		} else {
+			delete request;
+		}
 
 		executeNext();
 		break;

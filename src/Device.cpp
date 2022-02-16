@@ -66,6 +66,7 @@ ErrorCode Device::start()
 		return Error::success;
 	}
 
+	req->setID(F("query"));
 	req->submit();
 	m_state = devstate_starting;
 

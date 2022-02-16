@@ -121,7 +121,7 @@ void Request::complete(ErrorCode err)
 	handleEvent(Event::RequestComplete);
 }
 
-String Request::caption()
+String Request::caption() const
 {
 	String s(uint32_t(this), HEX);
 	s += " (";

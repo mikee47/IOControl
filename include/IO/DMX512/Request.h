@@ -37,7 +37,7 @@ public:
 
 	Device& device()
 	{
-		return reinterpret_cast<Device&>(IO::Request::device());
+		return static_cast<Device&>(IO::Request::device());
 	}
 
 	ErrorCode parseJson(JsonObjectConst json) override;
