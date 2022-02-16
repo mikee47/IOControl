@@ -26,8 +26,13 @@ DeviceManager devmgr;
 
 void DeviceManager::registerController(Controller& controller)
 {
-	m_controllers[controller.id()] = &controller;
-	debug_i("Controller '%s' registered", controller.id().c_str());
+	String id;
+	id += controller.classname();
+	id += '#';
+	id += controller.instance;
+	controller.id = id;
+	controllers.add(&controller);
+	debug_i("Controller '%s' registered", controller.getId().c_str());
 }
 
 ErrorCode DeviceManager::begin(JsonObjectConst config)
@@ -61,15 +66,15 @@ ErrorCode DeviceManager::begin(JsonObjectConst config)
 void DeviceManager::start()
 {
 	// Start all controllers
-	for(auto controller : m_controllers) {
-		(*controller)->start();
+	for(auto& controller : controllers) {
+		controller.start();
 	}
 }
 
 bool DeviceManager::canStop() const
 {
-	for(auto controller : m_controllers) {
-		if(!(*controller)->canStop()) {
+	for(auto& controller : controllers) {
+		if(!controller.canStop()) {
 			return false;
 		}
 	}
@@ -84,9 +89,8 @@ ErrorCode DeviceManager::stop()
 	}
 
 	// Stop all controllers
-	for(unsigned i = 0; i < m_controllers.count(); ++i) {
-		auto controller = m_controllers.valueAt(i);
-		controller->stop();
+	for(auto& controller : controllers) {
+		controller.stop();
 	}
 
 	return Error::success;
@@ -100,17 +104,17 @@ ErrorCode DeviceManager::end()
 	}
 
 	// Destroy devices
-	for(auto controller : m_controllers) {
-		(*controller)->freeDevices();
+	for(auto& controller : controllers) {
+		controller.freeDevices();
 	}
 
 	return Error::success;
 }
 
-Device* DeviceManager::findDevice(const String& id) const
+Device* DeviceManager::findDevice(const String& id)
 {
-	for(auto controller : m_controllers) {
-		auto device = (*controller)->findDevice(id);
+	for(auto& controller : controllers) {
+		auto device = controller.findDevice(id);
 		if(device != nullptr) {
 			return device;
 		}

@@ -68,8 +68,8 @@ public:
 
 	/**
 	 * @brief Whilst a port is acquired, call this method to being or end transmission
-	 * @param enable true to transmit, false to receive
-	 * @note Port should be left in receive mode on request completion
+	 * @param direction
+	 * @note Port should normally be left in receive mode on request completion.
 	 */
 	void IRAM_ATTR setDirection(IO::Direction direction)
 	{
@@ -120,7 +120,7 @@ private:
 	uint8_t segment{0};						   ///< Active bus segment
 	OnRequestDelegate requestCallback;
 	SimpleTimer timer; ///< Use to schedule callback and timeout
-	Serial::Config m_savedConfig{};
+	Serial::Config savedConfig{};
 };
 
 } // namespace RS485

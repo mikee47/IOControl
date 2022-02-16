@@ -40,9 +40,9 @@ public:
 		setCommand(Command::set);
 	}
 
-	const Device& device() const
+	const Device& getDevice() const
 	{
-		return reinterpret_cast<const Device&>(IO::Request::device());
+		return reinterpret_cast<const Device&>(device);
 	}
 
 	ErrorCode parseJson(JsonObjectConst json) override;
@@ -59,14 +59,14 @@ public:
 
 	void send(uint32_t code, uint8_t repeats = 0);
 
-	uint32_t code() const
+	uint32_t getCode() const
 	{
-		return m_code;
+		return code;
 	}
 
-	uint8_t repeats() const
+	uint8_t getRepeats() const
 	{
-		return m_repeats;
+		return repeats;
 	}
 
 protected:
@@ -77,8 +77,8 @@ protected:
 	}
 
 private:
-	uint32_t m_code{0};
-	uint8_t m_repeats{0};
+	uint32_t code{0};
+	uint8_t repeats{0};
 };
 
 } // namespace RFSwitch

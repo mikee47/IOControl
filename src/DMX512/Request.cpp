@@ -34,12 +34,12 @@ namespace DMX512
 void Request::submit()
 {
 	// Only update command gets queued
-	if(command() == Command::update) {
+	if(getCommand() == Command::update) {
 		return IO::Request::submit();
 	}
 
 	// All others are executed immediately
-	auto err = device().execute(*this);
+	auto err = getDevice().execute(*this);
 	if(err < 0) {
 		debug_e("Request failed, %s", Error::toString(err).c_str());
 	}
@@ -52,24 +52,24 @@ ErrorCode Request::parseJson(JsonObjectConst json)
 	if(err) {
 		return err;
 	}
-	m_value = json[FS_value].as<int>();
+	value = json[FS_value];
 	return Error::success;
 }
 
 void Request::getJson(JsonObject json) const
 {
 	IO::Request::getJson(json);
-	json[FS_node] = m_node.id;
-	json[FS_value] = m_value;
+	json[FS_node] = devNode.id;
+	json[FS_value] = value;
 }
 
 bool Request::setNode(DevNode node)
 {
-	if(!device().isValid(node)) {
+	if(!getDevice().isValid(node)) {
 		return false;
 	}
 
-	m_node = node;
+	devNode = node;
 	return true;
 }
 

@@ -77,22 +77,22 @@ static r421a_command_t map(Command cmd)
  */
 Function Request::fillRequestData(PDU::Data& data)
 {
-	if(command() == Command::query) {
+	if(getCommand() == Command::query) {
 		// Query all channels
 		auto& req = data.readHoldingRegisters.request;
-		req.startAddress = device().nodeIdMin();
-		req.quantityOfRegisters = device().maxNodes();
+		req.startAddress = device.nodeIdMin();
+		req.quantityOfRegisters = device.maxNodes();
 		return Function::ReadHoldingRegisters;
 	}
 
 	// others
-	for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
-		if(m_data.channelMask[ch]) {
+	for(auto ch = device.nodeIdMin(); ch <= device.nodeIdMax(); ++ch) {
+		if(commandData.channelMask[ch]) {
 			PDU::Data::WriteSingleRegister::Request req;
 			req.address = ch;
-			req.value = map(command()) << 8;
-			if(command() == Command::delay) {
-				req.value |= m_data.delay;
+			req.value = map(getCommand()) << 8;
+			if(getCommand() == Command::delay) {
+				req.value |= commandData.delay;
 			}
 
 			//      debug_i("fillRequestData() - channel %u, cmd %u", ch, m_cmd);
@@ -123,9 +123,9 @@ ErrorCode Request::callback(PDU& pdu)
 				continue; // Erroneous response - ignore
 			}
 
-			auto ch = device().nodeIdMin() + i;
-			m_response.channelMask[ch] = true;
-			m_response.channelStates[ch] = (val == relay_closed);
+			auto ch = device.nodeIdMin() + i;
+			response.channelMask[ch] = true;
+			response.channelStates[ch] = (val == relay_closed);
 		}
 
 		break;
@@ -136,19 +136,19 @@ ErrorCode Request::callback(PDU& pdu)
 		auto& rsp = pdu.data.writeSingleRegister.response;
 		uint8_t ch = rsp.address;
 		// We've handled this channel, clear command mask bit
-		m_data.channelMask[ch] = false;
-		//  debug_i("Channel = %u, mask = %08x", channel, m_data.channelMask);
+		commandData.channelMask[ch] = false;
+		//  debug_i("Channel = %u, mask = %08x", channel, commandData.channelMask);
 		// Report back which bits were affected
-		m_response.channelMask[ch] = true;
-		if(command() == Command::toggle) {
+		response.channelMask[ch] = true;
+		if(getCommand() == Command::toggle) {
 			// Use current states held by IODevice to determine effect of toggle command
-			m_response.channelStates[ch] = !device().states().channelStates[ch];
-		} else if(command() == Command::on) {
-			m_response.channelStates[ch] = true;
+			response.channelStates[ch] = !getDevice().getStates().channelStates[ch];
+		} else if(getCommand() == Command::on) {
+			response.channelStates[ch] = true;
 		}
 
 		// Re-submit request for next channel, if any, otherwise we're done
-		if(m_data.channelMask.any()) {
+		if(commandData.channelMask.any()) {
 			submit();
 			return Error::pending;
 		}
@@ -167,17 +167,17 @@ ErrorCode Request::callback(PDU& pdu)
 bool Request::setNode(DevNode node)
 {
 	if(node == DevNode_ALL) {
-		for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
-			m_data.channelMask[ch] = true;
+		for(auto ch = device.nodeIdMin(); ch <= device.nodeIdMax(); ++ch) {
+			commandData.channelMask[ch] = true;
 		}
 		return true;
 	}
 
-	if(!device().isValid(node)) {
+	if(!getDevice().isValid(node)) {
 		return false;
 	}
 
-	m_data.channelMask[node.id] = true;
+	commandData.channelMask[node.id] = true;
 	return true;
 }
 
@@ -185,14 +185,14 @@ DevNode::States Request::getNodeStates(DevNode node)
 {
 	DevNode::States states;
 	if(node == DevNode_ALL) {
-		auto mask = isPending() ? m_data.channelMask : m_response.channelMask;
-		for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
+		auto mask = isPending() ? commandData.channelMask : response.channelMask;
+		for(auto ch = device.nodeIdMin(); ch <= device.nodeIdMax(); ++ch) {
 			if(mask[ch]) {
-				states += device().getNodeStates(DevNode{ch});
+				states += getDevice().getNodeStates(DevNode{ch});
 			}
 		}
 	} else {
-		states = device().getNodeStates(node);
+		states = getDevice().getNodeStates(node);
 	}
 
 	return states;
@@ -204,7 +204,7 @@ ErrorCode Request::parseJson(JsonObjectConst json)
 	if(!err) {
 		unsigned delay = json[FS_delay];
 		if(delay <= 255) {
-			m_data.delay = delay;
+			commandData.delay = delay;
 		} else {
 			err = Error::bad_param;
 		}
@@ -217,22 +217,22 @@ void Request::getJson(JsonObject json) const
 {
 	Modbus::Request::getJson(json);
 
-	auto mask = isPending() ? m_data.channelMask : m_response.channelMask;
+	auto mask = isPending() ? commandData.channelMask : response.channelMask;
 
 	JsonArray nodes = json.createNestedArray(FS_nodes);
-	for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
+	for(auto ch = device.nodeIdMin(); ch <= device.nodeIdMax(); ++ch) {
 		if(mask[ch]) {
 			nodes.add(ch);
 		}
 	}
 
-	if(m_response.channelMask.any()) {
+	if(response.channelMask.any()) {
 		JsonArray states = json.createNestedArray(FS_states);
 
-		debug_d("Channel mask = 0x%08x, states = 0x%08x", m_response.channelMask, m_response.channelStates);
-		for(auto ch = device().nodeIdMin(); ch <= device().nodeIdMax(); ++ch) {
-			if(m_response.channelMask[ch]) {
-				states.add(m_response.channelStates[ch]);
+		debug_d("Channel mask = 0x%08x, states = 0x%08x", response.channelMask, response.channelStates);
+		for(auto ch = device.nodeIdMin(); ch <= device.nodeIdMax(); ++ch) {
+			if(response.channelMask[ch]) {
+				states.add(response.channelStates[ch]);
 			}
 		}
 	}

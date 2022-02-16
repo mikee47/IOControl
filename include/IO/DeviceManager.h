@@ -28,8 +28,6 @@ namespace IO
 {
 class Request;
 
-using ControllerMap = HashMap<String, Controller*>;
-
 class DeviceManager
 {
 public:
@@ -44,9 +42,9 @@ public:
 	 */
 	void registerDeviceClass(const Device::Factory& devclass);
 
-	Controller* findController(const String& name) const
+	Controller* findController(const String& id)
 	{
-		return m_controllers[name];
+		return std::find(controllers.begin(), controllers.end(), id);
 	}
 
 	/**
@@ -62,7 +60,7 @@ public:
 
 	bool canStop() const;
 
-	Device* findDevice(const String& id) const;
+	Device* findDevice(const String& id);
 
 	ErrorCode createRequest(const String& devid, Request*& request);
 
@@ -90,25 +88,25 @@ public:
 	 */
 	void setCallback(Request::Callback callback)
 	{
-		m_callback = callback;
+		requestCallback = callback;
 	}
 
 	/**
 	 * @brief invoke the callback, if one is registered
 	 * @note called by Controller
 	 */
-	void callback(Request& request)
+	void invokeCallback(Request& request)
 	{
-		if(m_callback) {
-			m_callback(request);
+		if(requestCallback) {
+			requestCallback(request);
 		}
 	}
 
 	ErrorCode handleMessage(JsonObject json, Request::Callback callback);
 
 private:
-	ControllerMap m_controllers; ///< We don't own the controllers
-	Request::Callback m_callback;
+	Controller::List controllers; ///< We don't own the controllers
+	Request::Callback requestCallback;
 };
 
 extern DeviceManager devmgr;

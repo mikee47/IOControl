@@ -92,7 +92,7 @@ public:
 	 */
 	using Callback = Delegate<void(const Request& request)>;
 
-	Request(Device& device) : m_device(device)
+	Request(Device& device) : device(device)
 	{
 		debug_d("Request %p created", this);
 	}
@@ -102,12 +102,7 @@ public:
 
 	virtual ~Request()
 	{
-		debug_d("Request %p (%s) destroyed", this, m_id.c_str());
-	}
-
-	Device& device() const
-	{
-		return m_device;
+		debug_d("Request %p (%s) destroyed", this, requestId.c_str());
 	}
 
 	/**
@@ -115,12 +110,12 @@ public:
 	 */
 	ErrorCode error() const
 	{
-		return m_error;
+		return errorCode;
 	}
 
 	bool isPending() const
 	{
-		return m_error == Error::pending;
+		return errorCode == Error::pending;
 	}
 
 	/**
@@ -159,7 +154,7 @@ public:
 	 */
 	void setID(const String& value)
 	{
-		m_id = value;
+		requestId = value;
 	}
 
 	/**
@@ -168,7 +163,7 @@ public:
 	void setCommand(Command cmd)
 	{
 		debug_d("setCommand(0x%08x: %s)", cmd, toString(cmd).c_str());
-		m_command = cmd;
+		command = cmd;
 	}
 
 	/**
@@ -176,12 +171,12 @@ public:
 	 */
 	void onComplete(Callback callback)
 	{
-		m_callback = callback;
+		this->callback = callback;
 	}
 
 	bool nodeQuery(DevNode node)
 	{
-		m_command = Command::query;
+		command = Command::query;
 		return setNode(node);
 	}
 
@@ -248,12 +243,12 @@ public:
 	 */
 	const CString& id() const
 	{
-		return m_id;
+		return requestId;
 	}
 
-	Command command() const
+	Command getCommand() const
 	{
-		return m_command;
+		return command;
 	}
 
 	/**
@@ -261,12 +256,13 @@ public:
 	 */
 	virtual void handleEvent(Event event);
 
+	Device& device;
+
 private:
-	Device& m_device;
-	Callback m_callback;
-	Command m_command{Command::undefined}; ///< Active command
-	ErrorCode m_error{Error::pending};
-	CString m_id; ///< User assigned request ID
+	Callback callback;
+	Command command{Command::undefined}; ///< Active command
+	ErrorCode errorCode{Error::pending};
+	CString requestId; ///< User assigned request ID
 };
 
 } // namespace IO

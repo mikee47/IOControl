@@ -71,24 +71,24 @@ public:
 	ErrorCode init(const Config& config);
 	ErrorCode init(JsonObjectConst config) override;
 
-	Controller& controller()
+	Controller& getController()
 	{
-		return reinterpret_cast<Controller&>(IO::Device::controller());
+		return reinterpret_cast<Controller&>(controller);
 	}
 
 	uint16_t address() const override
 	{
-		return m_config.address;
+		return slaveConfig.address;
 	}
 
 	uint8_t segment() const
 	{
-		return m_config.segment;
+		return slaveConfig.segment;
 	}
 
 	unsigned baudrate() const
 	{
-		return m_config.baudrate ?: DEFAULT_BAUDRATE;
+		return slaveConfig.baudrate ?: DEFAULT_BAUDRATE;
 	}
 
 	void handleEvent(IO::Request* request, Event event) override;
@@ -97,7 +97,7 @@ protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 private:
-	Config::Slave m_config;
+	Config::Slave slaveConfig;
 };
 
 } // namespace RS485

@@ -26,13 +26,13 @@ constexpr uint8_t MODBUS_SLAVE_ID{10};
 // Called for execute or complete
 void devmgrCallback(const IO::Request& request)
 {
-	if(request.device().id() == "mb1") {
+	if(request.device == "mb1") {
 		auto& req = static_cast<const IO::Modbus::R421A::Request&>(request);
-		auto& response = req.response();
+		auto& response = req.getResponse();
 		debug_i("%s: %08x / %08x", __FUNCTION__, response.channelMask, response.channelStates);
 	}
 
-	switch(request.device().type()) {
+	switch(request.device.type()) {
 	case IO::DeviceType::Modbus:
 		if(request.isPending()) {
 			// Request has been submitted to hardware

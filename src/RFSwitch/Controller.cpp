@@ -28,13 +28,13 @@ DEFINE_FSTR(CONTROLLER_CLASSNAME, "rfswitch")
 
 uint8_t Controller::outputPin;
 bool Controller::outputInvert;
-uint32_t Controller::m_transmitData;
-uint32_t Controller::m_transmitMask;
-uint16_t Controller::m_lowDuration;
-uint8_t Controller::m_repeats;
-volatile Controller::TransmitState Controller::m_transmitState;
-Request* Controller::m_request;
-HardwareTimer Controller::m_hardwareTimer;
+uint32_t Controller::transmitData;
+uint32_t Controller::transmitMask;
+uint16_t Controller::lowDuration;
+uint8_t Controller::repeatsRemaining;
+volatile Controller::TransmitState Controller::transmitState;
+Request* Controller::activeRequest;
+HardwareTimer Controller::hardwareTimer;
 
 /*
  * Add a bit to pulse width to compensate for transmitter response.
@@ -88,8 +88,8 @@ void Controller::handleEvent(IO::Request* request, Event event)
 		break;
 
 	case Event::RequestComplete:
-		m_request = nullptr;
-		m_transmitState = idle;
+		activeRequest = nullptr;
+		transmitState = idle;
 		break;
 
 	case Event::Timeout:
@@ -106,52 +106,52 @@ void IRAM_ATTR Controller::setTransmit(TransmitState state, bool output, unsigne
 	setOutput(output);
 
 	if(output) {
-		m_lowDuration = m_request->device().timing().period - duration;
+		lowDuration = activeRequest->getDevice().getTiming().period - duration;
 		duration += RC_PULSE_EXTENSION;
 	} else {
 		duration -= RC_PULSE_EXTENSION;
 	}
 
-	m_transmitState = state;
-	m_hardwareTimer.setIntervalUs(duration - LATENCY);
-	m_hardwareTimer.startOnce();
+	transmitState = state;
+	hardwareTimer.setIntervalUs(duration - LATENCY);
+	hardwareTimer.startOnce();
 }
 
 void IRAM_ATTR Controller::transmitInterruptHandler()
 {
-	if(m_request == nullptr) {
+	if(activeRequest == nullptr) {
 		return;
 	}
 
-	auto& timing = m_request->device().timing();
-	if(m_transmitState == startHigh) {
+	auto& timing = activeRequest->getDevice().getTiming();
+	if(transmitState == startHigh) {
 		setTransmit(startLow, false, timing.startl);
 		return;
 	}
 
-	if(m_transmitState == dataHigh) {
-		setTransmit(dataLow, false, m_lowDuration);
+	if(transmitState == dataHigh) {
+		setTransmit(dataLow, false, lowDuration);
 		return;
 	}
 
 	// @todo This is for a 24-bit protocol, consider adding this to config as a 'bitcount' parameter
-	if(m_transmitState == startLow) {
-		m_transmitMask = 0x00800000;
+	if(transmitState == startLow) {
+		transmitMask = 0x00800000;
 	}
 
-	if(m_transmitMask != 0) {
-		setTransmit(dataHigh, true, (m_transmitData & m_transmitMask) ? timing.bit1 : timing.bit0);
-		m_transmitMask >>= 1;
+	if(transmitMask != 0) {
+		setTransmit(dataHigh, true, (transmitData & transmitMask) ? timing.bit1 : timing.bit0);
+		transmitMask >>= 1;
 		// Final low period is extended to create a gap before repeating
-		if(m_transmitMask == 0) {
-			m_lowDuration += timing.gap;
+		if(transmitMask == 0) {
+			lowDuration += timing.gap;
 		}
 		return;
 	}
 
 	// Packet sent, again ?
-	--m_repeats;
-	if(m_repeats != 0) {
+	--repeatsRemaining;
+	if(repeatsRemaining != 0) {
 		// Send again
 		return setTransmit(startHigh, true, timing.starth);
 	}
@@ -162,9 +162,9 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
 	// 1/7/18 This seems to help, perhaps by allowing output to settle a little bit higher than when driven
 	pinMode(outputPin, INPUT);
 
-	m_hardwareTimer.stop();
+	hardwareTimer.stop();
 
-	System.queueCallback([](void*) { m_request->complete(Error::success); });
+	System.queueCallback([](void*) { activeRequest->complete(Error::success); });
 }
 
 /*
@@ -175,22 +175,22 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
  */
 bool Controller::execute(IO::Request& request)
 {
-	assert(m_transmitState == TransmitState::idle);
-	assert(m_request == nullptr);
+	assert(transmitState == TransmitState::idle);
+	assert(activeRequest == nullptr);
 
-	if(request.command() != Command::set) {
+	if(request.getCommand() != Command::set) {
 		debug_err(Error::bad_command, request.caption());
 		request.complete(Error::bad_command);
 		return false;
 	}
 
-	m_request = reinterpret_cast<Request*>(&request);
-	m_transmitData = m_request->code();
-	m_repeats = m_request->repeats();
+	activeRequest = reinterpret_cast<Request*>(&request);
+	transmitData = activeRequest->getCode();
+	repeatsRemaining = activeRequest->getRepeats();
 	pinMode(outputPin, OUTPUT);
 
-	m_hardwareTimer.setCallback(transmitInterruptHandler);
-	setTransmit(startHigh, true, m_request->device().timing().starth);
+	hardwareTimer.setCallback(transmitInterruptHandler);
+	setTransmit(startHigh, true, activeRequest->getDevice().getTiming().starth);
 	return true;
 }
 

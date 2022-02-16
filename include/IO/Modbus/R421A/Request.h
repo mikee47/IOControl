@@ -41,9 +41,9 @@ public:
 
 	void getJson(JsonObject json) const override;
 
-	const Device& device() const
+	const Device& getDevice() const
 	{
-		return reinterpret_cast<const Device&>(Modbus::Request::device());
+		return reinterpret_cast<const Device&>(device);
 	}
 
 	bool setNode(DevNode node) override;
@@ -63,7 +63,7 @@ public:
 	bool nodeDelay(DevNode node, uint8_t secs)
 	{
 		setCommand(Command::delay);
-		m_data.delay = secs;
+		commandData.delay = secs;
 		return setNode(node);
 	}
 
@@ -81,14 +81,14 @@ public:
 		return true;
 	}
 
-	StateMask& response()
+	StateMask& getResponse()
 	{
-		return m_response;
+		return response;
 	}
 
-	const StateMask& response() const
+	const StateMask& getResponse() const
 	{
-		return m_response;
+		return response;
 	}
 
 	Function fillRequestData(PDU::Data& data) override;
@@ -96,13 +96,13 @@ public:
 
 private:
 	// Associated command data
-	struct Data {
+	struct CommandData {
 		BitSet32 channelMask;
 		uint8_t delay;
 	};
 
-	Data m_data{};
-	StateMask m_response{};
+	CommandData commandData{};
+	StateMask response{};
 };
 
 } // namespace R421A

@@ -28,11 +28,11 @@
 
 namespace IO
 {
-DeviceFactoryList Controller::m_deviceClasses;
+DeviceFactoryList Controller::deviceClasses;
 
 const Device::Factory* Controller::findDeviceClass(const String& className)
 {
-	for(auto& factory : m_deviceClasses) {
+	for(auto& factory : deviceClasses) {
 		if(*factory == className) {
 			return factory;
 		}
@@ -81,7 +81,7 @@ ErrorCode Controller::createDevice(const char* id, JsonObjectConst config, Devic
 		return err;
 	}
 
-	m_devices.add(device);
+	devices.add(device);
 	debug_d("Device %s created, class %s", device->caption().c_str(), cls.c_str());
 
 	return err;
@@ -89,18 +89,12 @@ ErrorCode Controller::createDevice(const char* id, JsonObjectConst config, Devic
 
 void Controller::freeDevices()
 {
-	m_devices.clear();
+	devices.clear();
 }
 
 Device* Controller::findDevice(const String& id)
 {
-	for(auto& dev : m_devices) {
-		if(dev.id() == id) {
-			return &dev;
-		}
-	}
-
-	return nullptr;
+	return std::find(devices.begin(), devices.end(), id);
 }
 
 /*
@@ -111,22 +105,22 @@ void Controller::startTimer()
 {
 	PRINT_HEAP();
 
-	if(!m_deviceCheckTimer) {
-		m_deviceCheckTimer.reset(new SimpleTimer);
-		if(!m_deviceCheckTimer) {
+	if(!deviceCheckTimer) {
+		deviceCheckTimer.reset(new SimpleTimer);
+		if(!deviceCheckTimer) {
 			return;
 		}
 
-		m_deviceCheckTimer->initializeMs<DEVICECHECK_INTERVAL>(
+		deviceCheckTimer->initializeMs<DEVICECHECK_INTERVAL>(
 			[](void* arg) { static_cast<Controller*>(arg)->startDevices(); }, this);
 	}
 
-	m_deviceCheckTimer->startOnce();
+	deviceCheckTimer->startOnce();
 }
 
 void Controller::stopTimer()
 {
-	m_deviceCheckTimer.reset();
+	deviceCheckTimer.reset();
 }
 
 /*
@@ -135,13 +129,13 @@ void Controller::stopTimer()
  */
 void Controller::startDevices()
 {
-	debug_i("%s.startDevices()", id().c_str());
+	debug_i("%s.startDevices()", getId().c_str());
 
 	PRINT_HEAP();
 
 	stopTimer();
 	unsigned failCount = 0;
-	for(auto& device : m_devices) {
+	for(auto& device : devices) {
 		auto err = device.start();
 
 		debug_i("%s->start(): %s", device.caption().c_str(), Error::toString(err).c_str());
@@ -162,7 +156,7 @@ void Controller::startDevices()
 void Controller::stopDevices()
 {
 	stopTimer();
-	for(auto& dev : m_devices) {
+	for(auto& dev : devices) {
 		dev.stop();
 	}
 }
@@ -177,7 +171,7 @@ void Controller::deviceError(Device& device)
 
 void Controller::submit(Request* request)
 {
-	bool idle = m_queue.isEmpty();
+	bool idle = queue.isEmpty();
 
 	/*
 	 * Can re-submit a request instead of completing it to retry or progress
@@ -185,7 +179,7 @@ void Controller::submit(Request* request)
 	 * So we only need to be in the queue once.
 	 * Callback is invoked only at initial execution.
 	 */
-	if(!idle && m_queue.head() == request) {
+	if(!idle && queue.head() == request) {
 		debug_d("Re-submitting request %s", request->caption().c_str());
 		// Execute directly, don't invoke callback
 		request->handleEvent(Event::Execute);
@@ -193,7 +187,7 @@ void Controller::submit(Request* request)
 	}
 
 	debug_d("Queueing request %s", request->caption().c_str());
-	m_queue.add(request);
+	queue.add(request);
 
 	if(idle) {
 		executeNext();
@@ -204,15 +198,15 @@ void Controller::handleEvent(Request* request, Event event)
 {
 	switch(event) {
 	case Event::Execute:
-		devmgr.callback(*request);
+		devmgr.invokeCallback(*request);
 		break;
 
 	case Event::RequestComplete:
-		devmgr.callback(*request);
+		devmgr.invokeCallback(*request);
 
 		// Requests don't need to be queued (e.g. DMX512 handles them immediately as it only updates internal state)
-		if(m_queue.head() == request) {
-			m_queue.remove(request);
+		if(queue.head() == request) {
+			queue.remove(request);
 		} else {
 			delete request;
 		}
@@ -232,9 +226,9 @@ void Controller::handleEvent(Request* request, Event event)
 
 void Controller::executeNext()
 {
-	auto req = m_queue.head();
+	auto req = queue.head();
 	if(req != nullptr) {
-		debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->command()).c_str());
+		debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->getCommand()).c_str());
 		req->handleEvent(Event::Execute);
 	}
 }

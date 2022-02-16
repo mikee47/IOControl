@@ -38,9 +38,9 @@ ErrorCode Device::init(const Config& config)
 		return err;
 	}
 
-	m_channelCount = std::min(config.channels, R421A_MAX_CHANNELS);
+	channelCount = std::min(config.channels, R421A_MAX_CHANNELS);
 
-	debug_d("Device %s has %u channels", id().c_str(), m_channelCount);
+	debug_d("Device %s has %u channels", getId().c_str(), channelCount);
 
 	return Error::success;
 }
@@ -67,10 +67,10 @@ void Device::handleEvent(IO::Request* request, Event event)
 {
 	if(event == Event::RequestComplete && !request->error()) {
 		// Keep track of channel states
-		auto& rsp = reinterpret_cast<Request*>(request)->response();
-		m_states.channelMask += rsp.channelMask;
-		m_states.channelStates -= rsp.channelMask;
-		m_states.channelStates += rsp.channelStates;
+		auto& rsp = reinterpret_cast<Request*>(request)->getResponse();
+		states.channelMask += rsp.channelMask;
+		states.channelStates -= rsp.channelMask;
+		states.channelStates += rsp.channelStates;
 	}
 
 	IO::Modbus::Device::handleEvent(request, event);
@@ -79,28 +79,28 @@ void Device::handleEvent(IO::Request* request, Event event)
 DevNode::States Device::getNodeStates(DevNode node) const
 {
 	if(node == DevNode_ALL) {
-		DevNode::States states;
+		DevNode::States res;
 		for(unsigned ch = nodeIdMin(); ch <= nodeIdMax(); ++ch) {
-			if(!m_states.channelMask[ch]) {
-				states += DevNode::State::unknown;
-			} else if(m_states.channelStates[ch]) {
-				states += DevNode::State::on;
+			if(!states.channelMask[ch]) {
+				res += DevNode::State::unknown;
+			} else if(states.channelStates[ch]) {
+				res += DevNode::State::on;
 			} else {
-				states += DevNode::State::off;
+				res += DevNode::State::off;
 			}
 		}
-		return states;
+		return res;
 	}
 
 	if(!isValid(node)) {
 		return DevNode::State::unknown;
 	}
 
-	if(!m_states.channelMask[node.id]) {
+	if(!states.channelMask[node.id]) {
 		return DevNode::State::unknown;
 	}
 
-	return m_states.channelStates[node.id] ? DevNode::State::on : DevNode::State::off;
+	return states.channelStates[node.id] ? DevNode::State::on : DevNode::State::off;
 }
 
 } // namespace R421A

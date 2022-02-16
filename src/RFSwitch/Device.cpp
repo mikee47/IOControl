@@ -44,8 +44,8 @@ ErrorCode Device::init(const Config& config)
 		return err;
 	}
 
-	m_timing = config.timing;
-	m_repeats = config.repeats ?: RF_DEFAULT_REPEATS;
+	timing = config.timing;
+	repeats = config.repeats ?: RF_DEFAULT_REPEATS;
 
 	return Error::success;
 }

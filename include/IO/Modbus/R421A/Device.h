@@ -102,9 +102,9 @@ public:
 
 	IO::Request* createRequest() override;
 
-	const StateMask& states() const
+	const StateMask& getStates() const
 	{
-		return m_states;
+		return states;
 	}
 
 	DevNode::ID nodeIdMin() const override
@@ -114,12 +114,12 @@ public:
 
 	DevNode::ID nodeIdMax() const override
 	{
-		return R421_CHANNEL_MIN + m_channelCount - 1;
+		return R421_CHANNEL_MIN + channelCount - 1;
 	}
 
 	uint16_t maxNodes() const override
 	{
-		return m_channelCount;
+		return channelCount;
 	}
 
 	bool isValid(DevNode node) const
@@ -136,9 +136,9 @@ protected:
 
 private:
 	// Tracks current output states as far as possible
-	StateMask m_states{};
+	StateMask states{};
 	// Depends on device variant (e.g. 8, 4)
-	uint8_t m_channelCount{0};
+	uint8_t channelCount{0};
 };
 
 } // namespace R421A

@@ -29,30 +29,6 @@ namespace IO
 class Device;
 class Controller;
 
-/*
- * Device state is used to automate initialisation and fault recovery.
- *
- *  uninitialised -> initialising -> normal
- *
- * First initialisation fails, retried
- *
- *  uninitialised -> initialising -> fault -> initialising -> normal
- *
- * Failed during operation, re-initialised
- *
- *  normal -> fault -> initialising -> normal
- */
-enum __attribute__((packed)) device_state_t {
-	// Awaiting initialisation by controller
-	devstate_stopped,
-	// Initialisation in progress
-	devstate_starting,
-	// Initialisation or other request failed
-	devstate_fault,
-	// Normal operation
-	devstate_normal
-};
-
 /**
  * @brief Handles requests for a specific device; the requests are executed by the relevant controller.
  */
@@ -105,12 +81,32 @@ public:
 		String name;
 	};
 
+	/*
+	* Device state is used to automate initialisation and fault recovery.
+	*
+	*  uninitialised -> initialising -> normal
+	*
+	* First initialisation fails, retried
+	*
+	*  uninitialised -> initialising -> fault -> initialising -> normal
+	*
+	* Failed during operation, re-initialised
+	*
+	*  normal -> fault -> initialising -> normal
+	*/
+	enum class State {
+		stopped,  ///< Awaiting initialisation by controller
+		starting, ///< Initialisation in progress
+		fault,	///< Initialisation or other request failed
+		normal,   ///< Normal operation
+	};
+
 	/**
 	 * @brief Device constructor
 	 * @param controller The owning controller
 	 * @param id Unique device identifier
 	 */
-	Device(Controller& controller, const char* id) : m_controller(controller), m_id(id)
+	Device(Controller& controller, const char* id) : controller(controller), id(id)
 	{
 	}
 
@@ -132,17 +128,22 @@ public:
 	/**
 	 * @brief The unique device identifier
 	 */
-	const CString& id() const
+	const CString& getId() const
 	{
-		return m_id;
+		return id;
+	}
+
+	bool operator==(const String& id) const
+	{
+		return this->id == id;
 	}
 
 	/**
 	 * @brief Optional descriptive name for the device
 	 */
-	const CString& name() const
+	const CString& getName() const
 	{
-		return m_name ?: m_id;
+		return name ?: id;
 	}
 
 	/**
@@ -156,22 +157,22 @@ public:
 	/**
 	 * @brief Obtain a descriptive caption for this device
 	 */
-	String caption();
+	String caption() const;
 
 	/**
 	 * @brief Obtain the owning controller
 	 */
-	Controller& controller() const
+	Controller& getController() const
 	{
-		return m_controller;
+		return controller;
 	}
 
 	/**
 	 * @brief Get current device state
 	 */
-	device_state_t state()
+	State getState()
 	{
-		return m_state;
+		return state;
 	}
 
 	/**
@@ -224,11 +225,12 @@ protected:
 
 	void submit(Request* request);
 
+	Controller& controller;
+
 private:
-	Controller& m_controller;
-	CString m_id;
-	CString m_name;
-	device_state_t m_state{devstate_stopped};
+	CString id;
+	CString name;
+	State state{};
 };
 
 } // namespace IO

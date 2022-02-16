@@ -103,14 +103,14 @@ void Controller::handleEvent(Request* request, Event event)
 			},
 			this);
 		timer.startOnce();
-		m_savedConfig = serial.getConfig();
+		savedConfig = serial.getConfig();
 		break;
 
 	case Event::RequestComplete:
 		timer.stop();
 		setDirection(IO::Direction::Idle);
 		this->request = nullptr;
-		serial.setConfig(m_savedConfig);
+		serial.setConfig(savedConfig);
 		break;
 
 	case Event::Timeout: {

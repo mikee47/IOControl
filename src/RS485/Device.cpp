@@ -42,7 +42,7 @@ ErrorCode Device::init(const Config& config)
 		return Error::no_baudrate;
 	}
 
-	m_config = config.slave;
+	slaveConfig = config.slave;
 
 	return Error::success;
 }
@@ -64,11 +64,11 @@ void Device::parseJson(JsonObjectConst json, Config& cfg)
 
 void Device::handleEvent(IO::Request* request, Event event)
 {
-	auto& dev = reinterpret_cast<Device&>(request->device());
+	auto& dev = static_cast<Device&>(request->device);
 
 	switch(event) {
 	case Event::Execute: {
-		controller().setSegment(dev.segment());
+		getController().setSegment(dev.segment());
 		break;
 	}
 

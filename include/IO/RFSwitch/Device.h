@@ -89,22 +89,22 @@ public:
 
 	IO::Request* createRequest() override;
 
-	const Timing& timing() const
+	const Timing& getTiming() const
 	{
-		return m_timing;
+		return timing;
 	}
 
-	uint8_t repeats() const
+	uint8_t getRepeats() const
 	{
-		return m_repeats;
+		return repeats;
 	}
 
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
 protected:
-	Timing m_timing;
-	uint8_t m_repeats; ///< Number of times to repeat code
+	Timing timing;
+	uint8_t repeats; ///< Number of times to repeat code
 };
 
 } // namespace RFSwitch

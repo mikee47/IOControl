@@ -29,7 +29,7 @@ namespace Modbus
 {
 ErrorCode Device::init(const RS485::Device::Config& config)
 {
-	auto& ctrl = reinterpret_cast<IO::RS485::Controller&>(controller());
+	auto& ctrl = static_cast<IO::RS485::Controller&>(controller);
 	if(!ctrl.getSerial().resizeBuffers(ADU::MaxSize, ADU::MaxSize)) {
 		debug_e("Failed to resize serial buffers");
 		//		return Error::no_mem;
@@ -88,7 +88,7 @@ ErrorCode Device::execute(Request* request)
 	ADU adu;
 	requestFunction = request->fillRequestData(adu.pdu.data);
 	adu.pdu.setFunction(requestFunction);
-	adu.slaveAddress = request->device().address();
+	adu.slaveAddress = request->device.address();
 	auto aduSize = adu.prepareRequest();
 	if(aduSize == 0) {
 		return Error::bad_size;
@@ -99,12 +99,12 @@ ErrorCode Device::execute(Request* request)
 		.baudrate = baudrate(),
 		.format = UART_8N1,
 	};
-	auto& serial = controller().getSerial();
+	auto& serial = getController().getSerial();
 	serial.setConfig(cfg);
 	serial.clear();
 
 	// OK, issue the request
-	controller().send(adu.buffer, aduSize);
+	getController().send(adu.buffer, aduSize);
 	return Error::pending;
 }
 
@@ -112,7 +112,7 @@ ErrorCode Device::readResponse(Request* request)
 {
 	// Read packet
 	ADU adu;
-	auto& serial = controller().getSerial();
+	auto& serial = getController().getSerial();
 	auto receivedSize = serial.read(adu.buffer, ADU::MaxSize);
 
 	// Parse the received packet
@@ -120,7 +120,7 @@ ErrorCode Device::readResponse(Request* request)
 
 	if(!err) {
 		// In master mode, check for consistency with current request
-		if(adu.slaveAddress != request->device().address()) {
+		if(adu.slaveAddress != request->device.address()) {
 			// Mismatch with command slave ID
 			err = Error::bad_param;
 		} else if(adu.pdu.function() != requestFunction) {

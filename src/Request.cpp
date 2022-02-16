@@ -53,12 +53,12 @@ ErrorCode Request::parseJson(JsonObjectConst json)
 {
 	const char* id;
 	if(Json::getValue(json[FS_id], id)) {
-		m_id = id;
+		requestId = id;
 	}
 
 	// Command is optional - may have already been set
 	const char* cmd;
-	if(Json::getValue(json[FS_command], cmd) && !fromString(m_command, cmd)) {
+	if(Json::getValue(json[FS_command], cmd) && !fromString(command, cmd)) {
 		return Error::bad_command;
 	}
 
@@ -89,22 +89,22 @@ ErrorCode Request::parseJson(JsonObjectConst json)
 
 void Request::getJson(JsonObject json) const
 {
-	if(m_id.length() != 0) {
-		json[FS_id] = m_id.c_str();
+	if(requestId.length() != 0) {
+		json[FS_id] = requestId.c_str();
 	}
-	json[FS_command] = toString(m_command);
-	json[FS_device] = m_device.id().c_str();
-	setError(json, m_error);
+	json[FS_command] = toString(command);
+	json[FS_device] = device.getId().c_str();
+	setError(json, errorCode);
 }
 
 void Request::submit()
 {
-	m_device.submit(this);
+	device.submit(this);
 }
 
 void Request::handleEvent(Event event)
 {
-	m_device.handleEvent(this, event);
+	device.handleEvent(this, event);
 }
 
 /*
@@ -112,11 +112,11 @@ void Request::handleEvent(Event event)
  */
 void Request::complete(ErrorCode err)
 {
-	debug_i("Request %p (%s) complete - %s", this, m_id.c_str(), Error::toString(err).c_str());
+	debug_i("Request %p (%s) complete - %s", this, requestId.c_str(), Error::toString(err).c_str());
 	assert(err != Error::pending);
-	m_error = err;
-	if(m_callback) {
-		m_callback(*this);
+	errorCode = err;
+	if(callback) {
+		callback(*this);
 	}
 	handleEvent(Event::RequestComplete);
 }
@@ -125,9 +125,9 @@ String Request::caption() const
 {
 	String s(uint32_t(this), HEX);
 	s += " (";
-	s += m_device.caption();
+	s += device.caption();
 	s += '/';
-	s += m_id.c_str();
+	s += requestId.c_str();
 	s += ')';
 	return s;
 }

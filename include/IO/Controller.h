@@ -38,16 +38,19 @@ enum class Direction {
 /**
  * @brief A Controller is responsible for serialising requests for a physical bus
  */
-class Controller
+class Controller : public LinkedObjectTemplate<Controller>
 {
-	friend Device;
+	friend class Device;
+	friend class DeviceManager;
 
 public:
+	using List = LinkedObjectListTemplate<Controller>;
+
 	/**
 	 * @brief Construct a controller instance
 	 * @param instance Instance number, must be unique for each class of controller
 	 */
-	Controller(uint8_t instance) : m_instance(instance)
+	Controller(uint8_t instance) : instance(instance)
 	{
 	}
 
@@ -63,24 +66,24 @@ public:
 	 */
 	static void registerDeviceClass(const Device::Factory& factory)
 	{
-		m_deviceClasses.addElement(&factory);
+		deviceClasses.addElement(&factory);
 		debug_i("Device class '%s' registered", String(factory.deviceClass()).c_str());
 	}
 
 	/**
 	 * @brief Get the controller instance number
 	 */
-	uint8_t instance() const
+	uint8_t getInstance() const
 	{
-		return m_instance;
+		return instance;
 	}
 
 	/**
 	 * @brief Get list of devices for this controller
 	 */
-	Device::OwnedList& devices()
+	Device::OwnedList& getDevices()
 	{
-		return m_devices;
+		return devices;
 	}
 
 	/**
@@ -149,19 +152,20 @@ public:
 	 */
 	virtual bool canStop() const
 	{
-		return m_queue.count() == 0;
+		return queue.isEmpty();
 	}
 
 	/**
 	 * @brief Get the fully-qualified unique controller identifier
 	 */
-	String id() const
+	const CString& getId() const
 	{
-		String s;
-		s += classname();
-		s += '#';
-		s += m_instance;
-		return s;
+		return id;
+	}
+
+	bool operator==(const String& id) const
+	{
+		return this->id == id;
 	}
 
 protected:
@@ -192,11 +196,12 @@ private:
 
 	const Device::Factory* findDeviceClass(const String& className);
 
-	Device::OwnedList m_devices;
-	Request::OwnedList m_queue;
-	static DeviceFactoryList m_deviceClasses;
-	std::unique_ptr<SimpleTimer> m_deviceCheckTimer;
-	uint8_t m_instance;
+	Device::OwnedList devices;
+	Request::OwnedList queue;
+	static DeviceFactoryList deviceClasses;
+	std::unique_ptr<SimpleTimer> deviceCheckTimer;
+	CString id;
+	uint8_t instance;
 };
 
 template <class DeviceClass>
@@ -218,7 +223,7 @@ ErrorCode Controller::createDevice(const char* id, const typename DeviceClass::C
 		return err;
 	}
 
-	m_devices.add(device);
+	devices.add(device);
 	debug_d("Device %s created, class %s", device->caption().c_str(), String(factory.deviceClass()).c_str());
 
 	return err;

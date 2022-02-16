@@ -29,9 +29,9 @@ namespace IO
 namespace DMX512
 {
 const Device::Factory Device::factory;
-SimpleTimer Device::m_timer;
-bool Device::m_changed{false};
-bool Device::m_updating{false};
+SimpleTimer Device::timer;
+bool Device::dataChanged{false};
+bool Device::updating{false};
 
 namespace
 {
@@ -76,7 +76,7 @@ void Device::updateSlaves()
 {
 	debug_i("[DMX512] updateSlaves()");
 
-	auto& serial = controller().getSerial();
+	auto& serial = getController().getSerial();
 
 	Serial::Config cfg{
 		.baudrate = DMX_BAUDRATE,
@@ -91,14 +91,14 @@ void Device::updateSlaves()
 	uint8_t data[dataSize];
 	memset(data, 0, dataSize);
 	data[0] = 0x00; // Lighting start code
-	for(auto& dev : controller().devices()) {
+	for(auto& dev : controller.getDevices()) {
 		if(dev.type() != DeviceType::DMX512) {
 			continue;
 		}
 
 		Device& dmxDevice = static_cast<Device&>(dev);
 		if(dmxDevice.update()) {
-			m_changed = true;
+			dataChanged = true;
 		}
 
 		for(unsigned nodeId = dev.nodeIdMin(); nodeId <= dev.nodeIdMax(); ++nodeId) {
@@ -113,7 +113,7 @@ void Device::updateSlaves()
 
 	debug_hex(INFO, ">", data, dataSize, 0, 32);
 
-	controller().setDirection(Direction::Outgoing);
+	getController().setDirection(Direction::Outgoing);
 	serial.setBreak(true);
 	delayMicroseconds(DMX_BREAK);
 	serial.setBreak(false);
@@ -122,7 +122,7 @@ void Device::updateSlaves()
 	uint8_t c{0};
 	serial.write(&c, 1);
 
-	m_updating = true;
+	updating = true;
 }
 
 ErrorCode Device::init(const Config& config)
@@ -131,15 +131,15 @@ ErrorCode Device::init(const Config& config)
 	if(err) {
 		return err;
 	}
-	m_nodeCount = config.nodeCount ?: 1;
-	m_nodeData.reset(new NodeData[m_nodeCount]{});
+	nodeCount = config.nodeCount ?: 1;
+	nodeData.reset(new NodeData[nodeCount]{});
 
-	auto& serial = controller().getSerial();
+	auto& serial = getController().getSerial();
 	if(!serial.resizeBuffers(0, MaxPacketSize)) {
 		return Error::no_mem;
 	}
 
-	m_timer.setCallback(
+	timer.setCallback(
 		[](void* arg) {
 			auto dev = static_cast<Device*>(arg);
 			auto req = dev->createRequest();
@@ -147,8 +147,8 @@ ErrorCode Device::init(const Config& config)
 			req->submit();
 		},
 		this);
-	m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
-	m_timer.startOnce();
+	timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
+	timer.startOnce();
 
 	return Error::success;
 }
@@ -180,9 +180,8 @@ ErrorCode Device::init(JsonObjectConst config)
 bool Device::update()
 {
 	bool res = false;
-	for(unsigned i = 0; i < m_nodeCount; ++i) {
-		auto& nodeData = m_nodeData[i];
-		if(nodeData.adjust()) {
+	for(unsigned i = 0; i < nodeCount; ++i) {
+		if(nodeData[i].adjust()) {
 			res = true;
 		}
 	}
@@ -193,23 +192,23 @@ void Device::handleEvent(IO::Request* request, Event event)
 {
 	switch(event) {
 	case Event::Execute:
-		assert(request->command() == Command::update);
+		assert(request->getCommand() == Command::update);
 		updateSlaves();
 		break;
 
 	case Event::TransmitComplete:
-		assert(m_updating);
-		m_updating = false;
+		assert(updating);
+		updating = false;
 
 		// Schedule next update
-		if(m_changed) {
-			m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
-			m_timer.startOnce();
+		if(dataChanged) {
+			timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
+			timer.startOnce();
 		} else if(DMX_UPDATE_PERIODIC_MS != 0) {
-			m_timer.setIntervalMs<DMX_UPDATE_PERIODIC_MS>();
-			m_timer.startOnce();
+			timer.setIntervalMs<DMX_UPDATE_PERIODIC_MS>();
+			timer.startOnce();
 		}
-		m_changed = false;
+		dataChanged = false;
 		request->complete(Error::success);
 		return;
 
@@ -233,8 +232,8 @@ ErrorCode Device::execute(Request& request)
 
 	// Apply request to device data
 	auto apply = [&](unsigned nodeId) {
-		auto& data = m_nodeData[nodeId];
-		switch(request.command()) {
+		auto& data = nodeData[nodeId];
+		switch(request.getCommand()) {
 		case Command::off:
 			data.disable();
 			break;
@@ -245,11 +244,11 @@ ErrorCode Device::execute(Request& request)
 			data.enable();
 			break;
 		case Command::adjust:
-			data.setTarget(data.target + request.value());
+			data.setTarget(data.target + request.getValue());
 			data.enable();
 			break;
 		case Command::set:
-			data.setValue(request.value());
+			data.setValue(request.getValue());
 			break;
 		default:
 			err = Error::bad_command;
@@ -257,17 +256,17 @@ ErrorCode Device::execute(Request& request)
 	};
 
 	if(node == DevNode_ALL) {
-		for(unsigned id = 0; id < m_nodeCount; ++id) {
+		for(unsigned id = 0; id < nodeCount; ++id) {
 			apply(id);
 		}
 	} else {
 		apply(node.id);
 	}
 
-	if(!m_changed) {
-		m_timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
-		m_timer.startOnce();
-		m_changed = true;
+	if(!dataChanged) {
+		timer.setIntervalMs<DMX_UPDATE_CHANGED_MS>();
+		timer.startOnce();
+		dataChanged = true;
 	}
 
 	return err;

@@ -26,11 +26,11 @@ namespace IO
 {
 ErrorCode Device::init(const Config& config)
 {
-	if(!m_id) {
+	if(!id) {
 		return Error::no_device_id;
 	}
 
-	m_name = config.name;
+	name = config.name;
 	return Error::success;
 }
 
@@ -50,7 +50,7 @@ void Device::parseJson(JsonObjectConst json, Config& cfg)
  */
 ErrorCode Device::start()
 {
-	if(m_state == devstate_normal || m_state == devstate_starting) {
+	if(state == State::normal || state == State::starting) {
 		return Error::success;
 	}
 
@@ -62,13 +62,13 @@ ErrorCode Device::start()
 	// This fails if device doesn't have any nodes
 	if(!req->nodeQuery(DevNode_ALL)) {
 		delete req;
-		m_state = devstate_normal;
+		state = State::normal;
 		return Error::success;
 	}
 
 	req->setID(F("query"));
 	req->submit();
-	m_state = devstate_starting;
+	state = State::starting;
 
 	return Error::success;
 }
@@ -83,29 +83,29 @@ ErrorCode Device::stop()
 
 void Device::submit(Request* request)
 {
-	m_controller.submit(request);
+	controller.submit(request);
 }
 
 void Device::handleEvent(Request* request, Event event)
 {
 	if(event == Event::RequestComplete) {
 		if(request->error()) {
-			m_state = devstate_fault;
-			m_controller.deviceError(*this);
-		} else if(m_state == devstate_starting) {
-			m_state = devstate_normal;
+			state = State::fault;
+			controller.deviceError(*this);
+		} else if(state == State::starting) {
+			state = State::normal;
 		}
 	}
 
-	m_controller.handleEvent(request, event);
+	controller.handleEvent(request, event);
 }
 
-String Device::caption()
+String Device::caption() const
 {
 	String s;
-	s += m_controller.id();
+	s += controller.getId().c_str();
 	s += '/';
-	s += m_id.c_str();
+	s += id.c_str();
 	return s;
 }
 

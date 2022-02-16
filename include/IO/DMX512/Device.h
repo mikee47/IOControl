@@ -151,23 +151,23 @@ public:
 
 	DevNode::ID nodeIdMax() const override
 	{
-		return m_nodeCount - 1;
+		return nodeCount - 1;
 	}
 
 	uint16_t maxNodes() const override
 	{
-		return m_nodeCount;
+		return nodeCount;
 	}
 
 	const NodeData& getNodeData(uint8_t nodeId) const
 	{
-		assert(nodeId < m_nodeCount);
-		return m_nodeData[nodeId];
+		assert(nodeId < nodeCount);
+		return nodeData[nodeId];
 	}
 
 	bool isValid(DevNode node) const
 	{
-		return node == DevNode_ALL || node.id < m_nodeCount;
+		return node == DevNode_ALL || node.id < nodeCount;
 	}
 
 	void handleEvent(IO::Request* request, Event event) override;
@@ -191,11 +191,11 @@ protected:
 	ErrorCode execute(Request& request);
 
 private:
-	uint8_t m_nodeCount{1};					///< Number of DMX slots managed by this device
-	std::unique_ptr<NodeData[]> m_nodeData; ///< Data for each slot, starting at `address`
-	static SimpleTimer m_timer;				///< For slave update cycle timing
-	static bool m_changed;					///< Data has changed
-	static bool m_updating;					///< Currently sending update
+	uint8_t nodeCount{1};				  ///< Number of DMX slots managed by this device
+	std::unique_ptr<NodeData[]> nodeData; ///< Data for each slot, starting at `address`
+	static SimpleTimer timer;			  ///< For slave update cycle timing
+	static bool dataChanged;			  ///< Data has changed
+	static bool updating;				  ///< Currently sending update
 };
 
 } // namespace DMX512

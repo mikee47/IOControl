@@ -27,8 +27,8 @@ namespace RFSwitch
 {
 void Request::send(uint32_t code, uint8_t repeats)
 {
-	m_code = code;
-	m_repeats = repeats ?: device().repeats();
+	this->code = code;
+	this->repeats = repeats ?: getDevice().getRepeats();
 }
 
 ErrorCode Request::parseJson(JsonObjectConst json)
@@ -41,10 +41,10 @@ ErrorCode Request::parseJson(JsonObjectConst json)
 	if(s == nullptr) {
 		return Error::no_code;
 	}
-	m_code = strtoul(s, nullptr, 16);
+	code = strtoul(s, nullptr, 16);
 
-	if(!Json::getValue(json[ATTR_REPEATS], m_repeats)) {
-		m_repeats = device().repeats();
+	if(!Json::getValue(json[ATTR_REPEATS], repeats)) {
+		repeats = getDevice().getRepeats();
 	}
 
 	return Error::success;
@@ -56,7 +56,7 @@ void Request::getJson(JsonObject json) const
 
 	//  writeProtocol(m_protocol, json);
 
-	json[FS_code] = String(m_code, HEX);
+	json[FS_code] = String(code, HEX);
 }
 
 } // namespace RFSwitch

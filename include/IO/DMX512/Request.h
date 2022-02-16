@@ -35,9 +35,9 @@ public:
 	{
 	}
 
-	Device& device()
+	Device& getDevice()
 	{
-		return static_cast<Device&>(IO::Request::device());
+		return static_cast<Device&>(device);
 	}
 
 	ErrorCode parseJson(JsonObjectConst json) override;
@@ -48,7 +48,7 @@ public:
 
 	DevNode node() const
 	{
-		return m_node;
+		return devNode;
 	}
 
 	bool nodeAdjust(DevNode node, int value) override
@@ -58,21 +58,21 @@ public:
 		return setNode(node);
 	}
 
-	void setValue(int code)
+	void setValue(int newValue)
 	{
-		m_value = code;
+		value = newValue;
 	}
 
-	int value() const
+	int getValue() const
 	{
-		return m_value;
+		return value;
 	}
 
 	void submit() override;
 
 private:
-	int m_value{};
-	DevNode m_node{};
+	int value{};
+	DevNode devNode{};
 };
 
 } // namespace DMX512
