@@ -115,8 +115,9 @@ private:
 private:
 	Serial& serial;
 	SetDirectionCallback setDirectionCallback{nullptr};
-	Request* request{nullptr}; ///< Current outgoing request (if any)
-	uint8_t segment{0};		   ///< Active bus segment
+	Request* request{nullptr};				   ///< Current outgoing request (if any)
+	Request* transmitCompleteRequest{nullptr}; ///< Captured request for transmit complete callback
+	uint8_t segment{0};						   ///< Active bus segment
 	OnRequestDelegate requestCallback;
 	SimpleTimer timer; ///< Use to schedule callback and timeout
 	Serial::Config m_savedConfig{};

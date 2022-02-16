@@ -61,13 +61,17 @@ void Controller::uartCallback(uint32_t status)
 	// Tx FIFO empty
 	if(status & UART_STATUS_TXFIFO_EMPTY) {
 		setDirection(Direction::Incoming);
+		// Guard against timeout firing before this callback
+		transmitCompleteRequest = request;
 		if(request != nullptr) {
 			System.queueCallback(
 				[](void* param) {
-					auto req = static_cast<Request*>(param);
-					req->handleEvent(Event::TransmitComplete);
+					auto ctrl = static_cast<Controller*>(param);
+					if(ctrl->transmitCompleteRequest != nullptr) {
+						ctrl->transmitCompleteRequest->handleEvent(Event::TransmitComplete);
+					}
 				},
-				request);
+				this);
 		}
 	}
 
@@ -89,13 +93,15 @@ void Controller::handleEvent(Request* request, Event event)
 	switch(event) {
 	case Event::Execute:
 		this->request = request;
+		transmitCompleteRequest = nullptr;
 		// Put a timeout on the overall transaction
 		timer.initializeMs<TRANSACTION_TIMEOUT_MS>(
 			[](void* param) {
-				auto req = static_cast<Request*>(param);
-				req->handleEvent(Event::Timeout);
+				auto ctrl = static_cast<Controller*>(param);
+				ctrl->transmitCompleteRequest = nullptr;
+				ctrl->request->handleEvent(Event::Timeout);
 			},
-			request);
+			this);
 		timer.startOnce();
 		m_savedConfig = serial.getConfig();
 		break;
@@ -127,6 +133,7 @@ void Controller::handleEvent(Request* request, Event event)
 
 void Controller::receiveComplete()
 {
+	transmitCompleteRequest = nullptr;
 	if(request == nullptr) {
 		handleIncomingRequest();
 	} else {
