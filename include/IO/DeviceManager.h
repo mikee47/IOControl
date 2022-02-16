@@ -68,7 +68,7 @@ public:
 
 	/*
 	 * Generally, requests should fit into the general model so that IO::Request can be used.
-	 * If more custom behviour is required then this method can be used to up-cast to the appropriate
+	 * If more custom behaviour is required then this method can be used to up-cast to the appropriate
 	 * Request object.
 	 * NOTE: At present there is no type checking on this, so use care.
 	 */

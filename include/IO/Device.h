@@ -204,7 +204,7 @@ public:
 	/**
 	 * @brief Return the current set of states for all nodes controlled by this device
 	 *
-	 * Used to determinne if, say, all nodes are ON, OFF or a combination.
+	 * Used to determine if, say, all nodes are ON, OFF or a combination.
 	 */
 	virtual DevNode::States getNodeStates(DevNode node) const
 	{

@@ -72,7 +72,7 @@ HardwareTimer Controller::m_hardwareTimer;
 /*
  *  Adjustment for interrupt latency for each timed transition (H -> L and L -> H)
  *  This value was obtained by measuring input to transmitter with scope.
- *  The hardware timer class was modified to use the NMI, thus we can pre-empt other
+ *  The hardware timer class was modified to use the NMI, thus we can preempt other
  *  ISRs and keep jitter to absolute minimum. It would be nice if there were hardware
  *  output compare circuitry on this thing... maybe it's just hidden...
  */

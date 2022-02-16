@@ -50,7 +50,7 @@ public:
 	void getJson(JsonObject json) const override;
 
 	/*
-	 * We'll get called with NODES_ALL because no nodes are explictly specified.
+	 * We'll get called with NODES_ALL because no nodes are explicitly specified.
 	 */
 	bool setNode(DevNode node) override
 	{

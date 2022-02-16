@@ -18,11 +18,12 @@ physical network segments. Only one UART is required unless you need concurrent 
 
 .. image:: multiplex.png
 
-This example uses GPIO4 and GPIO5 to select which transceiver is going to transmit.
-The logic for this would be in a callback registered via :cpp:func:`IO::RS485::Controller::onSetDirection`.
-
+This example allows for one transceiver to be in receive mode, with others in transmit.
+That means slave addresses must be unique across both segments.
 Resistors R2 and R8 are current limit resistors to guard against both transceivers being switched into receive
 mode at the same time.
+
+The logic for controlling this would be in a callback registered via :cpp:func:`IO::RS485::Controller::onSetDirection`.
 
 For completeness, here's example connections for a 3.3v transceiver:
 
