@@ -62,8 +62,8 @@ void Controller::uartCallback(uint32_t status)
 	if(status & UART_STATUS_TXFIFO_EMPTY) {
 		setDirection(Direction::Incoming);
 		// Guard against timeout firing before this callback
-		transmitCompleteRequest = request;
-		if(request != nullptr) {
+		if(request != nullptr && transmitCompleteRequest == nullptr) {
+			transmitCompleteRequest = request;
 			System.queueCallback(
 				[](void* param) {
 					auto ctrl = static_cast<Controller*>(param);
