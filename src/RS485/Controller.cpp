@@ -77,14 +77,14 @@ void Controller::uartCallback(uint32_t status)
 
 	// Rx FIFO full or timeout
 	if(status & (UART_STATUS_RXFIFO_FULL | UART_STATUS_RXFIFO_TOUT)) {
-		// Wait a bit before processing the response. This enforces a minimum inter-message delay
-		timer.initializeMs<50>(
+		timer.stop();
+		setDirection(Direction::Idle);
+		System.queueCallback(
 			[](void* param) {
 				auto ctrl = static_cast<Controller*>(param);
 				ctrl->receiveComplete();
 			},
 			this);
-		timer.startOnce();
 	}
 }
 
@@ -108,7 +108,7 @@ void Controller::handleEvent(Request* request, Event event)
 
 	case Event::RequestComplete:
 		timer.stop();
-		setDirection(IO::Direction::Idle);
+		setDirection(Direction::Idle);
 		this->request = nullptr;
 		serial.setConfig(savedConfig);
 		break;
