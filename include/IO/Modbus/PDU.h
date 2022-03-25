@@ -74,6 +74,11 @@ struct PDU {
 					}
 				}
 
+				bool getCoil(uint16_t coil)
+				{
+					return getBit(coilStatus, coil);
+				}
+
 				void setCount(uint16_t count)
 				{
 					byteCount = (count + 7) / 8;
@@ -110,6 +115,11 @@ struct PDU {
 					}
 				}
 
+				bool getInput(uint16_t input)
+				{
+					return getBit(inputStatus, input);
+				}
+
 				void setCount(uint16_t count)
 				{
 					byteCount = (count + 7) / 8;
@@ -128,36 +138,8 @@ struct PDU {
 		ReadDiscreteInputs readDiscreteInputs;
 
 		// 16-bit access
-		// ReadHoldingRegisters = 0x03,
-		union ReadHoldingRegisters {
-			struct ATTR_PACKED Request {
-				uint16_t startAddress;
-				uint16_t quantityOfRegisters;
-			};
-
-			struct ATTR_PACKED Response {
-				static constexpr uint16_t MaxRegisters{250 / 2};
-				uint8_t byteCount; ///< Calculated
-				uint16_t values[MaxRegisters];
-
-				void setCount(uint16_t count)
-				{
-					byteCount = count * 2;
-				}
-
-				uint16_t getCount() const
-				{
-					return byteCount / 2;
-				}
-			};
-
-			Request request;
-			Response response;
-		};
-		ReadHoldingRegisters readHoldingRegisters;
-
-		// ReadInputRegisters = 0x04,
-		union ReadInputRegisters {
+		// Common format for reading input/holding registers
+		union ReadRegisters {
 			struct ATTR_PACKED Request {
 				uint16_t startAddress;
 				uint16_t quantityOfRegisters;
@@ -182,7 +164,12 @@ struct PDU {
 			Request request;
 			Response response;
 		};
-		ReadInputRegisters readInputRegisters;
+
+		// ReadHoldingRegisters = 0x03,
+		ReadRegisters readHoldingRegisters;
+
+		// ReadInputRegisters = 0x04,
+		ReadRegisters readInputRegisters;
 
 		// WriteSingleCoil = 0x05,
 		union WriteSingleCoil {
@@ -466,6 +453,12 @@ private:
 		} else {
 			values[number / 8] &= ~mask;
 		}
+	}
+
+	static bool getBit(uint8_t* values, uint16_t number)
+	{
+		uint8_t mask = 1 << (number % 8);
+		return (values[number / 8] & mask) ? true : false;
 	}
 };
 
