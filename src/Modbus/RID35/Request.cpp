@@ -26,13 +26,32 @@ namespace Modbus
 {
 namespace RID35
 {
+namespace
+{
+uint16_t getRegisterAddress(Register reg)
+{
+	unsigned regNum = unsigned(reg) * 2;
+	if(regNum < StdRegCount) {
+		return StdRegBase + regNum;
+	}
+
+	return OvfRegBase + unsigned(reg) - unsigned(Register::TotalKwh);
+}
+
+} // namespace
+
 Function Request::fillRequestData(PDU::Data& data)
 {
 	if(getCommand() == Command::query) {
 		// Query all channels
 		auto& req = data.readInputRegisters.request;
-		req.startAddress = 0x01;
-		req.quantityOfRegisters = RegisterCount;
+		if(regCount == 0) {
+			req.startAddress = StdRegBase;
+			req.quantityOfRegisters = StdRegCount;
+		} else {
+			req.startAddress = OvfRegBase;
+			req.quantityOfRegisters = OvfRegCount;
+		}
 		return Function::ReadInputRegisters;
 	}
 
@@ -43,14 +62,21 @@ Function Request::fillRequestData(PDU::Data& data)
 
 ErrorCode Request::callback(PDU& pdu)
 {
-	memset(regValues, 0xff, sizeof(regValues));
 	switch(pdu.function()) {
 	case Function::ReadInputRegisters: {
 		auto& rsp = pdu.data.readInputRegisters.response;
-		regCount = rsp.getCount();
+		auto count = rsp.getCount();
+		if(regCount + count > RegisterCount) {
+			return Error::bad_size;
+		}
+		auto prevCount = regCount;
+		memcpy(&regValues[regCount], rsp.values, count * sizeof(uint16_t));
+		regCount += count;
 
-		for(unsigned i = 0; i < regCount; ++i) {
-			regValues[i] = rsp.values[i];
+		if(getCommand() == Command::query && prevCount == 0) {
+			// Submit request for rollover counter addresses
+			submit();
+			return Error::pending;
 		}
 
 		break;
@@ -84,13 +110,16 @@ void Request::getJson(JsonObject json) const
 
 	JsonArray values = json.createNestedArray(FS_value);
 
-	for(unsigned i = 0; i < regCount; i += 2) {
+	for(unsigned i = 0; i < StdRegCount; i += 2) {
 		union {
 			uint32_t val;
 			float f;
 		} u;
 		u.val = (regValues[i] << 16) | regValues[i + 1];
 		values.add(u.f);
+	}
+	for(unsigned i = 0; i < OvfRegCount; ++i) {
+		values.add(regValues[StdRegCount + i]);
 	}
 }
 

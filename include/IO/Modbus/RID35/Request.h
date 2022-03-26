@@ -24,43 +24,57 @@
 #include "../Request.h"
 #include "Device.h"
 
+// Register name and type
+#define RID35_STDREG_MAP(XX)                                                                                           \
+	XX(TotalActiveEnergy)                                                                                              \
+	XX(ImportActiveEnergy)                                                                                             \
+	XX(ExportActiveEnergy)                                                                                             \
+	XX(TotalReactiveEnergy)                                                                                            \
+	XX(ImportReactiveEnergy)                                                                                           \
+	XX(ExportReactiveEnergy)                                                                                           \
+	XX(ApparentEnergy)                                                                                                 \
+	XX(ActivePower)                                                                                                    \
+	XX(ReactivePower)                                                                                                  \
+	XX(ApparentPower)                                                                                                  \
+	XX(Voltage)                                                                                                        \
+	XX(Current)                                                                                                        \
+	XX(PowerFactor)                                                                                                    \
+	XX(Frequency)                                                                                                      \
+	XX(MaxDemandActivePower)                                                                                           \
+	XX(MaxDemandReactivePower)                                                                                         \
+	XX(MaxDemandApparentPower)
+
+#define RID35_OVFREG_MAP(XX)                                                                                           \
+	XX(TotalKwh)                                                                                                       \
+	XX(ImportKwh)                                                                                                      \
+	XX(ExportKwh)                                                                                                      \
+	XX(TotalKvarh)                                                                                                     \
+	XX(ImportKvarh)                                                                                                    \
+	XX(ExportKvarh)                                                                                                    \
+	XX(Kvah)
+
 namespace IO
 {
 namespace Modbus
 {
+enum class RegisterType {
+	Int16,
+	Float32,
+};
+
 namespace RID35
 {
 enum class Register {
-	// Each value is a 32-bit float, occupying 2 16-bit modbus registers
-	TotalActiveEnergy = 0x01,
-	ImportActiveEnergy = 0x03,
-	ExportActiveEnergy = 0x05,
-	TotalReactiveEnergy = 0x07,
-	ImportReactiveEnergy = 0x09,
-	ExportReactiveEnergy = 0x0b,
-	ApparentEnergy = 0x0d,
-	ActivePower = 0x0f,
-	ReactivePower = 0x11,
-	ApparentPower = 0x13,
-	Voltage = 0x15,
-	Current = 0x17,
-	PowerFactor = 0x19,
-	Frequency = 0x1b,
-	MaxDemandActivePower = 0x1d,
-	MaxDemandReactivePower = 0x1f,
-	MaxDemandApparentPower = 0x21,
-	// Rollover registers
-	TotalKwh = 0x96,
-	ImportKwh = 0x97,
-	ExportKwh = 0x98,
-	TotalKvarh = 0x99,
-	ImportKvarh = 0x9a,
-	ExportKvarh = 0x9b,
-	Kvah = 0x9c,
+#define XX(name) name,
+	RID35_STDREG_MAP(XX) RID35_OVFREG_MAP(XX)
+#undef XX
 };
 
-constexpr size_t RegisterCount = 34;
-constexpr size_t RolloverRegisterCount = 7;
+constexpr uint16_t StdRegBase = 0x01;
+constexpr uint16_t OvfRegBase = 0x96;
+constexpr size_t StdRegCount = (1 + unsigned(Register::MaxDemandApparentPower)) * 2;
+constexpr size_t OvfRegCount = 1 + unsigned(Register::Kvah) - unsigned(Register::TotalKwh);
+constexpr size_t RegisterCount = StdRegCount + OvfRegCount;
 
 class Request : public Modbus::Request
 {
@@ -81,7 +95,7 @@ public:
 
 private:
 	uint16_t regValues[RegisterCount]{};
-	uint16_t regCount{0};
+	uint8_t regCount{0};
 };
 
 } // namespace RID35
