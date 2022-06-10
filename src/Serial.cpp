@@ -29,7 +29,8 @@ ErrorCode Serial::open(uint8_t uart_nr)
 
 	smg_uart_config_t cfg{
 		.uart_nr = uart_nr,
-		.tx_pin = 1,
+		.tx_pin = UART_PIN_DEFAULT,
+		.rx_pin = UART_PIN_DEFAULT,
 		.mode = UART_FULL,
 		.options = 0,
 		.baudrate = activeConfig.baudrate,
