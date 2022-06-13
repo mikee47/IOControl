@@ -48,6 +48,10 @@ ErrorCode Serial::open(uint8_t uart_nr)
 		.txfifo_empty_intr_thresh = 0,
 		// Use max value
 		.rxfifo_full_thresh = 0xff,
+#ifdef ARCH_ESP32
+		.intr_mask = UART_STATUS_TX_DONE,
+		.intr_enable = UART_STATUS_TX_DONE,
+#endif
 	};
 	smg_uart_intr_config(uart, &intr_cfg);
 	// Don't report 'buffer full' early, but only when buffer is actually full

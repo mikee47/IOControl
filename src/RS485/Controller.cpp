@@ -22,6 +22,11 @@
 #include "Platform/System.h"
 #include <driver/uart.h>
 
+// ESP32 has a TX_DONE interrupt, others do not
+#ifdef ARCH_ESP32
+#define USE_TXDONE_INTR
+#endif
+
 namespace IO
 {
 namespace RS485
@@ -58,9 +63,14 @@ void Controller::uartCallbackStatic(smg_uart_t* uart, uint32_t status)
 
 void Controller::uartCallback(uint32_t status)
 {
-	// Tx FIFO empty
+#ifdef USE_TXDONE_INTR
+	if(status & UART_STATUS_TX_DONE) {
+#else
 	if(status & UART_STATUS_TXFIFO_EMPTY) {
+#endif
 		setDirection(Direction::Incoming);
+		serial.clear(UART_RX_ONLY);
+		status = 0;
 		// Guard against timeout firing before this callback
 		if(request != nullptr && transmitCompleteRequest == nullptr) {
 			transmitCompleteRequest = request;
@@ -145,9 +155,11 @@ void Controller::send(const void* data, size_t size)
 {
 	setDirection(Direction::Outgoing);
 	serial.write(data, size);
+#ifndef USE_TXDONE_INTR
 	// NUL pad so final byte doesn't get cut off
 	uint8_t nul{0};
 	serial.write(&nul, 1);
+#endif
 
 	debug_i("MB: Sent %u bytes...", size);
 }
