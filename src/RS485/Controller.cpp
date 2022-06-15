@@ -81,6 +81,7 @@ void Controller::uartCallback(uint32_t status)
 				},
 				this);
 		}
+		resetTransactionTime();
 	}
 
 	// Rx FIFO full or timeout
@@ -93,6 +94,7 @@ void Controller::uartCallback(uint32_t status)
 				ctrl->receiveComplete();
 			},
 			this);
+		resetTransactionTime();
 	}
 }
 

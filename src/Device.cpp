@@ -48,12 +48,14 @@ ErrorCode Device::init(const Config& config)
 	}
 
 	name = config.name;
+	interval = config.interval;
 	return Error::success;
 }
 
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
 	cfg.name = json[FS_name].as<const char*>();
+	cfg.interval = json[FS_interval];
 }
 
 /*

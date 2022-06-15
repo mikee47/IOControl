@@ -51,7 +51,8 @@ namespace IO
 	XX(devnodes)                                                                                                       \
 	XX(count)                                                                                                          \
 	XX(delay)                                                                                                          \
-	XX(timeout)
+	XX(timeout)                                                                                                        \
+	XX(interval)
 
 #define XX(tag) DECLARE_FSTR(FS_##tag)
 IO_FLASHSTRING_MAP(XX)

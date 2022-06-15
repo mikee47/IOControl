@@ -181,8 +181,12 @@ protected:
 	 */
 	void submit(Request* request);
 
-	void startTimer();
-	void stopTimer();
+	void checkDevices();
+
+	void resetTransactionTime()
+	{
+		lastTransactionEnd.start();
+	}
 
 private:
 	ErrorCode constructDevice(const Device::Factory& factory, const char* id, Device*& device);
@@ -199,7 +203,8 @@ private:
 	Device::OwnedList devices;
 	Request::OwnedList queue;
 	static DeviceFactoryList deviceClasses;
-	std::unique_ptr<SimpleTimer> deviceCheckTimer;
+	OneShotFastMs lastTransactionEnd;
+	SimpleTimer timer;
 	CString id;
 	uint8_t instance;
 };

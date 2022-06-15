@@ -98,29 +98,14 @@ Device* Controller::findDevice(const String& id)
 }
 
 /*
- * This timer is used for handling device re-starts so we don't need it to hog memory all
- * the time.
+ * Use timer to attempt device re-starts
  */
-void Controller::startTimer()
+void Controller::checkDevices()
 {
 	PRINT_HEAP();
 
-	if(!deviceCheckTimer) {
-		deviceCheckTimer.reset(new SimpleTimer);
-		if(!deviceCheckTimer) {
-			return;
-		}
-
-		deviceCheckTimer->initializeMs<DEVICECHECK_INTERVAL>(
-			[](void* arg) { static_cast<Controller*>(arg)->startDevices(); }, this);
-	}
-
-	deviceCheckTimer->startOnce();
-}
-
-void Controller::stopTimer()
-{
-	deviceCheckTimer.reset();
+	timer.initializeMs<DEVICECHECK_INTERVAL>([](void* arg) { static_cast<Controller*>(arg)->startDevices(); }, this);
+	timer.startOnce();
 }
 
 /*
@@ -133,7 +118,7 @@ void Controller::startDevices()
 
 	PRINT_HEAP();
 
-	stopTimer();
+	timer.stop();
 	unsigned failCount = 0;
 	for(auto& device : devices) {
 		auto err = device.start();
@@ -149,13 +134,13 @@ void Controller::startDevices()
 
 	// Use the timer to retry later
 	if(failCount != 0) {
-		startTimer();
+		checkDevices();
 	}
 }
 
 void Controller::stopDevices()
 {
-	stopTimer();
+	timer.stop();
 	for(auto& dev : devices) {
 		dev.stop();
 	}
@@ -166,30 +151,25 @@ void Controller::stopDevices()
  */
 void Controller::deviceError(Device& device)
 {
-	startTimer();
+	checkDevices();
 }
 
 void Controller::submit(Request* request)
 {
-	bool idle = queue.isEmpty();
-
 	/*
 	 * Can re-submit a request instead of completing it to retry or progress
 	 * a multi-IO call without having to create a new request object.
 	 * So we only need to be in the queue once.
 	 * Callback is invoked only at initial execution.
 	 */
-	if(!idle && queue.head() == request) {
+	if(queue.head() == request) {
 		debug_d("Re-submitting request %s", request->caption().c_str());
-		// Execute directly, don't invoke callback
-		request->handleEvent(Event::Execute);
-		return;
+	} else {
+		debug_d("Queueing request %s", request->caption().c_str());
+		queue.add(request);
 	}
 
-	debug_d("Queueing request %s", request->caption().c_str());
-	queue.add(request);
-
-	if(idle) {
+	if(queue.head() == request) {
 		executeNext();
 	}
 }
@@ -227,10 +207,20 @@ void Controller::handleEvent(Request* request, Event event)
 void Controller::executeNext()
 {
 	auto req = queue.head();
-	if(req != nullptr) {
-		debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->getCommand()).c_str());
-		req->handleEvent(Event::Execute);
+	if(req == nullptr) {
+		return;
 	}
+
+	int interval = req->device.minTransactionInterval() - lastTransactionEnd.elapsedTime();
+	if(interval > 0) {
+		timer.initializeMs(
+			interval, [](void* arg) { static_cast<Controller*>(arg)->executeNext(); }, this);
+		timer.startOnce();
+		return;
+	}
+
+	debug_i("Executing request %p, %s: %s", req, req->id().c_str(), toString(req->getCommand()).c_str());
+	req->handleEvent(Event::Execute);
 }
 
 } // namespace IO

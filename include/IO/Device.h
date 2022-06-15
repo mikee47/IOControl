@@ -79,6 +79,7 @@ public:
 	 */
 	struct Config {
 		String name;
+		unsigned interval; ///< Minimum interval between transactions
 	};
 
 	/*
@@ -152,6 +153,11 @@ public:
 	virtual uint16_t address() const
 	{
 		return 0;
+	}
+
+	unsigned minTransactionInterval() const
+	{
+		return interval;
 	}
 
 	/**
@@ -230,6 +236,7 @@ protected:
 private:
 	CString id;
 	CString name;
+	unsigned interval;
 	State state{};
 };
 
