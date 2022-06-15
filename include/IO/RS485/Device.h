@@ -27,6 +27,7 @@ namespace IO
 namespace RS485
 {
 constexpr unsigned DEFAULT_BAUDRATE = 9600;
+constexpr unsigned DEFAULT_TIMEOUT = 800;
 
 /**
  * @brief Base device class for communicating with an RS485 slave
@@ -103,6 +104,11 @@ public:
 	unsigned baudrate() const
 	{
 		return slaveConfig.baudrate ?: DEFAULT_BAUDRATE;
+	}
+
+	unsigned timeout() const
+	{
+		return slaveConfig.timeout ?: DEFAULT_TIMEOUT;
 	}
 
 	void handleEvent(IO::Request* request, Event event) override;

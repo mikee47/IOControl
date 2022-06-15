@@ -17,7 +17,7 @@
  *
  ****/
 
-#include <IO/RS485/Controller.h>
+#include <IO/RS485/Device.h>
 #include <IO/Request.h>
 #include "Platform/System.h"
 #include <driver/uart.h>
@@ -33,8 +33,6 @@ namespace RS485
 {
 // Device configuration
 DEFINE_FSTR(CONTROLLER_CLASSNAME, "rs485")
-
-constexpr unsigned TRANSACTION_TIMEOUT_MS = 800;
 
 void Controller::start()
 {
@@ -101,11 +99,13 @@ void Controller::uartCallback(uint32_t status)
 void Controller::handleEvent(Request* request, Event event)
 {
 	switch(event) {
-	case Event::Execute:
+	case Event::Execute: {
 		this->request = request;
 		transmitCompleteRequest = nullptr;
+		auto& device = static_cast<const Device&>(request->device);
 		// Put a timeout on the overall transaction
-		timer.initializeMs<TRANSACTION_TIMEOUT_MS>(
+		timer.initializeMs(
+			device.timeout(),
 			[](void* param) {
 				auto ctrl = static_cast<Controller*>(param);
 				ctrl->transmitCompleteRequest = nullptr;
@@ -115,6 +115,7 @@ void Controller::handleEvent(Request* request, Event event)
 		timer.startOnce();
 		savedConfig = serial.getConfig();
 		break;
+	}
 
 	case Event::RequestComplete:
 		timer.stop();

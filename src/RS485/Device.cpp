@@ -60,6 +60,7 @@ void Device::parseJson(JsonObjectConst json, Config& cfg)
 	cfg.slave.segment = json[FS_segment];
 	cfg.slave.address = json[FS_address];
 	cfg.slave.baudrate = json[FS_baudrate];
+	cfg.slave.timeout = json[FS_timeout];
 }
 
 void Device::handleEvent(IO::Request* request, Event event)
