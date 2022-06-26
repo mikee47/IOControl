@@ -111,7 +111,7 @@ void Device::updateSlaves()
 		}
 	}
 
-	debug_hex(INFO, ">", data, dataSize, 0, 32);
+	debug_hex(DBG, ">", data, dataSize, 0, 32);
 
 	getController().setDirection(Direction::Outgoing);
 	serial.setBreak(true);
