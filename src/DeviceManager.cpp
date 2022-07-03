@@ -164,7 +164,7 @@ ErrorCode DeviceManager::handleMessage(JsonObject json, Request::Callback callba
 		}
 
 		JsonArray arr = json[isDevnode ? FS_devnodes : FS_devices];
-		String requestId = json[FS_id];
+		String requestId = json[FS_id].as<const char*>();
 
 		// Build requests then submit together
 		Request::OwnedList queue;
