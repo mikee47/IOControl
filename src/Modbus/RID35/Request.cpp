@@ -19,6 +19,7 @@
 
 #include <IO/Modbus/RID35/Request.h>
 #include <IO/Strings.h>
+#include <FlashString/Vector.hpp>
 
 namespace IO
 {
@@ -28,6 +29,15 @@ namespace RID35
 {
 namespace
 {
+#define XX(name) DEFINE_FSTR(regmap_str_##name, #name)
+RID35_STDREG_MAP(XX)
+RID35_OVFREG_MAP(XX)
+#undef XX
+#define XX(name) &regmap_str_##name,
+DEFINE_FSTR_VECTOR(stdRegNames, FlashString, RID35_STDREG_MAP(XX))
+DEFINE_FSTR_VECTOR(ovfRegNames, FlashString, RID35_OVFREG_MAP(XX))
+#undef XX
+
 uint16_t getRegisterAddress(Register reg)
 {
 	unsigned regNum = unsigned(reg) * 2;
@@ -108,7 +118,7 @@ void Request::getJson(JsonObject json) const
 		return;
 	}
 
-	JsonArray values = json.createNestedArray(FS_value);
+	auto values = json.createNestedObject(FS_value);
 
 	for(unsigned i = 0; i < StdRegCount; i += 2) {
 		union {
@@ -116,10 +126,10 @@ void Request::getJson(JsonObject json) const
 			float f;
 		} u;
 		u.val = (regValues[i] << 16) | regValues[i + 1];
-		values.add(u.f);
+		values[stdRegNames[i / 2]] = u.f;
 	}
 	for(unsigned i = 0; i < OvfRegCount; ++i) {
-		values.add(regValues[StdRegCount + i]);
+		values[ovfRegNames[i]] = regValues[StdRegCount + i];
 	}
 }
 
