@@ -30,14 +30,58 @@
 
 #include "../Device.h"
 
+// Register name and type
+#define RID35_STDREG_MAP(XX)                                                                                           \
+	XX(TotalActiveEnergy)                                                                                              \
+	XX(ImportActiveEnergy)                                                                                             \
+	XX(ExportActiveEnergy)                                                                                             \
+	XX(TotalReactiveEnergy)                                                                                            \
+	XX(ImportReactiveEnergy)                                                                                           \
+	XX(ExportReactiveEnergy)                                                                                           \
+	XX(ApparentEnergy)                                                                                                 \
+	XX(ActivePower)                                                                                                    \
+	XX(ReactivePower)                                                                                                  \
+	XX(ApparentPower)                                                                                                  \
+	XX(Voltage)                                                                                                        \
+	XX(Current)                                                                                                        \
+	XX(PowerFactor)                                                                                                    \
+	XX(Frequency)                                                                                                      \
+	XX(MaxDemandActivePower)                                                                                           \
+	XX(MaxDemandReactivePower)                                                                                         \
+	XX(MaxDemandApparentPower)
+
+#define RID35_OVFREG_MAP(XX)                                                                                           \
+	XX(TotalKwh)                                                                                                       \
+	XX(ImportKwh)                                                                                                      \
+	XX(ExportKwh)                                                                                                      \
+	XX(TotalKvarh)                                                                                                     \
+	XX(ImportKvarh)                                                                                                    \
+	XX(ExportKvarh)                                                                                                    \
+	XX(Kvah)
+
 namespace IO
 {
 namespace Modbus
 {
 namespace RID35
 {
+enum class Register {
+#define XX(name) name,
+	RID35_STDREG_MAP(XX) RID35_OVFREG_MAP(XX)
+#undef XX
+		MAX
+};
+
+constexpr uint16_t stdRegBase = 0x01;
+constexpr uint16_t ovfRegBase = 0x96;
+constexpr size_t stdRegCount = (1 + unsigned(Register::MaxDemandApparentPower)) * 2;
+constexpr size_t ovfRegCount = 1 + unsigned(Register::Kvah) - unsigned(Register::TotalKwh);
+constexpr size_t registerCount = stdRegCount + ovfRegCount;
+
 class Device : public Modbus::Device
 {
+	friend class Request;
+
 public:
 	class Factory : public FactoryTemplate<Device>
 	{
@@ -54,15 +98,21 @@ public:
 
 	IO::Request* createRequest() override;
 
-	DevNode::ID nodeIdMin() const override
+	bool isValid() const
 	{
-		return 0x01;
+		return regValid;
 	}
 
-	uint16_t maxNodes() const override
-	{
-		return 255;
-	}
+	uint32_t getRawValue(Register reg) const;
+	float getValue(Register reg) const;
+	void getValues(JsonObject json) const;
+
+private:
+	// values may be unaligned (from packed structure) so this avoids compiler errors
+	void updateRegisters(const void* values, size_t count);
+
+	uint16_t regValues[registerCount]{};
+	bool regValid{false};
 };
 
 } // namespace RID35

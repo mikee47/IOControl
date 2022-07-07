@@ -19,7 +19,6 @@
 
 #include <IO/Modbus/RID35/Request.h>
 #include <IO/Strings.h>
-#include <FlashString/Vector.hpp>
 
 namespace IO
 {
@@ -27,40 +26,17 @@ namespace Modbus
 {
 namespace RID35
 {
-namespace
-{
-#define XX(name) DEFINE_FSTR(regmap_str_##name, #name)
-RID35_STDREG_MAP(XX)
-RID35_OVFREG_MAP(XX)
-#undef XX
-#define XX(name) &regmap_str_##name,
-DEFINE_FSTR_VECTOR(stdRegNames, FlashString, RID35_STDREG_MAP(XX))
-DEFINE_FSTR_VECTOR(ovfRegNames, FlashString, RID35_OVFREG_MAP(XX))
-#undef XX
-
-uint16_t getRegisterAddress(Register reg)
-{
-	unsigned regNum = unsigned(reg) * 2;
-	if(regNum < StdRegCount) {
-		return StdRegBase + regNum;
-	}
-
-	return OvfRegBase + unsigned(reg) - unsigned(Register::TotalKwh);
-}
-
-} // namespace
-
 Function Request::fillRequestData(PDU::Data& data)
 {
 	if(getCommand() == Command::query) {
 		// Query all channels
 		auto& req = data.readInputRegisters.request;
 		if(regCount == 0) {
-			req.startAddress = StdRegBase;
-			req.quantityOfRegisters = StdRegCount;
+			req.startAddress = stdRegBase;
+			req.quantityOfRegisters = stdRegCount;
 		} else {
-			req.startAddress = OvfRegBase;
-			req.quantityOfRegisters = OvfRegCount;
+			req.startAddress = ovfRegBase;
+			req.quantityOfRegisters = ovfRegCount;
 		}
 		return Function::ReadInputRegisters;
 	}
@@ -76,30 +52,28 @@ ErrorCode Request::callback(PDU& pdu)
 	case Function::ReadInputRegisters: {
 		auto& rsp = pdu.data.readInputRegisters.response;
 		auto count = rsp.getCount();
-		if(regCount + count > RegisterCount) {
+		if(regCount + count > registerCount) {
 			return Error::bad_size;
 		}
 		auto prevCount = regCount;
 		memcpy(&regValues[regCount], rsp.values, count * sizeof(uint16_t));
 		regCount += count;
 
-		if(getCommand() == Command::query && prevCount == 0) {
+		if(prevCount == 0) {
 			// Submit request for rollover counter addresses
 			submit();
 			return Error::pending;
 		}
+
+		getDevice().updateRegisters(regValues, regCount);
 
 		break;
 	}
 
 	case Function::ReadHoldingRegisters: {
 		auto& rsp = pdu.data.readHoldingRegisters.response;
-		regCount = rsp.getCount();
-
-		for(unsigned i = 0; i < regCount; ++i) {
-			regValues[i] = rsp.values[i];
-		}
-
+		regCount = rsp.getCount();	
+		memcpy(regValues, rsp.values, regCount * sizeof(uint16_t));
 		break;
 	}
 
@@ -118,18 +92,9 @@ void Request::getJson(JsonObject json) const
 		return;
 	}
 
-	auto values = json.createNestedObject(FS_value);
-
-	for(unsigned i = 0; i < StdRegCount; i += 2) {
-		union {
-			uint32_t val;
-			float f;
-		} u;
-		u.val = (regValues[i] << 16) | regValues[i + 1];
-		values[stdRegNames[i / 2]] = u.f;
-	}
-	for(unsigned i = 0; i < OvfRegCount; ++i) {
-		values[ovfRegNames[i]] = regValues[StdRegCount + i];
+	auto values = json.createNestedArray(FS_value);
+	for(unsigned i = 0; i < regCount; ++i) {
+		values.add(regValues[i]);
 	}
 }
 
