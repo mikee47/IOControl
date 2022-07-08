@@ -78,6 +78,7 @@ ErrorCode Device::start()
  */
 ErrorCode Device::stop()
 {
+	state = State::stopped;
 	return Error::success;
 }
 
@@ -93,6 +94,8 @@ void Device::handleEvent(Request* request, Event event)
 			state = State::fault;
 			controller.deviceError(*this);
 		} else if(state == State::starting) {
+			state = State::normal;
+		} else if(state == State::fault) {
 			state = State::normal;
 		}
 	}
