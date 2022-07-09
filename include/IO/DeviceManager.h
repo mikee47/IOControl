@@ -62,6 +62,20 @@ public:
 
 	Device* findDevice(const String& id);
 
+	template <class DeviceClass> bool findDevice(const String& id, DeviceClass*& dev)
+	{
+		dev = static_cast<DeviceClass*>(findDevice(id));
+		if(dev == nullptr) {
+			return false;
+		}
+		// Check found device is compatible with the requested one
+		if(&dev->factory != &DeviceClass::factory) {
+			dev = nullptr;
+			return false;
+		}
+		return true;
+	}
+
 	ErrorCode createRequest(const String& devid, Request*& request);
 
 	/*
