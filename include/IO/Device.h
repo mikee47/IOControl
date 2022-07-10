@@ -188,13 +188,13 @@ public:
 	/**
 	 * @brief Get maximum valid Node ID for this device
 	 */
-	virtual DevNode::ID nodeIdMax() const
+	DevNode::ID nodeIdMax() const
 	{
-		return 0;
+		return nodeIdMin() + maxNodes() - 1;
 	}
 
 	/**
-	 * @brief Determine maximum number of nodes supported by the devicce
+	 * @brief Determine maximum number of nodes supported by the device
 	 * @retval uint16_t 0 if device doesn't support nodes
 	 */
 	virtual uint16_t maxNodes() const

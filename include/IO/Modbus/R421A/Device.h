@@ -112,11 +112,6 @@ public:
 		return R421_CHANNEL_MIN;
 	}
 
-	DevNode::ID nodeIdMax() const override
-	{
-		return R421_CHANNEL_MIN + channelCount - 1;
-	}
-
 	uint16_t maxNodes() const override
 	{
 		return channelCount;

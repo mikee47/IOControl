@@ -149,11 +149,6 @@ public:
 
 	IO::Request* createRequest() override;
 
-	DevNode::ID nodeIdMax() const override
-	{
-		return nodeCount - 1;
-	}
-
 	uint16_t maxNodes() const override
 	{
 		return nodeCount;
