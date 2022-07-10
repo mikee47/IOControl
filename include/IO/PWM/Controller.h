@@ -1,5 +1,5 @@
 /**
- * DeviceType.h
+ * PWM/Controller.h
  *
  * Copyright 2022 mikee47 <mike@sillyhouse.net>
  *
@@ -19,12 +19,34 @@
 
 #pragma once
 
+#include <IO/Controller.h>
+
 namespace IO
 {
-enum class DeviceType {
-	Modbus,
-	DMX512,
-	RFSwitch,
-	PWM,
+namespace PWM
+{
+DECLARE_FSTR(CONTROLLER_CLASSNAME)
+
+/**
+ * @brief Controller for PWM output
+ */
+class Controller : public IO::Controller
+{
+public:
+	Controller(uint8_t instance) : IO::Controller(instance)
+	{
+	}
+
+	const FlashString& classname() const override
+	{
+		return CONTROLLER_CLASSNAME;
+	}
+
+	void handleEvent(IO::Request* request, Event event) override;
+
+private:
+	bool execute(IO::Request& request);
 };
-}
+
+} // namespace PWM
+} // namespace IO

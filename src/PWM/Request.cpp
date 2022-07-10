@@ -1,5 +1,5 @@
 /**
- * DeviceType.h
+ * PWM/Request.cpp
  *
  * Copyright 2022 mikee47 <mike@sillyhouse.net>
  *
@@ -17,14 +17,40 @@
  *
  ****/
 
-#pragma once
+#include <IO/PWM/Request.h>
+#include <IO/PWM/Device.h>
+#include <IO/Strings.h>
 
 namespace IO
 {
-enum class DeviceType {
-	Modbus,
-	DMX512,
-	RFSwitch,
-	PWM,
-};
+namespace PWM
+{
+void Request::submit()
+{
+	auto err = getDevice().execute(*this);
+	if(err < 0) {
+		debug_e("Request failed, %s", Error::toString(err).c_str());
+	}
+	complete(err);
 }
+
+ErrorCode Request::parseJson(JsonObjectConst json)
+{
+	auto err = IO::Request::parseJson(json);
+	if(err) {
+		return err;
+	}
+	value = json[FS_value];
+
+	return Error::success;
+}
+
+void Request::getJson(JsonObject json) const
+{
+	IO::Request::getJson(json);
+
+	json[FS_value] = value;
+}
+
+} // namespace PWM
+} // namespace IO

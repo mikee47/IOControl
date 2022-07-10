@@ -1,5 +1,5 @@
 /**
- * DeviceType.h
+ * PWM/Controller.cpp
  *
  * Copyright 2022 mikee47 <mike@sillyhouse.net>
  *
@@ -17,14 +17,19 @@
  *
  ****/
 
-#pragma once
+#include <IO/PWM/Controller.h>
+#include <IO/PWM/Request.h>
 
 namespace IO
 {
-enum class DeviceType {
-	Modbus,
-	DMX512,
-	RFSwitch,
-	PWM,
-};
+namespace PWM
+{
+DEFINE_FSTR(CONTROLLER_CLASSNAME, "pwm")
+
+void Controller::handleEvent(IO::Request* request, Event event)
+{
+	IO::Controller::handleEvent(request, event);
 }
+
+} // namespace PWM
+} // namespace IO
