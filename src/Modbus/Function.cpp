@@ -1,5 +1,5 @@
 /**
- * Event.cpp
+ * Modbus/Function.cpp
  *
  * Copyright 2022 mikee47 <mike@sillyhouse.net>
  *
@@ -17,22 +17,25 @@
  *
  ****/
 
-#include <IO/Event.h>
-#include <FlashString/Vector.hpp>
+#include <IO/Modbus/Function.h>
+#include <FlashString/Map.hpp>
+
+using namespace IO::Modbus;
 
 namespace
 {
-#define XX(tag) DEFINE_FSTR_LOCAL(evtstr_##tag, #tag)
-IO_EVENT_MAP(XX)
+#define XX(tag, value) DEFINE_FSTR_LOCAL(str_##tag, #tag)
+MODBUS_FUNCTION_MAP(XX)
 #undef XX
 
-#define XX(tag) &evtstr_##tag,
-DEFINE_FSTR_VECTOR(eventStrings, FSTR::String, IO_EVENT_MAP(XX))
+#define XX(tag, value) {Function::tag, &str_##tag},
+DEFINE_FSTR_MAP_LOCAL(map, Function, FSTR::String, MODBUS_FUNCTION_MAP(XX))
 #undef XX
 
 } // namespace
 
-String toString(IO::Event event)
+String toString(IO::Modbus::Function function)
 {
-	return eventStrings[unsigned(event)];
+	auto v = map[function];
+	return v ? String(v) : F("Unknown_") + String(unsigned(function));
 }

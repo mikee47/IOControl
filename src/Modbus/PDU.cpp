@@ -18,7 +18,6 @@
  ****/
 
 #include <IO/Modbus/PDU.h>
-#include <FlashString/Map.hpp>
 
 namespace IO
 {
@@ -37,38 +36,6 @@ void bswap(void* values, unsigned count)
 }
 
 } // namespace
-
-String toString(Exception exception)
-{
-	switch(exception) {
-	case Exception::Success:
-		return F("Success");
-	case Exception::IllegalFunction:
-		return F("IllegalFunction");
-	case Exception::IllegalDataAddress:
-		return F("IllegalDataAddress");
-	case Exception::IllegalDataValue:
-		return F("IllegalDataValue");
-	case Exception::SlaveDeviceFailure:
-		return F("SlaveDeviceFailure");
-	default:
-		return F("Unknown") + String(unsigned(exception));
-	}
-}
-
-String toString(Function function)
-{
-#define XX(tag, value) DEFINE_FSTR_LOCAL(str_##tag, #tag)
-	MODBUS_FUNCTION_MAP(XX)
-#undef XX
-
-#define XX(tag, value) {Function::tag, &str_##tag},
-	DEFINE_FSTR_MAP_LOCAL(map, Function, FSTR::String, MODBUS_FUNCTION_MAP(XX))
-#undef XX
-
-	auto v = map[function];
-	return v ? String(v) : F("Unknown_") + String(unsigned(function));
-}
 
 /**
  * @brief Get size (in bytes) of PDU Data for request packet

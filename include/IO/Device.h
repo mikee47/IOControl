@@ -234,3 +234,5 @@ private:
 };
 
 } // namespace IO
+
+String toString(IO::Device::State state);

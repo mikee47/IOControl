@@ -1,5 +1,5 @@
 /**
- * Event.cpp
+ * Modbus/Exception.cpp
  *
  * Copyright 2022 mikee47 <mike@sillyhouse.net>
  *
@@ -17,22 +17,24 @@
  *
  ****/
 
-#include <IO/Event.h>
-#include <FlashString/Vector.hpp>
+#include <IO/Modbus/Exception.h>
 
-namespace
+using namespace IO::Modbus;
+
+String toString(Exception exception)
 {
-#define XX(tag) DEFINE_FSTR_LOCAL(evtstr_##tag, #tag)
-IO_EVENT_MAP(XX)
-#undef XX
-
-#define XX(tag) &evtstr_##tag,
-DEFINE_FSTR_VECTOR(eventStrings, FSTR::String, IO_EVENT_MAP(XX))
-#undef XX
-
-} // namespace
-
-String toString(IO::Event event)
-{
-	return eventStrings[unsigned(event)];
+	switch(exception) {
+	case Exception::Success:
+		return F("Success");
+	case Exception::IllegalFunction:
+		return F("IllegalFunction");
+	case Exception::IllegalDataAddress:
+		return F("IllegalDataAddress");
+	case Exception::IllegalDataValue:
+		return F("IllegalDataValue");
+	case Exception::SlaveDeviceFailure:
+		return F("SlaveDeviceFailure");
+	default:
+		return F("Unknown") + String(unsigned(exception));
+	}
 }

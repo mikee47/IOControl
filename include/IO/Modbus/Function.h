@@ -50,7 +50,7 @@ enum class Function {
 #undef XX
 };
 
-String toString(Function function);
-
 } // namespace Modbus
 } // namespace IO
+
+String toString(IO::Modbus::Function function);

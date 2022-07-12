@@ -22,6 +22,23 @@
 #include <IO/Controller.h>
 #include <IO/Strings.h>
 
+String toString(IO::Device::State state)
+{
+	using State = IO::Device::State;
+	switch(state) {
+	case State::stopped:
+		return F("Stopped");
+	case State::starting:
+		return F("Starting");
+	case State::fault:
+		return (F("Fault"));
+	case State::normal:
+		return F("normal");
+	default:
+		return F("Unknown");
+	}
+}
+
 namespace IO
 {
 ErrorCode Device::init(const Config& config)

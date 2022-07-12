@@ -22,7 +22,7 @@
 #include <IO/Strings.h>
 #include <FlashString/Vector.hpp>
 
-namespace IO
+namespace
 {
 #define XX(tag, comment) DEFINE_FSTR(cmdstr_##tag, #tag)
 IOCOMMAND_MAP(XX)
@@ -32,12 +32,14 @@ IOCOMMAND_MAP(XX)
 DEFINE_FSTR_VECTOR(commandStrings, FSTR::String, IOCOMMAND_MAP(XX))
 #undef XX
 
-String toString(Command cmd)
+} // namespace
+
+String toString(IO::Command cmd)
 {
 	return commandStrings[unsigned(cmd)];
 }
 
-bool fromString(Command& cmd, const char* str)
+bool fromString(IO::Command& cmd, const char* str)
 {
 	auto i = commandStrings.indexOf(str);
 	if(i < 0) {
@@ -45,10 +47,12 @@ bool fromString(Command& cmd, const char* str)
 		return false;
 	}
 
-	cmd = Command(i);
+	cmd = IO::Command(i);
 	return true;
 }
 
+namespace IO
+{
 ErrorCode Request::parseJson(JsonObjectConst json)
 {
 	const char* id;

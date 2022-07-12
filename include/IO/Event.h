@@ -39,6 +39,6 @@ enum class Event {
 #undef XX
 };
 
-String toString(Event event);
-
 } // namespace IO
+
+String toString(IO::Event event);
