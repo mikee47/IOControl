@@ -96,7 +96,9 @@ void Request::getJson(JsonObject json) const
 	if(requestId.length() != 0) {
 		json[FS_id] = requestId.c_str();
 	}
-	json[FS_command] = toString(command);
+	if(command != Command::undefined) {
+		json[FS_command] = toString(command);
+	}
 	json[FS_device] = device.getId().c_str();
 	setError(json, errorCode);
 }
