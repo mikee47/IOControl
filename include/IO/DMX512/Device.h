@@ -66,6 +66,11 @@ struct NodeData {
 		target = TRange(0, 0xff).clip(newTarget);
 	}
 
+	uint8_t getValue() const
+	{
+		return (state == State::enabled || state == State::enabling) ? target : 0;
+	}
+
 	void setValue(uint8_t newValue)
 	{
 		value = newValue;

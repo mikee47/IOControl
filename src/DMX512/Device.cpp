@@ -228,6 +228,10 @@ ErrorCode Device::execute(Request& request)
 		return Error::bad_node;
 	}
 
+	if(request.getCommand() == Command::query) {
+		return Error::success;
+	}
+
 	ErrorCode err{};
 
 	// Apply request to device data

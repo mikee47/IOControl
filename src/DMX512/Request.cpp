@@ -59,8 +59,22 @@ ErrorCode Request::parseJson(JsonObjectConst json)
 void Request::getJson(JsonObject json) const
 {
 	IO::Request::getJson(json);
+	const auto& dev = const_cast<Request*>(this)->getDevice();
+
+	if(getCommand() == Command::query && devNode == DevNode_ALL) {
+		auto nodes = json.createNestedArray(FS_nodes);
+		auto values = json.createNestedArray(FS_value);
+		auto n = dev.maxNodes();
+		for(unsigned i = 0; i < n; ++i) {
+			nodes.add(i);
+			values.add(dev.getNodeData(i).getValue());
+		}
+
+		return;
+	}
+
 	json[FS_node] = devNode.id;
-	json[FS_value] = value;
+	json[FS_value] = dev.getNodeData(devNode.id).getValue();
 }
 
 bool Request::setNode(DevNode node)
