@@ -48,6 +48,13 @@ enum class Command {
 #undef XX
 };
 
+} // namespace IO
+
+String toString(IO::Command cmd);
+bool fromString(IO::Command& cmd, const char* str);
+
+namespace IO
+{
 class Device;
 class Request;
 
@@ -263,6 +270,3 @@ private:
 };
 
 } // namespace IO
-
-String toString(IO::Command cmd);
-bool fromString(IO::Command& cmd, const char* str);
