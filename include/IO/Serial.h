@@ -45,7 +45,7 @@ public:
 	/**
 	 * @brief Initialise the serial port with a default configuration
 	 */
-	ErrorCode open(uint8_t uart_nr);
+	ErrorCode open(uint8_t uart_nr, uint8_t txPin = UART_PIN_DEFAULT, uint8_t rxPin = UART_PIN_DEFAULT);
 
 	/**
 	 * @brief Close the port

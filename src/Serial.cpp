@@ -21,7 +21,7 @@
 
 namespace IO
 {
-ErrorCode Serial::open(uint8_t uart_nr)
+ErrorCode Serial::open(uint8_t uart_nr, uint8_t txPin, uint8_t rxPin)
 {
 	if(uart != nullptr) {
 		return Error::access_denied;
@@ -29,8 +29,8 @@ ErrorCode Serial::open(uint8_t uart_nr)
 
 	smg_uart_config_t cfg{
 		.uart_nr = uart_nr,
-		.tx_pin = UART_PIN_DEFAULT,
-		.rx_pin = UART_PIN_DEFAULT,
+		.tx_pin = txPin,
+		.rx_pin = rxPin,
 		.mode = UART_FULL,
 		.options = 0,
 		.baudrate = activeConfig.baudrate,
