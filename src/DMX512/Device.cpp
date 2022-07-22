@@ -203,8 +203,9 @@ void Device::handleEvent(IO::Request* request, Event event)
 	switch(event) {
 	case Event::Execute:
 		assert(request->getCommand() == Command::update);
+		IO::RS485::Device::handleEvent(request, event);
 		updateSlaves();
-		break;
+		return;
 
 	case Event::TransmitComplete:
 		assert(updating);
