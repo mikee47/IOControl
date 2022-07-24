@@ -3,7 +3,7 @@
 #include "hardware/clocks.h"
 
 #define PWM_REF_CLOCK 125e6
-#define PWM_CLOCKDIV 100
+#define PWM_CLOCKDIV 1
 #define PWM_FREQ 20e3
 #define PWM_CLOCK (PWM_REF_CLOCK / PWM_CLOCKDIV)
 #define PWM_COUNT_TOP (round(PWM_CLOCK / PWM_FREQ) + 1)
