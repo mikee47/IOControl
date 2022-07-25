@@ -2,16 +2,14 @@
 #include "Fan.h"
 #include <IO/Modbus/Debug.h>
 #include <IO/Modbus/Slave.h>
-#include <LittleFS.h>
+#include "ConfigStorage.h"
 
 namespace
 {
-struct Config {
-	const char* filename{"config.json"};
-	uint8_t slave_id{2};
+DEFINE_FSTR(CONFIG_PARTNAME, "config")
 
-	void load();
-	void save();
+struct Config {
+	uint8_t slave_id{2};
 };
 
 IO::Serial serial0;
@@ -83,7 +81,7 @@ void handleRS485Request(IO::RS485::Controller& controller)
 
 		if(req.address == MBADDR_SLAVE_ID) {
 			config.slave_id = req.value;
-			config.save();
+			ConfigStorage(CONFIG_PARTNAME).save(config);
 			break;
 		}
 
@@ -170,34 +168,16 @@ bool initModbus()
 	return true;
 }
 
-void Config::load()
-{
-	StaticJsonDocument<1024> doc;
-	if(!Json::loadFromFile(doc, filename)) {
-		return;
-	}
-	auto json = doc.as<JsonObject>();
-	slave_id = json[FS_slaveid];
-}
-
-void Config::save()
-{
-	StaticJsonDocument<1024> doc;
-	auto json = doc.to<JsonObject>();
-	json[FS_slaveid] = slave_id;
-
-	Json::saveToFile(doc, filename);
-}
-
 } // namespace
 
 void init()
 {
+#ifndef SMING_RELEASE
 	Serial.begin(COM_SPEED_SERIAL);
 	Serial.systemDebugOutput(true);
+#endif
 
-	lfs_mount();
-	config.load();
+	ConfigStorage(CONFIG_PARTNAME).load(config);
 
 	for(auto& fan : fans) {
 		fan.begin();

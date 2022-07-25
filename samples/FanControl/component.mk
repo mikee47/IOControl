@@ -1,9 +1,7 @@
 COMPONENT_SOC := rp2040
 
 COMPONENT_DEPENDS := \
-	IOControl \
-	LittleFS \
-	ArduinoJson6
+	IOControl
 
 HWCONFIG := fancon
 
