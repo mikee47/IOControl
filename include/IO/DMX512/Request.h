@@ -51,16 +51,10 @@ public:
 		return devNode;
 	}
 
-	bool nodeAdjust(DevNode node, int value) override
+	bool setValue(int value) override
 	{
-		setCommand(Command::adjust);
-		setValue(value);
-		return setNode(node);
-	}
-
-	void setValue(int newValue)
-	{
-		value = newValue;
+		this->value = value;
+		return true;
 	}
 
 	int getValue() const

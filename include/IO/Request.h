@@ -203,17 +203,34 @@ public:
 	}
 
 	/**
-	 * @brief If nodes support analogue state (e.g. brightness) the implement this method
+	 * @brief For nodes supporting analogue state (e.g. brightness)
+	 * @{
 	 */
-	virtual bool nodeAdjust(DevNode node, int value)
+	bool nodeSet(DevNode node, int value)
+	{
+		setCommand(Command::set);
+		return setNode(node) && setValue(value);
+	}
+
+	bool nodeAdjust(DevNode node, int value)
+	{
+		setCommand(Command::adjust);
+		return setNode(node) && setValue(value);
+	}
+	/** @} /
+
+	/**
+	 * @brief If nodes are supported, implement this method
+	 */
+	virtual bool setNode(DevNode node)
 	{
 		return false;
 	}
 
 	/**
-	 * @brief If nodes are supported, implemented this method
+	 * @brief If nodes support values, implement this method
 	 */
-	virtual bool setNode(DevNode node)
+	virtual bool setValue(int value)
 	{
 		return false;
 	}
