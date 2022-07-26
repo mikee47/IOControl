@@ -36,9 +36,10 @@ public:
 	ErrorCode callback(PDU& pdu) override;
 
 	Function function;
-	uint8_t count;
+	uint16_t count;
 	uint16_t address;
-	std::unique_ptr<uint16_t> value;
+	uint16_t offset;
+	std::unique_ptr<uint16_t[]> values;
 	std::unique_ptr<PDU> pdu;
 };
 

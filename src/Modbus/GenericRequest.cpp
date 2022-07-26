@@ -29,6 +29,9 @@ namespace Modbus
 namespace
 {
 DEFINE_FSTR(FS_modbus, "modbus")
+
+constexpr uint16_t maxValueCount{20};
+
 } // namespace
 
 Function GenericRequest::fillRequestData(PDU::Data& data)
@@ -45,29 +48,29 @@ Function GenericRequest::fillRequestData(PDU::Data& data)
 	case Function::ReadHoldingRegisters:
 	case Function::ReadInputRegisters: {
 		auto& req = data.readInputRegisters.request;
-		req.startAddress = address;
-		req.quantityOfRegisters = count;
+		req.startAddress = address + offset;
+		req.quantityOfRegisters = std::min(maxValueCount, uint16_t(count - offset));
 		return function;
 	}
 
 	case Function::WriteSingleRegister: {
-		if(!value) {
+		if(!values) {
 			return Function::None;
 		}
 		auto& req = data.writeSingleRegister.request;
 		req.address = address;
-		req.value = value.get()[0];
+		req.value = values[0];
 		return function;
 	}
 
 	case Function::WriteMultipleRegisters: {
-		if(!value) {
+		if(!values) {
 			return Function::None;
 		}
 		auto& req = data.writeMultipleRegisters.request;
 		req.startAddress = address;
 		req.setCount(count);
-		memcpy(req.values, value.get(), req.byteCount);
+		memcpy(req.values, &values[0], req.byteCount);
 		return function;
 	}
 
@@ -79,6 +82,37 @@ Function GenericRequest::fillRequestData(PDU::Data& data)
 ErrorCode GenericRequest::callback(PDU& pdu)
 {
 	this->pdu.reset(new PDU{pdu});
+
+	if(pdu.function() != function) {
+		return Error::bad_function;
+	}
+
+	switch(function) {
+	case Function::ReadHoldingRegisters:
+	case Function::ReadInputRegisters: {
+		if(!values) {
+			values.reset(new uint16_t[count]);
+			if(!values) {
+				return Error::no_mem;
+			}
+		}
+		auto& rsp = pdu.data.readHoldingRegisters.response;
+		auto n = rsp.getCount();
+		for(unsigned i = 0; i < n; ++i) {
+			values[offset + i] = rsp.values[i];
+		}
+		offset += n;
+		if(offset < count) {
+			submit();
+			return Error::pending;
+		}
+
+		break;
+	}
+
+	default:;
+	}
+
 	return Error::success;
 }
 
@@ -113,14 +147,15 @@ ErrorCode GenericRequest::parseJson(JsonObjectConst json)
 	}
 	count = json[FS_count];
 	address = json[FS_address];
+	offset = 0;
 
 	auto valptr = json[FS_value].as<const char*>();
 	if(valptr != nullptr) {
 		auto numValues = readValues(valptr, nullptr);
 		if(numValues != 0) {
-			value.reset(new uint16_t[numValues]);
-			readValues(valptr, value.get());
-			debug_hex(INFO, "VALUE", value.get(), numValues);
+			values.reset(new uint16_t[numValues]);
+			readValues(valptr, values.get());
+			debug_hex(INFO, "VALUE", values.get(), numValues);
 			count = numValues;
 		}
 	}
@@ -138,8 +173,7 @@ void GenericRequest::getJson(JsonObject json) const
 	if(error() || !pdu) {
 		return;
 	}
-
-	auto values = json.createNestedArray(FS_value);
+	auto jvalues = json.createNestedArray(FS_value);
 
 	switch(pdu->function()) {
 	case Function::ReadCoils:
@@ -147,26 +181,23 @@ void GenericRequest::getJson(JsonObject json) const
 		auto& rsp = pdu->data.readDiscreteInputs.response;
 		auto count = rsp.getCount();
 		for(unsigned i = 0; i < count; ++i) {
-			values.add(rsp.getInput(i));
+			jvalues.add(rsp.getInput(i));
 		}
 		break;
 	}
 
 	case Function::ReadHoldingRegisters:
 	case Function::ReadInputRegisters: {
-		auto& rsp = pdu->data.readHoldingRegisters.response;
-		auto count = rsp.getCount();
 		for(unsigned i = 0; i < count; ++i) {
-			values.add(rsp.values[i]);
+			jvalues.add(values[i]);
 		}
-		break;
+		return;
 	}
 
 	default:;
+		pdu->swapResponseByteOrder();
+		json["hex"] = makeHexString(reinterpret_cast<const uint8_t*>(pdu.get()), pdu->getResponseSize(), ' ');
 	}
-
-	pdu->swapResponseByteOrder();
-	json["hex"] = makeHexString(reinterpret_cast<const uint8_t*>(pdu.get()), pdu->getResponseSize(), ' ');
 }
 
 } // namespace Modbus
