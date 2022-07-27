@@ -66,7 +66,7 @@ void Controller::uartCallback(uint32_t status)
 #else
 	if(status & UART_STATUS_TXFIFO_EMPTY) {
 #endif
-		setDirection(Direction::Incoming);
+		setDirection(request == nullptr ? Direction::Idle : Direction::Incoming);
 		serial.clear(UART_RX_ONLY);
 		status = 0;
 		// Guard against timeout firing before this callback
@@ -159,9 +159,14 @@ void Controller::send(const void* data, size_t size)
 	setDirection(Direction::Outgoing);
 	serial.write(data, size);
 #ifndef USE_TXDONE_INTR
+#ifdef ARCH_RP2040
+#define NULPADLEN 5
+#else
+#define NULPADLEN 1
+#endif
 	// NUL pad so final byte doesn't get cut off
-	uint8_t nul{0};
-	serial.write(&nul, 1);
+	uint8_t nul[NULPADLEN]{};
+	serial.write(nul, NULPADLEN);
 #endif
 
 	debug_i("MB: Sent %u bytes...", size);
