@@ -45,6 +45,8 @@ constexpr auto DMX_SERIAL_FORMAT{UART_8N2};
 #define DMX_UPDATE_CHANGED_MS 10	///< Slave data has changed
 #define DMX_UPDATE_PERIODIC_MS 1000 ///< Periodic update interval
 
+DEFINE_FSTR(FS_fade, "fade")
+
 } // namespace
 
 /*
@@ -134,6 +136,12 @@ ErrorCode Device::init(const Config& config)
 	nodeCount = config.nodeCount ?: 1;
 	nodeData.reset(new NodeData[nodeCount]{});
 
+	if(config.fade) {
+		for(unsigned i = 0; i < nodeCount; ++i) {
+			nodeData[i].options += NodeData::Option::fade;
+		}
+	}
+
 	auto& serial = getController().getSerial();
 	if(!serial.resizeBuffers(0, MaxPacketSize)) {
 		return Error::no_mem;
@@ -161,13 +169,15 @@ IO::Request* Device::createRequest()
 void Device::parseJson(JsonObjectConst json, Config& cfg)
 {
 	IO::RS485::Device::parseJson(json, cfg.rs485);
-	if(cfg.rs485.slave.baudrate == 0) {
-		cfg.rs485.slave.baudrate = DMX_BAUDRATE;
+	auto& slave = cfg.rs485.slave;
+	if(slave.baudrate == 0) {
+		slave.baudrate = DMX_BAUDRATE;
 	}
-	if(cfg.rs485.slave.address == 0) {
-		cfg.rs485.slave.address = 0x01;
+	if(slave.address == 0) {
+		slave.address = 0x01;
 	}
 	cfg.nodeCount = json[FS_count] | 1;
+	cfg.fade = json[FS_fade];
 }
 
 ErrorCode Device::init(JsonObjectConst config)
@@ -193,8 +203,9 @@ void Device::handleEvent(IO::Request* request, Event event)
 	switch(event) {
 	case Event::Execute:
 		assert(request->getCommand() == Command::update);
+		IO::RS485::Device::handleEvent(request, event);
 		updateSlaves();
-		break;
+		return;
 
 	case Event::TransmitComplete:
 		assert(updating);
@@ -226,6 +237,10 @@ ErrorCode Device::execute(Request& request)
 	auto node = request.node();
 	if(!isValid(node)) {
 		return Error::bad_node;
+	}
+
+	if(request.getCommand() == Command::query) {
+		return Error::success;
 	}
 
 	ErrorCode err{};

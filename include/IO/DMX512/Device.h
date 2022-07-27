@@ -38,9 +38,15 @@ struct NodeData {
 		disabling,
 	};
 
+	enum class Option {
+		fade,
+	};
+	using Options = BitSet<uint8_t, Option>;
+
 	uint8_t target;
 	uint8_t value;
 	State state;
+	Options options;
 
 	bool changed() const
 	{
@@ -64,6 +70,11 @@ struct NodeData {
 	void setTarget(int newTarget)
 	{
 		target = TRange(0, 0xff).clip(newTarget);
+	}
+
+	uint8_t getValue() const
+	{
+		return (state == State::enabled || state == State::enabling) ? target : 0;
 	}
 
 	void setValue(uint8_t newValue)
@@ -90,9 +101,14 @@ struct NodeData {
 			return false;
 		}
 
-		int step = (state == State::enabled) ? 1 : 4;
-		int newValue = value + ((value < adjustTarget) ? step : -step);
-		value = TRange(0, 0xff).clip(newValue);
+		if(options[Option::fade]) {
+			int step = (state == State::enabled) ? 1 : 4;
+			int newValue = value + ((value < adjustTarget) ? step : -step);
+			value = TRange(0, 0xff).clip(newValue);
+		} else {
+			value = adjustTarget;
+		}
+
 		return true;
 	}
 };
@@ -124,6 +140,10 @@ public:
 		 * @brief Number of nodes controlled by this device
 		 */
 		uint8_t nodeCount;
+		/**
+		 * @brief Default node fade enable
+		 */
+		bool fade;
 	};
 
 	using IO::RS485::Device::Device;
