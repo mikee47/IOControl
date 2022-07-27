@@ -20,13 +20,14 @@
  ****/
 
 #include <IO/Modbus/Device.h>
-#include <IO/Modbus/Request.h>
+#include <IO/Modbus/GenericRequest.h>
 #include <IO/Strings.h>
 
 namespace IO
 {
 namespace Modbus
 {
+const Device::Factory Device::factory;
 Device::TransferCallback Device::transferCallback;
 
 ErrorCode Device::init(const RS485::Device::Config& config)
@@ -38,6 +39,11 @@ ErrorCode Device::init(const RS485::Device::Config& config)
 	}
 
 	return IO::RS485::Device::init(config);
+}
+
+IO::Request* Device::createRequest()
+{
+	return new GenericRequest(*this);
 }
 
 void Device::handleEvent(IO::Request* request, Event event)
@@ -87,8 +93,11 @@ void Device::handleEvent(IO::Request* request, Event event)
 ErrorCode Device::execute(Request* request)
 {
 	// Fill out the ADU packet
-	ADU adu;
+	ADU adu{};
 	requestFunction = request->fillRequestData(adu.pdu.data);
+	if(requestFunction == Function::None) {
+		return Error::bad_param;
+	}
 	adu.pdu.setFunction(requestFunction);
 	adu.slaveAddress = request->getAddress();
 	auto aduSize = adu.prepareRequest();
@@ -150,7 +159,7 @@ ErrorCode Device::readResponse(Request* request)
 			err = Error::bad_param;
 			break;
 		case Exception::IllegalFunction:
-			err = Error::bad_command;
+			err = Error::bad_function;
 			break;
 		case Exception::IllegalDataAddress:
 		case Exception::SlaveDeviceFailure:

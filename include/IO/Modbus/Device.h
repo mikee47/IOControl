@@ -40,6 +40,17 @@ class Request;
 class Device : public RS485::Device
 {
 public:
+	class Factory : public FactoryTemplate<Device>
+	{
+	public:
+		const FlashString& deviceClass() const override
+		{
+			return FS("modbus");
+		}
+	};
+
+	static const Factory factory;
+
 	using RS485::Device::Device;
 
 	ErrorCode init(const RS485::Device::Config& config);
@@ -62,6 +73,8 @@ public:
 	virtual void onRequest(ADU& adu)
 	{
 	}
+
+	IO::Request* createRequest() override;
 
 	void handleEvent(IO::Request* request, Event event) override;
 

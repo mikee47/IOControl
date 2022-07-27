@@ -54,6 +54,7 @@ enum ErrorMax : ErrorCode {
 	XX(bad_device, "Device not registered")                                                                            \
 	XX(bad_node, "Node ID not valid")                                                                                  \
 	XX(bad_command, "Invalid Command")                                                                                 \
+	XX(bad_function, "Invalid Function")                                                                               \
 	XX(bad_param, "Invalid Parameter")                                                                                 \
 	XX(bad_checksum, "Checksum failed")                                                                                \
 	XX(bad_size, "Data size invalid")                                                                                  \
