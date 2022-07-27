@@ -44,6 +44,14 @@ public:
 	virtual Function fillRequestData(PDU::Data& data) = 0;
 
 	/**
+	 * @brief Allows per-request address override (e.g. for broadcast)
+	 */
+	virtual uint16_t getAddress() const
+	{
+		return device.address();
+	}
+
+	/**
 	 * @brief Process a received PDU
 	 * @param pdu
 	 * @retval ErrorCode If request is re-submitted, return Error::pending,

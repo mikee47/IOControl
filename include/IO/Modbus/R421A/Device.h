@@ -42,6 +42,12 @@
 
 #include "../Device.h"
 
+namespace IO
+{
+namespace Modbus
+{
+namespace R421A
+{
 /**
  * @brief Tracks state of multiple relays
  */
@@ -56,12 +62,6 @@ constexpr uint8_t R421_CHANNEL_MIN = 1;
 // R421 devices don't respond to channel numbers greater than 16
 constexpr uint8_t R421A_MAX_CHANNELS = 16;
 
-namespace IO
-{
-namespace Modbus
-{
-namespace R421A
-{
 class Device : public Modbus::Device
 {
 public:

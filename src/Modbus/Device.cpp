@@ -88,7 +88,7 @@ ErrorCode Device::execute(Request* request)
 	ADU adu;
 	requestFunction = request->fillRequestData(adu.pdu.data);
 	adu.pdu.setFunction(requestFunction);
-	adu.slaveAddress = request->device.address();
+	adu.slaveAddress = request->getAddress();
 	auto aduSize = adu.prepareRequest();
 	if(aduSize == 0) {
 		return Error::bad_size;
