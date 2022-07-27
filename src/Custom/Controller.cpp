@@ -1,5 +1,5 @@
 /**
- * DeviceType.h
+ * Custom/Controller.cpp
  *
  * Copyright 2022 mikee47 <mike@sillyhouse.net>
  *
@@ -17,14 +17,18 @@
  *
  ****/
 
-#pragma once
+#include <IO/Custom/Controller.h>
 
 namespace IO
 {
-enum class DeviceType {
-	Modbus,
-	DMX512,
-	RFSwitch,
-	Custom,
-};
+namespace Custom
+{
+DEFINE_FSTR(CONTROLLER_CLASSNAME, "custom")
+
+void Controller::handleEvent(IO::Request* request, Event event)
+{
+	IO::Controller::handleEvent(request, event);
 }
+
+} // namespace Custom
+} // namespace IO

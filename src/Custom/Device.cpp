@@ -1,5 +1,5 @@
 /**
- * DeviceType.h
+ * Custom/Device.cpp
  *
  * Copyright 2022 mikee47 <mike@sillyhouse.net>
  *
@@ -17,14 +17,35 @@
  *
  ****/
 
-#pragma once
+#include <IO/Custom/Device.h>
+#include <IO/Custom/Request.h>
+#include <IO/Strings.h>
 
 namespace IO
 {
-enum class DeviceType {
-	Modbus,
-	DMX512,
-	RFSwitch,
-	Custom,
-};
+namespace Custom
+{
+IO::Request* Device::createRequest()
+{
+	return new Request(*this);
 }
+
+void Device::getRequestJson(const Request& request, JsonObject json) const
+{
+	auto n = maxNodes();
+	if(n <= 1 || request.getCommand() != Command::query) {
+		json[FS_value] = request.getValue();
+		json[FS_node] = request.getNode().id;
+		return;
+	}
+
+	auto nodes = json.createNestedArray(FS_nodes);
+	auto values = json.createNestedArray(FS_value);
+	for(auto i = nodeIdMin(); i <= nodeIdMax(); ++i) {
+		nodes.add(i);
+		values.add(getNodeValue({i}));
+	}
+}
+
+} // namespace Custom
+} // namespace IO
