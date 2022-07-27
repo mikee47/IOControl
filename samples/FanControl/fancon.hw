@@ -1,0 +1,13 @@
+{
+    "name": "Fan Controller",
+    "base_config": "standard",
+    "partitions": {
+        "config": {
+            "device": "spiFlash",
+            "address": "0x00100000",
+            "size": "512K",
+            "type": "data",
+            "subtype": "littlefs"
+        }
+    }
+}
