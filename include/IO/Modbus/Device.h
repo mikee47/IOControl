@@ -65,10 +65,18 @@ public:
 
 	void handleEvent(IO::Request* request, Event event) override;
 
+	using TransferCallback = void (*)(const void* data, size_t length, bool send);
+
+	static void onTransfer(TransferCallback callback)
+	{
+		transferCallback = callback;
+	}
+
 private:
 	ErrorCode execute(Request* request);
 	ErrorCode readResponse(Request* request);
 
+	static TransferCallback transferCallback;
 	Function requestFunction{};
 };
 

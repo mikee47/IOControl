@@ -27,6 +27,8 @@ namespace IO
 {
 namespace Modbus
 {
+Device::TransferCallback Device::transferCallback;
+
 ErrorCode Device::init(const RS485::Device::Config& config)
 {
 	auto& ctrl = static_cast<IO::RS485::Controller&>(controller);
@@ -104,6 +106,9 @@ ErrorCode Device::execute(Request* request)
 	serial.clear();
 
 	// OK, issue the request
+	if(transferCallback) {
+		transferCallback(adu.buffer, aduSize, true);
+	}
 	getController().send(adu.buffer, aduSize);
 	return Error::pending;
 }
@@ -114,6 +119,10 @@ ErrorCode Device::readResponse(Request* request)
 	ADU adu;
 	auto& serial = getController().getSerial();
 	auto receivedSize = serial.read(adu.buffer, ADU::MaxSize);
+
+	if(transferCallback) {
+		transferCallback(adu.buffer, receivedSize, false);
+	}
 
 	// Parse the received packet
 	ErrorCode err = adu.parseResponse(receivedSize);
