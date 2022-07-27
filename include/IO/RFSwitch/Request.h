@@ -42,7 +42,7 @@ public:
 
 	const Device& getDevice() const
 	{
-		return reinterpret_cast<const Device&>(device);
+		return static_cast<const Device&>(device);
 	}
 
 	ErrorCode parseJson(JsonObjectConst json) override;

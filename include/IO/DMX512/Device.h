@@ -102,23 +102,12 @@ class Device : public RS485::Device
 	friend Request;
 
 public:
-	class Factory : public IO::Device::Factory
+	class Factory : public FactoryTemplate<Device>
 	{
 	public:
-		IO::Device* createDevice(IO::Controller& controller, const char* id) const override
-		{
-			return new Device(reinterpret_cast<RS485::Controller&>(controller), id);
-		}
-
-		const FlashString& controllerClass() const override
-		{
-			return RS485::CONTROLLER_CLASSNAME;
-		}
-
 		const FlashString& deviceClass() const override
 		{
-			DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "dmx")
-			return DEVICE_CLASSNAME;
+			return FS("dmx");
 		}
 	};
 

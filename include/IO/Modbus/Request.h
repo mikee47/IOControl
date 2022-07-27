@@ -36,9 +36,9 @@ public:
 	{
 	}
 
-	const Device& getDevice() const
+	Device& getDevice() const
 	{
-		return reinterpret_cast<const Device&>(device);
+		return static_cast<Device&>(device);
 	}
 
 	virtual Function fillRequestData(PDU::Data& data) = 0;

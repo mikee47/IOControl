@@ -40,7 +40,7 @@ ErrorCode Device::init(const RS485::Device::Config& config)
 
 void Device::handleEvent(IO::Request* request, Event event)
 {
-	auto req = reinterpret_cast<Request*>(request);
+	auto req = static_cast<Request*>(request);
 
 	switch(event) {
 	case Event::Execute: {

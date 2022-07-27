@@ -65,23 +65,12 @@ namespace R421A
 class Device : public Modbus::Device
 {
 public:
-	class Factory : public IO::Device::Factory
+	class Factory : public FactoryTemplate<Device>
 	{
 	public:
-		IO::Device* createDevice(IO::Controller& controller, const char* id) const override
-		{
-			return new Device(reinterpret_cast<RS485::Controller&>(controller), id);
-		}
-
-		const FlashString& controllerClass() const override
-		{
-			return RS485::CONTROLLER_CLASSNAME;
-		}
-
 		const FlashString& deviceClass() const override
 		{
-			DEFINE_FSTR_LOCAL(DEVICE_CLASSNAME, "r421a")
-			return DEVICE_CLASSNAME;
+			return FS("r421a");
 		}
 	};
 

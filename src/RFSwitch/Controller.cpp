@@ -184,7 +184,7 @@ bool Controller::execute(IO::Request& request)
 		return false;
 	}
 
-	activeRequest = reinterpret_cast<Request*>(&request);
+	activeRequest = static_cast<Request*>(&request);
 	transmitData = activeRequest->getCode();
 	repeatsRemaining = activeRequest->getRepeats();
 	pinMode(outputPin, OUTPUT);

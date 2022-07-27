@@ -33,7 +33,7 @@ namespace R421A
 class Request : public Modbus::Request
 {
 public:
-	Request(Modbus::R421A::Device& device) : Modbus::Request(device)
+	Request(Device& device) : Modbus::Request(device)
 	{
 	}
 
@@ -43,7 +43,7 @@ public:
 
 	const Device& getDevice() const
 	{
-		return reinterpret_cast<const Device&>(device);
+		return static_cast<const Device&>(device);
 	}
 
 	bool setNode(DevNode node) override;

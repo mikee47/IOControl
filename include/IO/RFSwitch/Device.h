@@ -52,7 +52,7 @@ public:
 	public:
 		IO::Device* createDevice(IO::Controller& controller, const char* id) const override
 		{
-			return new Device(reinterpret_cast<Controller&>(controller), id);
+			return new Device(static_cast<Controller&>(controller), id);
 		}
 
 		const FlashString& controllerClass() const override

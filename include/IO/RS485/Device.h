@@ -34,6 +34,20 @@ constexpr unsigned DEFAULT_BAUDRATE = 9600;
 class Device : public IO::Device
 {
 public:
+	template <class DeviceClass> class FactoryTemplate : public Factory
+	{
+	public:
+		IO::Device* createDevice(IO::Controller& controller, const char* id) const override
+		{
+			return new DeviceClass(static_cast<RS485::Controller&>(controller), id);
+		}
+
+		const FlashString& controllerClass() const override
+		{
+			return CONTROLLER_CLASSNAME;
+		}
+	};
+
 	/**
 	 * @brief RS485 configuration
 	 */
@@ -73,7 +87,7 @@ public:
 
 	Controller& getController()
 	{
-		return reinterpret_cast<Controller&>(controller);
+		return static_cast<Controller&>(controller);
 	}
 
 	uint16_t address() const override
