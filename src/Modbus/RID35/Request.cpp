@@ -72,7 +72,7 @@ ErrorCode Request::callback(PDU& pdu)
 
 	case Function::ReadHoldingRegisters: {
 		auto& rsp = pdu.data.readHoldingRegisters.response;
-		regCount = rsp.getCount();	
+		regCount = rsp.getCount();
 		memcpy(regValues, rsp.values, regCount * sizeof(uint16_t));
 		break;
 	}
@@ -92,10 +92,7 @@ void Request::getJson(JsonObject json) const
 		return;
 	}
 
-	auto values = json.createNestedArray(FS_value);
-	for(unsigned i = 0; i < regCount; ++i) {
-		values.add(regValues[i]);
-	}
+	getDevice().getValues(json.createNestedObject(FS_value));
 }
 
 } // namespace RID35

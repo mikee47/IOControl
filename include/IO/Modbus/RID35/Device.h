@@ -32,32 +32,32 @@
 
 // Register name and type
 #define RID35_STDREG_MAP(XX)                                                                                           \
-	XX(TotalActiveEnergy)                                                                                              \
-	XX(ImportActiveEnergy)                                                                                             \
-	XX(ExportActiveEnergy)                                                                                             \
-	XX(TotalReactiveEnergy)                                                                                            \
-	XX(ImportReactiveEnergy)                                                                                           \
-	XX(ExportReactiveEnergy)                                                                                           \
-	XX(ApparentEnergy)                                                                                                 \
-	XX(ActivePower)                                                                                                    \
-	XX(ReactivePower)                                                                                                  \
-	XX(ApparentPower)                                                                                                  \
-	XX(Voltage)                                                                                                        \
-	XX(Current)                                                                                                        \
-	XX(PowerFactor)                                                                                                    \
-	XX(Frequency)                                                                                                      \
-	XX(MaxDemandActivePower)                                                                                           \
-	XX(MaxDemandReactivePower)                                                                                         \
-	XX(MaxDemandApparentPower)
+	XX(1, TotalActiveEnergy, KWH)                                                                                      \
+	XX(3, ImportActiveEnergy, KWH)                                                                                     \
+	XX(5, ExportActiveEnergy, KWH)                                                                                     \
+	XX(7, TotalReactiveEnergy, KVARH)                                                                                  \
+	XX(9, ImportReactiveEnergy, KVARH)                                                                                 \
+	XX(11, ExportReactiveEnergy, KVARH)                                                                                \
+	XX(13, ApparentEnergy, KVAH)                                                                                       \
+	XX(15, ActivePower, KW)                                                                                            \
+	XX(17, ReactivePower, KVAR)                                                                                        \
+	XX(19, ApparentPower, KVA)                                                                                         \
+	XX(21, Voltage, VOLT)                                                                                              \
+	XX(23, Current, AMP)                                                                                               \
+	XX(25, PowerFactor, NONE)                                                                                          \
+	XX(27, Frequency, HERTZ)                                                                                           \
+	XX(29, MaxDemandActivePower, KW)                                                                                   \
+	XX(31, MaxDemandReactivePower, KVAR)                                                                               \
+	XX(33, MaxDemandApparentPower, KVA)
 
 #define RID35_OVFREG_MAP(XX)                                                                                           \
-	XX(TotalKwh)                                                                                                       \
-	XX(ImportKwh)                                                                                                      \
-	XX(ExportKwh)                                                                                                      \
-	XX(TotalKvarh)                                                                                                     \
-	XX(ImportKvarh)                                                                                                    \
-	XX(ExportKvarh)                                                                                                    \
-	XX(Kvah)
+	XX(150, TotalKwh, KWH)                                                                                             \
+	XX(151, ImportKwh, KWH)                                                                                            \
+	XX(152, ExportKwh, KWH)                                                                                            \
+	XX(153, TotalKvarh, KVARH)                                                                                         \
+	XX(154, ImportKvarh, KVARH)                                                                                        \
+	XX(155, ExportKvarh, KVARH)                                                                                        \
+	XX(156, Kvah, KVAH)
 
 namespace IO
 {
@@ -65,8 +65,21 @@ namespace Modbus
 {
 namespace RID35
 {
+enum class Unit {
+	NONE,
+	KW,
+	KVAR,
+	KVA,
+	KWH,
+	KVARH,
+	KVAH,
+	VOLT,
+	AMP,
+	HERTZ,
+};
+
 enum class Register {
-#define XX(name) name,
+#define XX(reg, tag, ...) tag,
 	RID35_STDREG_MAP(XX) RID35_OVFREG_MAP(XX)
 #undef XX
 		MAX
@@ -105,6 +118,7 @@ public:
 
 	uint32_t getRawValue(Register reg) const;
 	float getValue(Register reg) const;
+	String getValueString(Register reg) const;
 	void getValues(JsonObject json) const;
 
 private:

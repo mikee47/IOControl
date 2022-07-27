@@ -22,7 +22,7 @@
 #include <IO/Modbus/RID35/Device.h>
 #include <IO/Modbus/RID35/Request.h>
 #include <IO/Strings.h>
-#include <FlashString/Vector.hpp>
+#include <FlashString/Array.hpp>
 
 namespace IO
 {
@@ -32,13 +32,46 @@ namespace RID35
 {
 namespace
 {
-#define XX(name) DEFINE_FSTR(regmap_str_##name, #name)
+#define XX(reg, tag, ...) DEFINE_FSTR(regmap_tag_##tag, #tag)
 RID35_STDREG_MAP(XX)
 RID35_OVFREG_MAP(XX)
 #undef XX
-#define XX(name) &regmap_str_##name,
-DEFINE_FSTR_VECTOR(regNames, FlashString, RID35_STDREG_MAP(XX) RID35_OVFREG_MAP(XX))
+
+struct RegInfo {
+	const FlashString* tag;
+	Unit unit;
+};
+
+#define XX(reg, tag, unit, ...) {&regmap_tag_##tag, Unit::unit},
+DEFINE_FSTR_ARRAY(regInfo, RegInfo, RID35_STDREG_MAP(XX) RID35_OVFREG_MAP(XX))
 #undef XX
+
+String valueToString(float value, Unit unit)
+{
+	switch(unit) {
+	case Unit::KW:
+		return String(round(value * 1000)) + 'W';
+	case Unit::KVAR:
+		return String(round(value * 1000)) + "VAR";
+	case Unit::KVA:
+		return String(round(value * 1000)) + "VA";
+	case Unit::KWH:
+		return String(value) + "KWh";
+	case Unit::KVARH:
+		return String(value) + "KVARh";
+	case Unit::KVAH:
+		return String(value) + "KVAh";
+	case Unit::VOLT:
+		return String(value) + 'V';
+	case Unit::AMP:
+		return String(value, 3) + 'A';
+	case Unit::HERTZ:
+		return String(value) + "Hz";
+	case Unit::NONE:
+	default:
+		return String(value);
+	}
+}
 
 } // namespace
 
@@ -83,6 +116,11 @@ float Device::getValue(Register reg) const
 	return (reg < Register::TotalKwh) ? u.f : u.val;
 }
 
+String Device::getValueString(Register reg) const
+{
+	return valueToString(getValue(reg), regInfo[unsigned(reg)].unit);
+}
+
 void Device::getValues(JsonObject json) const
 {
 	if(!regValid) {
@@ -90,7 +128,7 @@ void Device::getValues(JsonObject json) const
 	}
 
 	for(unsigned i = 0; i < unsigned(Register::MAX); ++i) {
-		json[regNames[i]] = getValue(Register(i));
+		json[*regInfo[i].tag] = getValueString(Register(i));
 	}
 }
 
