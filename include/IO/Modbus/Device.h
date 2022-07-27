@@ -40,6 +40,17 @@ class Request;
 class Device : public RS485::Device
 {
 public:
+	class Factory : public FactoryTemplate<Device>
+	{
+	public:
+		const FlashString& deviceClass() const override
+		{
+			return FS("modbus");
+		}
+	};
+
+	static const Factory factory;
+
 	using RS485::Device::Device;
 
 	ErrorCode init(const RS485::Device::Config& config);
@@ -63,12 +74,22 @@ public:
 	{
 	}
 
+	IO::Request* createRequest() override;
+
 	void handleEvent(IO::Request* request, Event event) override;
+
+	using TransferCallback = void (*)(const void* data, size_t length, bool send);
+
+	static void onTransfer(TransferCallback callback)
+	{
+		transferCallback = callback;
+	}
 
 private:
 	ErrorCode execute(Request* request);
 	ErrorCode readResponse(Request* request);
 
+	static TransferCallback transferCallback;
 	Function requestFunction{};
 };
 

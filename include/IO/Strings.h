@@ -26,6 +26,7 @@ namespace IO
 // Global flash strings
 #define IO_FLASHSTRING_MAP(XX)                                                                                         \
 	XX(command)                                                                                                        \
+	XX(function)                                                                                                       \
 	XX(name)                                                                                                           \
 	XX(device)                                                                                                         \
 	XX(devices)                                                                                                        \
