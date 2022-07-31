@@ -135,3 +135,8 @@ void Device::getValues(JsonObject json) const
 } // namespace RID35
 } // namespace Modbus
 } // namespace IO
+
+String toString(IO::Modbus::RID35::Register reg)
+{
+	return *IO::Modbus::RID35::regInfo[unsigned(reg)].tag;
+}
