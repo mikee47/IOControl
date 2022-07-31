@@ -65,7 +65,7 @@ IO::Request* Device::createRequest()
 	return new Request(*this);
 }
 
-float Device::getValue(uint8_t channel) const
+int16_t Device::getIntValue(uint8_t channel) const
 {
 	if(channel >= channelCount) {
 		return 0;
@@ -80,13 +80,20 @@ float Device::getValue(uint8_t channel) const
 	}
 	value /= 10;
 
-	return (value + c.b) / 10.0;
+	return value + c.b;
 }
 
 void Device::getRawValues(JsonArray json) const
 {
 	for(unsigned i = 0; i < channelCount; ++i) {
 		json.add(values[i]);
+	}
+}
+
+void Device::getValues(TempData& data) const
+{
+	for(unsigned i = 0; i < channelCount; ++i) {
+		data[i] = getIntValue(i);
 	}
 }
 

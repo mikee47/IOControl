@@ -35,6 +35,7 @@ namespace Modbus
 namespace NT18B07
 {
 const size_t channelCount{7};
+using TempData = int16_t[channelCount];
 
 class Device : public Modbus::Device
 {
@@ -78,8 +79,18 @@ public:
 		return (channel < channelCount) ? values[channel] : 0;
 	}
 
-	float getValue(uint8_t channel) const;
+	/**
+	 * @brief Get temperature value in 0.1C increments (avoids floating point)
+	 */
+	int16_t getIntValue(uint8_t channel) const;
+
+	float getValue(uint8_t channel) const
+	{
+		return getIntValue(channel) / 10.0;
+	}
+
 	void getRawValues(JsonArray json) const;
+	void getValues(TempData& data) const;
 	void getValues(JsonArray json) const;
 
 	uint16_t maxNodes() const override
@@ -95,7 +106,7 @@ protected:
 		memcpy(this->values, values, std::min(count, channelCount) * sizeof(int16_t));
 	}
 
-	int16_t values[channelCount]{-111, -222, -333, -444, -555, -666, -777};
+	TempData values{-111, -222, -333, -444, -555, -666, -777};
 	Config::CompArray comp;
 };
 
