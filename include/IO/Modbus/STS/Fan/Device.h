@@ -33,6 +33,8 @@ namespace STS
 namespace Fan
 {
 const size_t channelCount{3};
+using SpeedData = uint8_t[channelCount];
+using RpmData = uint16_t[channelCount];
 
 class Device : public Modbus::Device
 {
@@ -59,9 +61,19 @@ public:
 		return (channel < channelCount) ? speed[channel] : 0;
 	}
 
+	const SpeedData& getSpeed() const
+	{
+		return speed;
+	}
+
 	unsigned getRpm(uint8_t channel) const
 	{
 		return (channel < channelCount) ? rpm[channel] : 0;
+	}
+
+	const RpmData& getRpm() const
+	{
+		return rpm;
 	}
 
 	uint16_t maxNodes() const override
@@ -74,8 +86,8 @@ public:
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 
-	uint8_t speed[channelCount]{};
-	uint16_t rpm[channelCount]{};
+	SpeedData speed{};
+	RpmData rpm{};
 };
 
 } // namespace Fan
