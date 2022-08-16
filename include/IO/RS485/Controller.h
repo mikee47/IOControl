@@ -108,8 +108,8 @@ protected:
 	}
 
 private:
-	static void IRAM_ATTR uartCallbackStatic(smg_uart_t* uart, uint32_t status);
-	void IRAM_ATTR uartCallback(uint32_t status);
+	static void uartCallbackStatic(smg_uart_t* uart, uint32_t status);
+	void uartCallback(uint32_t status);
 	void receiveComplete();
 
 private:

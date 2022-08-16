@@ -50,7 +50,7 @@ void Controller::stop()
 	serial.setCallback(nullptr, nullptr);
 }
 
-void Controller::uartCallbackStatic(smg_uart_t* uart, uint32_t status)
+void IRAM_ATTR Controller::uartCallbackStatic(smg_uart_t* uart, uint32_t status)
 {
 	auto controller = static_cast<Controller*>(smg_uart_get_callback_param(uart));
 	// Guard against spurious interrupts
@@ -59,7 +59,7 @@ void Controller::uartCallbackStatic(smg_uart_t* uart, uint32_t status)
 	}
 }
 
-void Controller::uartCallback(uint32_t status)
+void IRAM_ATTR Controller::uartCallback(uint32_t status)
 {
 #ifdef USE_TXDONE_INTR
 	if(status & UART_STATUS_TX_DONE) {
@@ -169,7 +169,7 @@ void Controller::send(const void* data, size_t size)
 	serial.write(nul, NULPADLEN);
 #endif
 
-	debug_i("MB: Sent %u bytes...", size);
+	debug_d("MB: Sent %u bytes...", size);
 }
 
 } // namespace RS485
