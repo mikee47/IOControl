@@ -43,6 +43,11 @@ public:
 
 	virtual Function fillRequestData(PDU::Data& data) = 0;
 
+	bool setNode(DevNode node) override
+	{
+		return true;
+	}
+
 	/**
 	 * @brief Allows per-request address override (e.g. for broadcast)
 	 */
