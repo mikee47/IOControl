@@ -159,8 +159,13 @@ void IRAM_ATTR Controller::transmitInterruptHandler()
 	// All done
 	setOutput(false);
 
-	// 1/7/18 This seems to help, perhaps by allowing output to settle a little bit higher than when driven
-	pinMode(outputPin, INPUT);
+	/*
+	 * 1/7/18 This seems to help, perhaps by allowing output to settle a little bit higher than when driven
+	 *
+	 * 		pinMode(outputPin, INPUT);
+	 * 
+	 * 16/8/22 Not required for repeater (PCB) version as output is properly buffered, and is also non-inverting.
+	 */
 
 	hardwareTimer.stop();
 
@@ -187,7 +192,6 @@ bool Controller::execute(IO::Request& request)
 	activeRequest = static_cast<Request*>(&request);
 	transmitData = activeRequest->getCode();
 	repeatsRemaining = activeRequest->getRepeats();
-	pinMode(outputPin, OUTPUT);
 
 	hardwareTimer.setCallback(transmitInterruptHandler);
 	setTransmit(startHigh, true, activeRequest->getDevice().getTiming().starth);

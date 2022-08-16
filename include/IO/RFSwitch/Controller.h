@@ -44,6 +44,9 @@ public:
 	{
 		this->outputPin = outputPin;
 		this->outputInvert = outputInvert;
+		setOutput(false);
+		pinMode(outputPin, OUTPUT);
+		setOutput(false);
 	}
 
 	const FlashString& classname() const override
