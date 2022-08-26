@@ -82,14 +82,15 @@ IO::Request* Device::createRequest()
 	return new Request(*this);
 }
 
-void Device::updateRegisters(const void* values, size_t count)
+bool Device::updateRegisters(const void* values, size_t count)
 {
 	if(count != registerCount) {
 		regValid = false;
-		return;
+		return false;
 	}
 	memcpy(regValues, values, count * sizeof(uint16_t));
 	regValid = true;
+	return true;
 }
 
 uint32_t Device::getRawValue(Register reg) const

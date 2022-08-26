@@ -93,8 +93,6 @@ constexpr size_t registerCount = stdRegCount + ovfRegCount;
 
 class Device : public Modbus::Device
 {
-	friend class Request;
-
 public:
 	class Factory : public FactoryTemplate<Device>
 	{
@@ -121,10 +119,10 @@ public:
 	String getValueString(Register reg) const;
 	void getValues(JsonObject json) const;
 
-private:
 	// values may be unaligned (from packed structure) so this avoids compiler errors
-	void updateRegisters(const void* values, size_t count);
+	bool updateRegisters(const void* values, size_t count);
 
+private:
 	uint16_t regValues[registerCount]{};
 	bool regValid{false};
 };
