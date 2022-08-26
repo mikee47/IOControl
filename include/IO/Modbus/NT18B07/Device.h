@@ -39,8 +39,6 @@ using TempData = int16_t[channelCount];
 
 class Device : public Modbus::Device
 {
-	friend class Request;
-
 public:
 	class Factory : public FactoryTemplate<Device>
 	{
@@ -60,8 +58,8 @@ public:
 		Modbus::Device::Config modbus; ///< Basic modbus configuration
 		/* Compensate channel: Tout = a * Tin + b */
 		struct Comp {
-			int8_t a;
-			int8_t b;
+			int8_t a{10};
+			int8_t b{0};
 		};
 		using CompArray = Comp[channelCount];
 		CompArray comp;
@@ -98,13 +96,13 @@ public:
 		return channelCount;
 	}
 
-protected:
-	void parseJson(JsonObjectConst json, Config& cfg);
-
 	void updateValues(const void* values, size_t count)
 	{
 		memcpy(this->values, values, std::min(count, channelCount) * sizeof(int16_t));
 	}
+
+private:
+	void parseJson(JsonObjectConst json, Config& cfg);
 
 	TempData values{-111, -222, -333, -444, -555, -666, -777};
 	Config::CompArray comp;
