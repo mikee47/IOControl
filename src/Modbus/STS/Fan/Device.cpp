@@ -41,8 +41,8 @@ void Device::getValues(JsonObject json) const
 	auto jspeed = json.createNestedArray(F("speed"));
 	auto jrpm = json.createNestedArray(F("rpm"));
 	for(unsigned i = 0; i < channelCount; ++i) {
-		jspeed.add(speed[i]);
-		jrpm.add(rpm[i]);
+		jspeed.add(data.speed[i]);
+		jrpm.add(data.rpm[i]);
 	}
 }
 

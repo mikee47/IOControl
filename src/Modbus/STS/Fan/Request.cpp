@@ -76,12 +76,12 @@ ErrorCode Request::callback(PDU& pdu)
 	case Function::ReadInputRegisters: {
 		auto& rsp = pdu.data.readHoldingRegisters.response;
 		auto n = std::min(uint16_t(channelCount), rsp.getCount());
-		auto& dev = getDevice();
+		auto& data = getDevice().data;
 		for(unsigned i = 0; i < n; ++i) {
 			if(func == Function::ReadHoldingRegisters) {
-				dev.speed[i] = rsp.values[i];
+				data.speed[i] = rsp.values[i];
 			} else {
-				dev.rpm[i] = rsp.values[i];
+				data.rpm[i] = rsp.values[i];
 			}
 		}
 		break;
