@@ -171,6 +171,9 @@ void GenericRequest::getJson(JsonObject json) const
 	json[FS_address] = address;
 
 	if(error() || !pdu) {
+		if(pdu) {
+			json["pdu"] = makeHexString(reinterpret_cast<const uint8_t*>(pdu.get()), pdu->getResponseSize());
+		}
 		return;
 	}
 	auto jvalues = json.createNestedArray(FS_value);
