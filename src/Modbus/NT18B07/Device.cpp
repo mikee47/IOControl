@@ -73,14 +73,11 @@ int16_t Device::getIntValue(uint8_t channel) const
 
 	auto& c = comp[channel];
 	int value = int(c.a) * values[channel];
-	if(value < 0) {
-		value -= 5;
-	} else {
-		value += 5;
-	}
+	value += (value < 0) ? -5 : 5;
 	value /= 10;
+	value += c.b;
 
-	return value + c.b;
+	return value;
 }
 
 void Device::getRawValues(JsonArray json) const
