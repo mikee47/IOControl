@@ -16,6 +16,16 @@ Node ID
   The channel a node lives on. For the R421Axx relay boards this is the address or channel number.
   In a modbus transaction this is the address field.
 
+8-channel
+  - DIP switches set the slave address, from 0x00 to 0x3f. e.g. A0 ON=#1, A1 ON=#2, etc.
+
+4-channel
+  - Set A5 ON for MODBUS RTU mode (OFF is for AT mode).
+  - Set A0-A4 to slave address, from 0x00 to 0x1f.
+
+
+API
+---
 
 .. doxygennamespace:: IO::Modbus::R421A
    :members:
