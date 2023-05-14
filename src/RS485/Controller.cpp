@@ -67,7 +67,6 @@ void IRAM_ATTR Controller::uartCallback(uint32_t status)
 	if(status & UART_STATUS_TXFIFO_EMPTY) {
 #endif
 		setDirection(request == nullptr ? Direction::Idle : Direction::Incoming);
-		serial.clear(UART_RX_ONLY);
 		status = 0;
 		// Guard against timeout firing before this callback
 		if(request != nullptr && transmitCompleteRequest == nullptr) {
