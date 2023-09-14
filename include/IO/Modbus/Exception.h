@@ -21,9 +21,7 @@
 
 #include <WString.h>
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 /**
  * @brief Modbus exception codes returned in response packets
@@ -79,7 +77,6 @@ inline bool operator!(Exception exception)
 	return exception == Exception::Success;
 }
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus
 
 String toString(IO::Modbus::Exception exception);

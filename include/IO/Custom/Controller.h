@@ -21,9 +21,7 @@
 
 #include <IO/Controller.h>
 
-namespace IO
-{
-namespace Custom
+namespace IO::Custom
 {
 DECLARE_FSTR(CONTROLLER_CLASSNAME)
 
@@ -50,5 +48,4 @@ public:
 	void handleEvent(IO::Request* request, Event event) override;
 };
 
-} // namespace Custom
-} // namespace IO
+} // namespace IO::Custom

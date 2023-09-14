@@ -20,9 +20,7 @@
 #include <IO/Modbus/Debug.h>
 #include <stringconversion.h>
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 static constexpr int numberBase = HEX;
 
@@ -328,5 +326,4 @@ size_t printResponse(Print& p, const ADU& adu)
 	return n;
 }
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

@@ -23,9 +23,7 @@
 #include <IO/Modbus/GenericRequest.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 const Device::Factory Device::factory;
 Device::TransferCallback Device::transferCallback;
@@ -170,5 +168,4 @@ ErrorCode Device::readResponse(Request* request)
 	return err;
 }
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

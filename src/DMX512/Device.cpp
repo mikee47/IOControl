@@ -24,9 +24,7 @@
 #include <IO/RS485/Controller.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace DMX512
+namespace IO::DMX512
 {
 const Device::Factory Device::factory;
 SimpleTimer Device::timer;
@@ -287,5 +285,4 @@ ErrorCode Device::execute(Request& request)
 	return err;
 }
 
-} // namespace DMX512
-} // namespace IO
+} // namespace IO::DMX512

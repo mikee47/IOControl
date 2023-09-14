@@ -24,9 +24,7 @@
 #include "../Request.h"
 #include "Device.h"
 
-namespace IO
-{
-namespace DMX512
+namespace IO::DMX512
 {
 class Request : public IO::Request
 {
@@ -69,5 +67,4 @@ private:
 	DevNode devNode{};
 };
 
-} // namespace DMX512
-} // namespace IO
+} // namespace IO::DMX512

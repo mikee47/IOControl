@@ -48,9 +48,7 @@ uint16_t crc16_update(uint16_t crc, const void* data, size_t count)
 
 } // namespace
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 size_t ADU::prepareRequest()
 {
@@ -130,5 +128,4 @@ ErrorCode ADU::parsePacket(size_t receivedSize, size_t pduSize)
 	return Error::success;
 }
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

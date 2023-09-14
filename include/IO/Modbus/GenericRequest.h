@@ -21,9 +21,7 @@
 
 #include "Request.h"
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 class GenericRequest : public Request
 {
@@ -43,5 +41,4 @@ public:
 	std::unique_ptr<PDU> pdu;
 };
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

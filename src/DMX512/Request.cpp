@@ -23,9 +23,7 @@
 #include <IO/Strings.h>
 #include <SimpleTimer.h>
 
-namespace IO
-{
-namespace DMX512
+namespace IO::DMX512
 {
 /*
  * We don't need to use the queue as requests do not perform any I/O.
@@ -87,5 +85,4 @@ bool Request::setNode(DevNode node)
 	return true;
 }
 
-} // namespace DMX512
-} // namespace IO
+} // namespace IO::DMX512

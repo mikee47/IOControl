@@ -19,9 +19,7 @@
 
 #include <IO/Modbus/PDU.h>
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 namespace
 {
@@ -192,5 +190,4 @@ void PDU::swapResponseByteOrder()
 	}
 }
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

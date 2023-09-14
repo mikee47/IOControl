@@ -28,7 +28,7 @@ Address
 Node
   Represents something a slave device does. Modbus relay boards have one node for each output it controls.
 Node ID
-  The channel a node lives on. For the R421Axx relay boards this is the address or channel number.
+  The channel a node lives on.
   In a modbus transaction this is the address field.
 
 

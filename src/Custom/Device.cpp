@@ -21,9 +21,7 @@
 #include <IO/Custom/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Custom
+namespace IO::Custom
 {
 IO::Request* Device::createRequest()
 {
@@ -47,5 +45,4 @@ void Device::getRequestJson(const Request& request, JsonObject json) const
 	}
 }
 
-} // namespace Custom
-} // namespace IO
+} // namespace IO::Custom

@@ -21,9 +21,7 @@
 
 #include <WString.h>
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 // Modbus function codes
 #define MODBUS_FUNCTION_MAP(XX)                                                                                        \
@@ -50,7 +48,6 @@ enum class Function {
 #undef XX
 };
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus
 
 String toString(IO::Modbus::Function function);

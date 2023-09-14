@@ -20,11 +20,7 @@
 #include <IO/Modbus/R421A/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace R421A
+namespace IO::Modbus::R421A
 {
 enum r421a_command_t {
 	r421_query = 0x00,
@@ -238,6 +234,4 @@ void Request::getJson(JsonObject json) const
 	}
 }
 
-} // namespace R421A
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::R421A

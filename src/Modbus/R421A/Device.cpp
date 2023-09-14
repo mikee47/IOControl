@@ -23,11 +23,7 @@
 #include <IO/Modbus/R421A/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace R421A
+namespace IO::Modbus::R421A
 {
 const Device::Factory Device::factory;
 
@@ -103,6 +99,4 @@ DevNode::States Device::getNodeStates(DevNode node) const
 	return states.channelStates[node.id] ? DevNode::State::on : DevNode::State::off;
 }
 
-} // namespace R421A
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::R421A

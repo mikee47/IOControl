@@ -22,11 +22,7 @@
 #include "../Request.h"
 #include "Device.h"
 
-namespace IO
-{
-namespace Modbus
-{
-namespace NT18B07
+namespace IO::Modbus::NT18B07
 {
 class Request : public Modbus::Request
 {
@@ -46,6 +42,4 @@ public:
 	ErrorCode callback(PDU& pdu) override;
 };
 
-} // namespace NT18B07
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::NT18B07

@@ -22,9 +22,7 @@
 #include "../RS485/Device.h"
 #include "ADU.h"
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 class Request;
 
@@ -93,5 +91,4 @@ private:
 	Function requestFunction{};
 };
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

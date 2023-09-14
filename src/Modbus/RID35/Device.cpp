@@ -24,11 +24,7 @@
 #include <IO/Strings.h>
 #include <FlashString/Array.hpp>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace RID35
+namespace IO::Modbus::RID35
 {
 namespace
 {
@@ -133,9 +129,7 @@ void Device::getValues(JsonObject json) const
 	}
 }
 
-} // namespace RID35
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::RID35
 
 String toString(IO::Modbus::RID35::Register reg)
 {

@@ -24,9 +24,7 @@
 #include "../RS485/Device.h"
 #include <Data/Range.h>
 
-namespace IO
-{
-namespace DMX512
+namespace IO::DMX512
 {
 class Request;
 
@@ -202,5 +200,4 @@ private:
 	static bool updating;				  ///< Currently sending update
 };
 
-} // namespace DMX512
-} // namespace IO
+} // namespace IO::DMX512

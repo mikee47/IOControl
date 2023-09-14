@@ -23,9 +23,7 @@
 #include "../Serial.h"
 #include <SimpleTimer.h>
 
-namespace IO
-{
-namespace RS485
+namespace IO::RS485
 {
 DECLARE_FSTR(CONTROLLER_CLASSNAME)
 
@@ -123,5 +121,4 @@ private:
 	Serial::Config savedConfig{};
 };
 
-} // namespace RS485
-} // namespace IO
+} // namespace IO::RS485

@@ -19,9 +19,7 @@
 
 #include <IO/Custom/Controller.h>
 
-namespace IO
-{
-namespace Custom
+namespace IO::Custom
 {
 DEFINE_FSTR(CONTROLLER_CLASSNAME, "custom")
 
@@ -30,5 +28,4 @@ void Controller::handleEvent(IO::Request* request, Event event)
 	IO::Controller::handleEvent(request, event);
 }
 
-} // namespace Custom
-} // namespace IO
+} // namespace IO::Custom

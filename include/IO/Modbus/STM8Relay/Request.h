@@ -22,11 +22,7 @@
 #include "../Request.h"
 #include "Device.h"
 
-namespace IO
-{
-namespace Modbus
-{
-namespace STM8Relay
+namespace IO::Modbus::STM8Relay
 {
 class Request : public Modbus::Request
 {
@@ -103,6 +99,4 @@ private:
 	StateMask response{};
 };
 
-} // namespace STM8Relay
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::STM8Relay

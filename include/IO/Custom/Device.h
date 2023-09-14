@@ -22,9 +22,7 @@
 #include <IO/Device.h>
 #include "Controller.h"
 
-namespace IO
-{
-namespace Custom
+namespace IO::Custom
 {
 class Request;
 
@@ -70,5 +68,4 @@ private:
 	uint32_t param2{0};
 };
 
-} // namespace Custom
-} // namespace IO
+} // namespace IO::Custom

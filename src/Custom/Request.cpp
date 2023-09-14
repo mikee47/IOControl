@@ -21,9 +21,7 @@
 #include <IO/Custom/Device.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Custom
+namespace IO::Custom
 {
 void Request::submit()
 {
@@ -57,5 +55,4 @@ void Request::getJson(JsonObject json) const
 	dev.getRequestJson(*this, json);
 }
 
-} // namespace Custom
-} // namespace IO
+} // namespace IO::Custom

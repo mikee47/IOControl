@@ -28,11 +28,7 @@
 
 #include "../Device.h"
 
-namespace IO
-{
-namespace Modbus
-{
-namespace NT18B07
+namespace IO::Modbus::NT18B07
 {
 const size_t channelCount{7};
 using TempData = int16_t[channelCount];
@@ -108,6 +104,4 @@ private:
 	Config::CompArray comp;
 };
 
-} // namespace NT18B07
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::NT18B07

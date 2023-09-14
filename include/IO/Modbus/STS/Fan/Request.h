@@ -23,13 +23,7 @@
 #include "Device.h"
 #include <Data/Range.h>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace STS
-{
-namespace Fan
+namespace IO::Modbus::STS::Fan
 {
 class Request : public Modbus::Request
 {
@@ -66,7 +60,4 @@ private:
 	DevNode node;
 };
 
-} // namespace Fan
-} // namespace STS
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::STS::Fan

@@ -22,9 +22,7 @@
 #include "Exception.h"
 #include "Function.h"
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 #define ATTR_PACKED __attribute__((aligned(1), packed))
 
@@ -464,5 +462,4 @@ private:
 
 static_assert(offsetof(PDU, data) == 1, "PDU alignment error");
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

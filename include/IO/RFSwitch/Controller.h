@@ -22,9 +22,7 @@
 #include <IO/Controller.h>
 #include <HardwareTimer.h>
 
-namespace IO
-{
-namespace RFSwitch
+namespace IO::RFSwitch
 {
 DECLARE_FSTR(CONTROLLER_CLASSNAME)
 
@@ -85,5 +83,4 @@ private:
 	static volatile TransmitState transmitState;
 };
 
-} // namespace RFSwitch
-} // namespace IO
+} // namespace IO::RFSwitch

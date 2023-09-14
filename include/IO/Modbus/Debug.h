@@ -22,9 +22,7 @@
 #include "ADU.h"
 #include <Print.h>
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 /**
  * @name Debug print support, outputs contents of packet
@@ -37,5 +35,4 @@ size_t printResponse(Print& p, const PDU& pdu);
 size_t printResponse(Print& p, const ADU& adu);
 /** @} */
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

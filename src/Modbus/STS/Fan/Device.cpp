@@ -21,13 +21,7 @@
 #include <IO/Modbus/STS/Fan/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace STS
-{
-namespace Fan
+namespace IO::Modbus::STS::Fan
 {
 const Device::Factory Device::factory;
 
@@ -46,7 +40,4 @@ void Device::getValues(JsonObject json) const
 	}
 }
 
-} // namespace Fan
-} // namespace STS
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::STS::Fan

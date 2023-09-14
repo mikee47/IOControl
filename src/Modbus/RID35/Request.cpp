@@ -20,11 +20,7 @@
 #include <IO/Modbus/RID35/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace RID35
+namespace IO::Modbus::RID35
 {
 Function Request::fillRequestData(PDU::Data& data)
 {
@@ -95,6 +91,4 @@ void Request::getJson(JsonObject json) const
 	getDevice().getValues(json.createNestedObject(FS_value));
 }
 
-} // namespace RID35
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::RID35

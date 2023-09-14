@@ -33,9 +33,7 @@
 #include <IO/Modbus/Slave.h>
 #include <IO/RS485/Controller.h>
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 ErrorCode readRequest(RS485::Controller& controller, ADU& adu)
 {
@@ -61,5 +59,4 @@ void sendResponse(RS485::Controller& controller, ADU& adu)
 	controller.send(adu.buffer, aduSize);
 }
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

@@ -24,13 +24,7 @@
 
 #include "../../Device.h"
 
-namespace IO
-{
-namespace Modbus
-{
-namespace STS
-{
-namespace Fan
+namespace IO::Modbus::STS::Fan
 {
 const size_t channelCount{3};
 
@@ -77,7 +71,4 @@ protected:
 	FanData data{};
 };
 
-} // namespace Fan
-} // namespace STS
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::STS::Fan

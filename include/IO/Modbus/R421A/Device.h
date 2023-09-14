@@ -42,11 +42,7 @@
 
 #include "../Device.h"
 
-namespace IO
-{
-namespace Modbus
-{
-namespace R421A
+namespace IO::Modbus::R421A
 {
 /**
  * @brief Tracks state of multiple relays
@@ -125,6 +121,4 @@ private:
 	uint8_t channelCount{0};
 };
 
-} // namespace R421A
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::R421A

@@ -22,9 +22,7 @@
 #include "PDU.h"
 #include "../Error.h"
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 // Buffer to construct RTU requests and process responses
 struct ADU {
@@ -67,5 +65,4 @@ private:
 
 static_assert(offsetof(ADU, pdu) == 1, "ADU alignment error");
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

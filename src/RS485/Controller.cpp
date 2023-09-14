@@ -27,9 +27,7 @@
 #define USE_TXDONE_INTR
 #endif
 
-namespace IO
-{
-namespace RS485
+namespace IO::RS485
 {
 // Device configuration
 DEFINE_FSTR(CONTROLLER_CLASSNAME, "rs485")
@@ -171,5 +169,4 @@ void Controller::send(const void* data, size_t size)
 	debug_d("MB: Sent %u bytes...", size);
 }
 
-} // namespace RS485
-} // namespace IO
+} // namespace IO::RS485

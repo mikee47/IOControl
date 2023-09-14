@@ -21,11 +21,7 @@
 #include <IO/Modbus/NT18B07/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace NT18B07
+namespace IO::Modbus::NT18B07
 {
 const Device::Factory Device::factory;
 
@@ -101,6 +97,4 @@ void Device::getValues(JsonArray json) const
 	}
 }
 
-} // namespace NT18B07
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::NT18B07

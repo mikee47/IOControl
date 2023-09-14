@@ -21,9 +21,7 @@
 #include <IO/RFSwitch/Device.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace RFSwitch
+namespace IO::RFSwitch
 {
 void Request::send(uint32_t code, uint8_t repeats)
 {
@@ -59,5 +57,4 @@ void Request::getJson(JsonObject json) const
 	json[FS_code] = String(code, HEX);
 }
 
-} // namespace RFSwitch
-} // namespace IO
+} // namespace IO::RFSwitch

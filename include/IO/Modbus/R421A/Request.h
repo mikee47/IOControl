@@ -24,11 +24,7 @@
 #include "../Request.h"
 #include "Device.h"
 
-namespace IO
-{
-namespace Modbus
-{
-namespace R421A
+namespace IO::Modbus::R421A
 {
 class Request : public Modbus::Request
 {
@@ -105,6 +101,4 @@ private:
 	StateMask response{};
 };
 
-} // namespace R421A
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::R421A

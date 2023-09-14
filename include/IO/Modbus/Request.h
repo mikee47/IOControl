@@ -25,9 +25,7 @@
 #include "Device.h"
 #include "PDU.h"
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 class Request : public IO::Request
 {
@@ -65,5 +63,4 @@ public:
 	virtual ErrorCode callback(PDU& pdu) = 0;
 };
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

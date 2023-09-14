@@ -20,9 +20,7 @@
 #include <IO/RFSwitch/Controller.h>
 #include <IO/RFSwitch/Request.h>
 
-namespace IO
-{
-namespace RFSwitch
+namespace IO::RFSwitch
 {
 DEFINE_FSTR(CONTROLLER_CLASSNAME, "rfswitch")
 
@@ -198,5 +196,4 @@ bool Controller::execute(IO::Request& request)
 	return true;
 }
 
-} // namespace RFSwitch
-} // namespace IO
+} // namespace IO::RFSwitch

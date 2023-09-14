@@ -20,9 +20,7 @@
 #include <IO/RFSwitch/Device.h>
 #include <IO/RFSwitch/Request.h>
 
-namespace IO
-{
-namespace RFSwitch
+namespace IO::RFSwitch
 {
 DEFINE_FSTR_LOCAL(ATTR_TIMING, "timing")
 DEFINE_FSTR_LOCAL(ATTR_STARTH, "starth")
@@ -76,5 +74,4 @@ IO::Request* Device::createRequest()
 	return new Request(*this);
 }
 
-} // namespace RFSwitch
-} // namespace IO
+} // namespace IO::RFSwitch

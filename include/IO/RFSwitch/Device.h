@@ -22,9 +22,7 @@
 #include <IO/Device.h>
 #include "Controller.h"
 
-namespace IO
-{
-namespace RFSwitch
+namespace IO::RFSwitch
 {
 DECLARE_FSTR(ATTR_REPEATS)
 
@@ -107,5 +105,4 @@ protected:
 	uint8_t repeats; ///< Number of times to repeat code
 };
 
-} // namespace RFSwitch
-} // namespace IO
+} // namespace IO::RFSwitch

@@ -32,11 +32,7 @@
 
 #include "../Device.h"
 
-namespace IO
-{
-namespace Modbus
-{
-namespace STM8Relay
+namespace IO::Modbus::STM8Relay
 {
 /**
  * @brief Tracks state of multiple relays
@@ -113,6 +109,4 @@ private:
 	uint8_t channelCount{0};
 };
 
-} // namespace STM8Relay
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::STM8Relay

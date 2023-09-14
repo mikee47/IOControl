@@ -24,9 +24,7 @@
 #include <IO/Request.h>
 #include "Device.h"
 
-namespace IO
-{
-namespace Custom
+namespace IO::Custom
 {
 class Request : public IO::Request
 {
@@ -73,5 +71,4 @@ private:
 	int value{0};
 };
 
-} // namespace Custom
-} // namespace IO
+} // namespace IO::Custom

@@ -21,11 +21,7 @@
 #include <IO/Modbus/STM8Relay/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace STM8Relay
+namespace IO::Modbus::STM8Relay
 {
 const Device::Factory Device::factory;
 
@@ -101,6 +97,4 @@ DevNode::States Device::getNodeStates(DevNode node) const
 	return states.channelStates[node.id] ? DevNode::State::on : DevNode::State::off;
 }
 
-} // namespace STM8Relay
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::STM8Relay

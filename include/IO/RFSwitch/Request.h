@@ -24,9 +24,7 @@
 #include <IO/Request.h>
 #include "Device.h"
 
-namespace IO
-{
-namespace RFSwitch
+namespace IO::RFSwitch
 {
 class Request : public IO::Request
 {
@@ -81,5 +79,4 @@ private:
 	uint8_t repeats{0};
 };
 
-} // namespace RFSwitch
-} // namespace IO
+} // namespace IO::RFSwitch

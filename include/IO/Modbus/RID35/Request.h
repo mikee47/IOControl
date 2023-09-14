@@ -24,11 +24,7 @@
 #include "../Request.h"
 #include "Device.h"
 
-namespace IO
-{
-namespace Modbus
-{
-namespace RID35
+namespace IO::Modbus::RID35
 {
 class Request : public Modbus::Request
 {
@@ -52,6 +48,4 @@ private:
 	uint8_t regCount{0};
 };
 
-} // namespace RID35
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::RID35

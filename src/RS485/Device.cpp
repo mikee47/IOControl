@@ -23,9 +23,7 @@
 #include <IO/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace RS485
+namespace IO::RS485
 {
 ErrorCode Device::init(const Config& config)
 {
@@ -83,5 +81,4 @@ void Device::handleEvent(IO::Request* request, Event event)
 	IO::Device::handleEvent(request, event);
 }
 
-} // namespace RS485
-} // namespace IO
+} // namespace IO::RS485

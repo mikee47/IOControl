@@ -22,9 +22,7 @@
 #include <debug_progmem.h>
 #include <Data/HexString.h>
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 namespace
 {
@@ -203,5 +201,4 @@ void GenericRequest::getJson(JsonObject json) const
 	}
 }
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus

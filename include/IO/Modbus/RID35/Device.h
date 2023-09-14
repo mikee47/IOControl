@@ -59,11 +59,7 @@
 	XX(155, ExportKvarh, KVARH)                                                                                        \
 	XX(156, Kvah, KVAH)
 
-namespace IO
-{
-namespace Modbus
-{
-namespace RID35
+namespace IO::Modbus::RID35
 {
 enum class Unit {
 	NONE,
@@ -127,8 +123,6 @@ private:
 	bool regValid{false};
 };
 
-} // namespace RID35
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::RID35
 
 String toString(IO::Modbus::RID35::Register reg);

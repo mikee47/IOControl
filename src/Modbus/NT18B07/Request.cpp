@@ -20,11 +20,7 @@
 #include <IO/Modbus/NT18B07/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace NT18B07
+namespace IO::Modbus::NT18B07
 {
 Function Request::fillRequestData(PDU::Data& data)
 {
@@ -65,6 +61,4 @@ void Request::getJson(JsonObject json) const
 	getDevice().getValues(json.createNestedArray(FS_value));
 }
 
-} // namespace NT18B07
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::NT18B07

@@ -22,9 +22,7 @@
 #include "../Device.h"
 #include "Controller.h"
 
-namespace IO
-{
-namespace RS485
+namespace IO::RS485
 {
 constexpr unsigned DEFAULT_BAUDRATE = 9600;
 constexpr unsigned DEFAULT_TIMEOUT = 800;
@@ -125,5 +123,4 @@ private:
 	Config::Slave slaveConfig;
 };
 
-} // namespace RS485
-} // namespace IO
+} // namespace IO::RS485

@@ -20,13 +20,7 @@
 #include <IO/Modbus/STS/Fan/Request.h>
 #include <IO/Strings.h>
 
-namespace IO
-{
-namespace Modbus
-{
-namespace STS
-{
-namespace Fan
+namespace IO::Modbus::STS::Fan
 {
 Function Request::fillRequestData(PDU::Data& data)
 {
@@ -111,7 +105,4 @@ void Request::getJson(JsonObject json) const
 	getDevice().getValues(json);
 }
 
-} // namespace Fan
-} // namespace STS
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus::STS::Fan

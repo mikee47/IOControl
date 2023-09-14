@@ -22,12 +22,9 @@
 #include "../RS485/Controller.h"
 #include "ADU.h"
 
-namespace IO
-{
-namespace Modbus
+namespace IO::Modbus
 {
 ErrorCode readRequest(RS485::Controller& controller, ADU& adu);
 void sendResponse(RS485::Controller& controller, ADU& adu);
 
-} // namespace Modbus
-} // namespace IO
+} // namespace IO::Modbus
