@@ -56,9 +56,8 @@ void Device::handleEvent(IO::Request* request, Event event)
 		ErrorCode err = execute(req);
 		if(err != Error::pending) {
 			request->complete(err);
-			return;
 		}
-		break;
+		return;
 	}
 
 	case Event::ReceiveComplete: {
