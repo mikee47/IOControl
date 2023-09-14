@@ -86,6 +86,11 @@ public:
 	ErrorCode init(const Config& config);
 	ErrorCode init(JsonObjectConst config) override;
 
+	const DeviceType type() const override
+	{
+		return DeviceType::RS485;
+	}
+
 	Controller& getController()
 	{
 		return static_cast<Controller&>(controller);

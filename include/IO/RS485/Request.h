@@ -1,5 +1,5 @@
 /**
- * DeviceType.h
+ * RS485/Request.h
  *
  * Copyright 2022 mikee47 <mike@sillyhouse.net>
  *
@@ -19,13 +19,11 @@
 
 #pragma once
 
-namespace IO
+#include "../Device.h"
+#include "Controller.h"
+
+namespace IO::RS485
 {
-enum class DeviceType {
-	RS485,
-	Modbus,
-	DMX512,
-	RFSwitch,
-	Custom,
-};
-}
+using Request = IO::Request;
+
+} // namespace IO::RS485
