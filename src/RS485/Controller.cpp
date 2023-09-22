@@ -18,7 +18,7 @@
  ****/
 
 #include <IO/RS485/Device.h>
-#include <IO/Request.h>
+#include <IO/RS485/Request.h>
 #include "Platform/System.h"
 #include <driver/uart.h>
 
@@ -95,7 +95,7 @@ void IRAM_ATTR Controller::uartCallback(uint32_t status)
 	}
 }
 
-void Controller::handleEvent(Request* request, Event event)
+void Controller::handleEvent(IO::Request* request, Event event)
 {
 	switch(event) {
 	case Event::Execute: {

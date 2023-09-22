@@ -19,11 +19,22 @@
 
 #pragma once
 
-#include "../Device.h"
+#include "Device.h"
 #include "Controller.h"
 
 namespace IO::RS485
 {
-using Request = IO::Request;
+class Request : public IO::Request
+{
+public:
+	Request(Device& device) : IO::Request(device)
+	{
+	}
+
+	Device& getDevice() const
+	{
+		return static_cast<Device&>(device);
+	}
+};
 
 } // namespace IO::RS485

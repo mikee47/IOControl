@@ -21,16 +21,16 @@
 
 #pragma once
 
-#include "../Request.h"
+#include "../RS485/Request.h"
 #include "Device.h"
 #include "PDU.h"
 
 namespace IO::Modbus
 {
-class Request : public IO::Request
+class Request : public RS485::Request
 {
 public:
-	Request(Device& device) : IO::Request(device)
+	Request(Device& device) : RS485::Request(device)
 	{
 	}
 

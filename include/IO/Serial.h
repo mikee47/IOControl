@@ -73,6 +73,11 @@ public:
 		smg_uart_set_break(uart, state);
 	}
 
+	size_t available() const
+	{
+		return smg_uart_rx_available(uart);
+	}
+
 	size_t read(void* buffer, size_t size)
 	{
 		return smg_uart_read(uart, buffer, size);
