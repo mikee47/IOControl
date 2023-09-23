@@ -35,6 +35,11 @@ public:
 	struct Config {
 		uint32_t baudrate;
 		smg_uart_format_t format;
+
+		bool operator==(const Config& other) const
+		{
+			return baudrate == other.baudrate && format == other.format;
+		}
 	};
 
 	virtual ~Serial()

@@ -87,8 +87,12 @@ bool Serial::resizeBuffers(size_t rxSize, size_t txSize)
 
 void Serial::setConfig(const Config& cfg)
 {
+	if(activeConfig == cfg) {
+		return;
+	}
 	smg_uart_set_format(uart, cfg.format);
 	smg_uart_set_baudrate(uart, cfg.baudrate);
+	activeConfig  = cfg;
 }
 
 } // namespace IO
