@@ -30,7 +30,7 @@ namespace IO
 struct DevNode {
 	using List = std::vector<DevNode>;
 	using ID = uint16_t;
-	ID id;
+	ID id{};
 
 	// For a normal on/off output node
 	enum class State {

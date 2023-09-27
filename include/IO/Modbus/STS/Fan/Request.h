@@ -56,7 +56,7 @@ public:
 
 private:
 	uint8_t index{0};
-	uint8_t value;
+	uint8_t value{};
 	DevNode node;
 };
 
