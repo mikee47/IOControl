@@ -57,6 +57,14 @@ void IRAM_ATTR Controller::uartCallbackStatic(smg_uart_t* uart, uint32_t status)
 	}
 }
 
+void Controller::staticTransmitComplete(void* param)
+{
+	auto ctrl = static_cast<Controller*>(param);
+	if(ctrl->request && ctrl->flags[Flag::transmit_complete]) {
+		ctrl->request->handleEvent(Event::TransmitComplete);
+	}
+}
+
 void IRAM_ATTR Controller::uartCallback(uint32_t status)
 {
 #ifdef USE_TXDONE_INTR
@@ -67,32 +75,26 @@ void IRAM_ATTR Controller::uartCallback(uint32_t status)
 		setDirection(request == nullptr ? Direction::Idle : Direction::Incoming);
 		status = 0;
 		// Guard against timeout firing before this callback
-		if(request != nullptr && transmitCompleteRequest == nullptr) {
-			transmitCompleteRequest = request;
-			System.queueCallback(
-				[](void* param) {
-					auto ctrl = static_cast<Controller*>(param);
-					if(ctrl->transmitCompleteRequest != nullptr) {
-						ctrl->transmitCompleteRequest->handleEvent(Event::TransmitComplete);
-					}
-				},
-				this);
+		if(request != nullptr && !flags[Flag::transmit_complete]) {
+			flags += Flag::transmit_complete;
+			System.queueCallback(staticTransmitComplete, this);
 		}
 		resetTransactionTime();
 	}
 
 	// Rx FIFO full or timeout
 	if(status & (UART_STATUS_RXFIFO_FULL | UART_STATUS_RXFIFO_TOUT)) {
-		timer.stop();
-		setDirection(Direction::Idle);
-		System.queueCallback(
-			[](void* param) {
-				auto ctrl = static_cast<Controller*>(param);
-				ctrl->receiveComplete();
-			},
-			this);
+		flags += Flag::data_received;
+		// Allow more time, there could be more data inbound
+		timer.startOnce();
 		resetTransactionTime();
 	}
+}
+
+void Controller::staticTimerHandler(void* param)
+{
+	auto ctrl = static_cast<Controller*>(param);
+	ctrl->timerHandler();
 }
 
 void Controller::handleEvent(IO::Request* request, Event event)
@@ -100,17 +102,10 @@ void Controller::handleEvent(IO::Request* request, Event event)
 	switch(event) {
 	case Event::Execute: {
 		this->request = request;
-		transmitCompleteRequest = nullptr;
+		flags = 0;
 		auto& device = static_cast<const Device&>(request->device);
 		// Put a timeout on the overall transaction
-		timer.initializeMs(
-			device.timeout(),
-			[](void* param) {
-				auto ctrl = static_cast<Controller*>(param);
-				ctrl->transmitCompleteRequest = nullptr;
-				ctrl->request->handleEvent(Event::Timeout);
-			},
-			this);
+		timer.initializeMs(device.timeout(), staticTimerHandler, this);
 		timer.startOnce();
 		savedConfig = serial.getConfig();
 		break;
@@ -141,14 +136,20 @@ void Controller::handleEvent(IO::Request* request, Event event)
 	IO::Controller::handleEvent(request, event);
 }
 
-void Controller::receiveComplete()
+void Controller::timerHandler()
 {
-	transmitCompleteRequest = nullptr;
-	if(request == nullptr) {
-		handleIncomingRequest();
-	} else {
-		request->handleEvent(Event::ReceiveComplete);
+	if(flags[Flag::data_received]) {
+		flags = 0;
+		if(request == nullptr) {
+			handleIncomingRequest();
+		} else {
+			request->handleEvent(Event::ReceiveComplete);
+		}
+		return;
 	}
+
+	flags = 0;
+	request->handleEvent(Event::Timeout);
 }
 
 void Controller::send(const void* data, size_t size)

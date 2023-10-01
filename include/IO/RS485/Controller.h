@@ -22,6 +22,7 @@
 #include "../Controller.h"
 #include "../Serial.h"
 #include <SimpleTimer.h>
+#include <Data/BitSet.h>
 
 namespace IO::RS485
 {
@@ -107,15 +108,22 @@ protected:
 
 private:
 	static void uartCallbackStatic(smg_uart_t* uart, uint32_t status);
+	static void staticTransmitComplete(void* param);
+	static void staticTimerHandler(void* param);
 	void uartCallback(uint32_t status);
-	void receiveComplete();
+	void timerHandler();
+
+	enum class Flag {
+		transmit_complete,
+		data_received,
+	};
 
 private:
 	Serial& serial;
 	SetDirectionCallback setDirectionCallback{nullptr};
-	Request* request{nullptr};				   ///< Current outgoing request (if any)
-	Request* transmitCompleteRequest{nullptr}; ///< Captured request for transmit complete callback
-	uint8_t segment{0};						   ///< Active bus segment
+	Request* request{nullptr}; ///< Current outgoing request (if any)
+	BitSet<uint8_t, Flag, 2> flags;
+	uint8_t segment{0}; ///< Active bus segment
 	OnRequestDelegate requestCallback;
 	SimpleTimer timer; ///< Use to schedule callback and timeout
 	Serial::Config savedConfig{};
