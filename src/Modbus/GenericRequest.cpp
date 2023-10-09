@@ -153,7 +153,17 @@ ErrorCode GenericRequest::parseJson(JsonObjectConst json)
 		if(numValues != 0) {
 			values.reset(new uint16_t[numValues]);
 			readValues(valptr, values.get());
-			debug_hex(INFO, "VALUE", values.get(), numValues);
+#if DEBUG_VERBOSE_LEVEL >= INFO
+			String s;
+			for(unsigned i = 0; i < numValues; ++i) {
+				if(s) {
+					s += ' ';
+				}
+				s += "0x";
+				s += String(values[i], HEX, 4);
+			}
+			debug_i("VALUE: %s", s.c_str());
+#endif
 			count = numValues;
 		}
 	}
