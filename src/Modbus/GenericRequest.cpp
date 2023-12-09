@@ -51,6 +51,29 @@ Function GenericRequest::fillRequestData(PDU::Data& data)
 		return function;
 	}
 
+	case Function::WriteSingleCoil: {
+		if(!values) {
+			return Function::None;
+		}
+		auto& req = data.writeSingleCoil.request;
+		req.outputAddress = address;
+		req.outputValue = values[0] ? req.State::state_on : req.State::state_off;
+		return function;
+	}
+
+	case Function::WriteMultipleCoils: {
+		if(!values) {
+			return Function::None;
+		}
+		auto& req = data.writeMultipleCoils.request;
+		req.startAddress = address;
+		req.setCount(count);
+		for(unsigned i = 0; i < count; ++i) {
+			req.setCoil(i, values[i]);
+		}
+		return function;
+	}
+
 	case Function::WriteSingleRegister: {
 		if(!values) {
 			return Function::None;
