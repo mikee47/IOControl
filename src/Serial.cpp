@@ -92,7 +92,7 @@ void Serial::setConfig(const Config& cfg)
 	}
 	smg_uart_set_format(uart, cfg.format);
 	smg_uart_set_baudrate(uart, cfg.baudrate);
-	activeConfig  = cfg;
+	activeConfig = cfg;
 }
 
 } // namespace IO

@@ -79,7 +79,7 @@ Function GenericRequest::fillRequestData(PDU::Data& data)
 
 ErrorCode GenericRequest::callback(PDU& pdu)
 {
-	this->pdu.reset(new PDU{pdu});
+	this->pdu = std::make_unique<PDU>(pdu);
 
 	if(pdu.function() != function) {
 		return Error::bad_function;

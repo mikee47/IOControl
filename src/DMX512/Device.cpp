@@ -132,7 +132,7 @@ ErrorCode Device::init(const Config& config)
 		return err;
 	}
 	nodeCount = config.nodeCount ?: 1;
-	nodeData.reset(new NodeData[nodeCount]{});
+	nodeData = std::make_unique<NodeData[]>(nodeCount);
 
 	if(config.fade) {
 		for(unsigned i = 0; i < nodeCount; ++i) {
