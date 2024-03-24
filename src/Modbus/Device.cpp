@@ -28,7 +28,7 @@ namespace IO::Modbus
 const Device::Factory Device::factory;
 Device::TransferCallback Device::transferCallback;
 
-ErrorCode Device::init(const RS485::Device::Config& config)
+ErrorCode Device::init(const Config& config)
 {
 	auto& ctrl = static_cast<IO::RS485::Controller&>(controller);
 	if(!ctrl.getSerial().resizeBuffers(ADU::MaxSize, ADU::MaxSize)) {
@@ -36,7 +36,7 @@ ErrorCode Device::init(const RS485::Device::Config& config)
 		//		return Error::no_mem;
 	}
 
-	return IO::RS485::Device::init(config);
+	return RS485::Device::init(config);
 }
 
 IO::Request* Device::createRequest()

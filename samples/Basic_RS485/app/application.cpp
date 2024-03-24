@@ -211,6 +211,7 @@ void issueRequests()
 void systemReady()
 {
 	auto err = devmgrInit();
+	Serial << "devmgrInit(): " << IO::Error::toString(err) << endl;
 
 	/*
 	{

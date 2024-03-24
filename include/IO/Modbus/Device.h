@@ -50,8 +50,9 @@ public:
 	static const Factory factory;
 
 	using RS485::Device::Device;
+	using RS485::Device::init;
 
-	ErrorCode init(const RS485::Device::Config& config);
+	ErrorCode init(const Config& config);
 
 	const DeviceType type() const override
 	{
