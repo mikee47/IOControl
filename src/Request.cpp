@@ -129,7 +129,7 @@ void Request::complete(ErrorCode err)
 
 String Request::caption() const
 {
-	String s(uint32_t(this), HEX);
+	String s(uintptr_t(this), HEX);
 	s += " (";
 	s += device.caption();
 	s += '/';
