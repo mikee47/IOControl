@@ -26,8 +26,6 @@ namespace IO::Modbus
 {
 namespace
 {
-DEFINE_FSTR(FS_modbus, "modbus")
-
 constexpr uint16_t maxValueCount{20};
 
 } // namespace

@@ -213,7 +213,7 @@ public:
 	 *
 	 * Used to determine if, say, all nodes are ON, OFF or a combination.
 	 */
-	virtual DevNode::States getNodeStates(DevNode node) const
+	virtual DevNode::States getNodeStates(DevNode) const
 	{
 		return DevNode::States{};
 	}

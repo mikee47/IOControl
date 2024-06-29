@@ -54,7 +54,7 @@ public:
 
 	IO::Request* createRequest() override;
 
-	virtual int getNodeValue(IO::DevNode node) const
+	virtual int getNodeValue(IO::DevNode) const
 	{
 		return 0;
 	}

@@ -222,7 +222,7 @@ public:
 	/**
 	 * @brief If nodes are supported, implement this method
 	 */
-	virtual bool setNode(DevNode node)
+	virtual bool setNode(DevNode)
 	{
 		return false;
 	}
@@ -230,7 +230,7 @@ public:
 	/**
 	 * @brief If nodes support values, implement this method
 	 */
-	virtual bool setValue(int value)
+	virtual bool setValue(int)
 	{
 		return false;
 	}
@@ -238,7 +238,7 @@ public:
 	/**
 	 * @brief Query node status from response
 	 */
-	virtual DevNode::States getNodeStates(DevNode node)
+	virtual DevNode::States getNodeStates(DevNode)
 	{
 		return DevNode::State::unknown;
 	}

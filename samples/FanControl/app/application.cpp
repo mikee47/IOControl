@@ -145,7 +145,7 @@ void handleRS485Request(IO::RS485::Controller& controller)
 	sendResponse(controller, adu);
 }
 
-void IRAM_ATTR setSerialDirection(uint8_t segment, IO::Direction direction)
+void IRAM_ATTR setSerialDirection([[maybe_unused]] uint8_t segment, IO::Direction direction)
 {
 	digitalWrite(PIN_MBTXEN, direction == IO::Direction::Outgoing);
 	digitalWrite(PIN_MBRXEN, direction == IO::Direction::Outgoing);

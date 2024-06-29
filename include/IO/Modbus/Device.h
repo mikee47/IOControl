@@ -62,14 +62,14 @@ public:
 	/**
 	 * @brief Handle a broadcast message
 	 */
-	virtual void onBroadcast(const ADU& adu)
+	virtual void onBroadcast(const ADU&)
 	{
 	}
 
 	/**
 	 * @brief Handle a message specifically for this device
 	 */
-	virtual void onRequest(ADU& adu)
+	virtual void onRequest(ADU&)
 	{
 	}
 

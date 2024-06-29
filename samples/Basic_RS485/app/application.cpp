@@ -116,7 +116,7 @@ void handleRS485Request(IO::RS485::Controller& controller)
  * This can be fixed by adding a second MAX485 driver, even using the same serial port.
  * The direction lines can be multiplexed using two GPIO signals, managed via this callback.
  */
-void IRAM_ATTR setSerialDirection(uint8_t segment, IO::Direction direction)
+void IRAM_ATTR setSerialDirection([[maybe_unused]] uint8_t segment, IO::Direction direction)
 {
 	digitalWrite(MBPIN_TX_EN, direction == IO::Direction::Outgoing);
 }

@@ -41,7 +41,7 @@ public:
 
 	virtual Function fillRequestData(PDU::Data& data) = 0;
 
-	bool setNode(DevNode node) override
+	bool setNode(DevNode) override
 	{
 		return true;
 	}

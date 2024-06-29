@@ -164,9 +164,9 @@ void PDU::swapResponseByteOrder()
 	case Function::ReportServerId:
 		break;
 
-	case Function::ReadHoldingRegisters: {
+	case Function::ReadHoldingRegisters:
 	case Function::ReadInputRegisters:
-	case Function::ReadWriteMultipleRegisters:
+	case Function::ReadWriteMultipleRegisters: {
 		auto& req = data.readHoldingRegisters.response;
 		bswap(req.values, req.byteCount / 2);
 		break;

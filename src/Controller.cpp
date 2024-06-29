@@ -149,7 +149,7 @@ void Controller::stopDevices()
 /*
  * An error occurred on a device. Schedule a restart operation.
  */
-void Controller::deviceError(Device& device)
+void Controller::deviceError(Device&)
 {
 	checkDevices();
 }
