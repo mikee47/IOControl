@@ -111,9 +111,7 @@ public:
 	{
 	}
 
-	virtual ~Device()
-	{
-	}
+	virtual ~Device() = default;
 
 	virtual const DeviceType type() const = 0;
 

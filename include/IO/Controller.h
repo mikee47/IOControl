@@ -54,9 +54,7 @@ public:
 	{
 	}
 
-	virtual ~Controller()
-	{
-	}
+	virtual ~Controller() = default;
 
 	/**
 	 * @brief Register a device factory
