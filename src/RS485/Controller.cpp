@@ -34,6 +34,8 @@ DEFINE_FSTR(CONTROLLER_CLASSNAME, "rs485")
 
 void Controller::start()
 {
+	// Initialise timer using defaults so slave works
+	timer.initializeMs(DEFAULT_SLAVE_TIMEOUT, staticTimerHandler, this);
 	serial.setCallback(uartCallbackStatic, this);
 	request = nullptr;
 	IO::Controller::start();

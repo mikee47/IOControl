@@ -26,6 +26,7 @@ namespace IO::RS485
 {
 constexpr unsigned DEFAULT_BAUDRATE = 9600;
 constexpr unsigned DEFAULT_TIMEOUT = 800;
+constexpr unsigned DEFAULT_SLAVE_TIMEOUT = 50;
 
 /**
  * @brief Base device class for communicating with an RS485 slave
