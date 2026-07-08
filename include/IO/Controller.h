@@ -69,6 +69,14 @@ public:
 	}
 
 	/**
+	 * @brief Some controllers may have JSON configuration to apply
+	 */
+	virtual ErrorCode init(JsonObjectConst)
+	{
+		return Error::success;
+	}
+
+	/**
 	 * @brief Get the controller instance number
 	 */
 	uint8_t getInstance() const

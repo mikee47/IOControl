@@ -28,6 +28,7 @@ namespace IO
 	XX(command)                                                                                                        \
 	XX(function)                                                                                                       \
 	XX(name)                                                                                                           \
+	XX(controllers)                                                                                                    \
 	XX(device)                                                                                                         \
 	XX(devices)                                                                                                        \
 	XX(id)                                                                                                             \

@@ -42,6 +42,19 @@ ErrorCode DeviceManager::begin(JsonObjectConst config)
 		return err;
 	}
 
+	// Configure controllers
+	JsonObjectConst controllers = config[FS_controllers];
+	for(JsonPairConst jctrl : controllers) {
+		String ctrl = jctrl.key().c_str();
+		auto controller = findController(ctrl);
+		if(controller == nullptr) {
+			err = Error::bad_controller;
+			debug_err(err, ctrl);
+			continue;
+		}
+		controller->init(jctrl.value());
+	}
+
 	// Create devices
 	JsonObjectConst devices = config[FS_devices];
 	for(JsonPairConst dev : devices) {
