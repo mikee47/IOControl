@@ -211,6 +211,11 @@ void Controller::executeNext()
 		return;
 	}
 
+	if(req->device.getState() == Device::State::stopped) {
+		req->complete(Error::stopped);
+		return;
+	}
+
 	int interval = req->device.minTransactionInterval() - lastTransactionEnd.elapsedTime();
 	if(interval > 0) {
 		timer.initializeMs(
