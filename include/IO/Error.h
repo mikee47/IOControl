@@ -47,6 +47,7 @@ enum ErrorMax : ErrorCode {
 	XX(no_mem, "Out of memory")                                                                                        \
 	XX(busy, "Device or controller is busy")                                                                           \
 	XX(stopped, "Device is stopped")                                                                                   \
+	XX(offline, "Device is offline")                                                                                   \
 	XX(bad_config, "Configuration data invalid")                                                                       \
 	XX(file, "File Error")                                                                                             \
 	XX(bad_controller_class, "Wrong controller class specified for device")                                            \
