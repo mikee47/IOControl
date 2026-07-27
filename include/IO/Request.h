@@ -48,6 +48,8 @@ enum class Command {
 #undef XX
 };
 
+using Commands = BitSet<uint16_t, Command, 11>;
+
 } // namespace IO
 
 String toString(IO::Command cmd);

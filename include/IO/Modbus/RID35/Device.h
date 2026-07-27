@@ -118,6 +118,11 @@ public:
 	// values may be unaligned (from packed structure) so this avoids compiler errors
 	bool updateRegisters(const void* values, size_t count);
 
+	Commands getSupportedCommands() const override
+	{
+		return Command::query;
+	}
+
 private:
 	uint16_t regValues[registerCount]{};
 	bool regValid{false};

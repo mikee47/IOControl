@@ -207,6 +207,14 @@ public:
 	}
 
 	/**
+	 * @brief Return the supported set of commands for this device
+	 */
+	virtual Commands getSupportedCommands() const
+	{
+		return Command::query;
+	}
+
+	/**
 	 * @brief Return the current set of states for all nodes controlled by this device
 	 *
 	 * Used to determine if, say, all nodes are ON, OFF or a combination.

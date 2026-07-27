@@ -65,6 +65,11 @@ public:
 
 	void getValues(JsonObject json) const;
 
+	Commands getSupportedCommands() const override
+	{
+		return Command::query | Command::set;
+	}
+
 protected:
 	void parseJson(JsonObjectConst json, Config& cfg);
 

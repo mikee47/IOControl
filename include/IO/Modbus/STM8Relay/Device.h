@@ -95,6 +95,11 @@ public:
 		return node.id >= nodeIdMin() && node.id <= nodeIdMax();
 	}
 
+	Commands getSupportedCommands() const override
+	{
+		return Command::query | Command::on | Command::off | Command::toggle;
+	}
+
 	DevNode::States getNodeStates(DevNode node) const override;
 
 	void handleEvent(IO::Request* request, Event event) override;

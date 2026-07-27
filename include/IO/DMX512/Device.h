@@ -161,6 +161,11 @@ public:
 		return nodeCount;
 	}
 
+	Commands getSupportedCommands() const override
+	{
+		return Command::query | Command::on | Command::off | Command::adjust | Command::set;
+	}
+
 	const NodeData& getNodeData(uint8_t nodeId) const
 	{
 		assert(nodeId < nodeCount);

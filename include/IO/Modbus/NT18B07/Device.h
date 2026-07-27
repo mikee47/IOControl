@@ -97,6 +97,11 @@ public:
 		memcpy(this->values, values, std::min(count, channelCount) * sizeof(int16_t));
 	}
 
+	Commands getSupportedCommands() const override
+	{
+		return Command::query;
+	}
+
 private:
 	void parseJson(JsonObjectConst json, Config& cfg);
 

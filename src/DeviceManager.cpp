@@ -152,6 +152,25 @@ ErrorCode DeviceManager::createRequest(const String& devid, Request*& request)
 	return request ? Error::success : Error::no_mem;
 }
 
+void DeviceManager::getDeviceInfo(JsonObject json)
+{
+	auto jcommands = json.createNestedObject(F("commands"));
+	for(auto& controller : controllers) {
+		for(auto& device : controller.devices) {
+			auto arr = jcommands.createNestedArray(device.getId().c_str());
+			auto supportedCommands = device.getSupportedCommands();
+			for(unsigned i = 0; supportedCommands; ++i) {
+				auto cmd = Command(i);
+				if(!supportedCommands[cmd]) {
+					continue;
+				}
+				arr.add(toString(cmd));
+				supportedCommands -= cmd;
+			}
+		}
+	}
+}
+
 /*
  * May contain multiple commands so in turn multiple requests may be queued.
  *

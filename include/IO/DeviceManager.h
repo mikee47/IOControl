@@ -118,6 +118,12 @@ public:
 
 	ErrorCode handleMessage(JsonObject json, Request::Callback callback);
 
+	/**
+	 * @brief Retrieve information for all registered devices
+	 * Used by action manager.
+	 */
+	void getDeviceInfo(JsonObject json);
+
 private:
 	Controller::List controllers; ///< We don't own the controllers
 	Request::Callback requestCallback;
