@@ -26,6 +26,8 @@
 
 namespace IO
 {
+DECLARE_FSTR(FILE_DEVMGR)
+
 class Request;
 
 class DeviceManager
@@ -50,6 +52,7 @@ public:
 	/**
 	 * @brief Load device config and create device tree.
 	 */
+	ErrorCode begin();
 	ErrorCode begin(JsonObjectConst config);
 
 	ErrorCode end();

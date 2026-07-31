@@ -22,6 +22,8 @@
 
 namespace IO
 {
+DEFINE_FSTR(FILE_DEVMGR, "config/devmgr.json")
+
 DeviceManager devmgr;
 
 void DeviceManager::registerController(Controller& controller)
@@ -33,6 +35,15 @@ void DeviceManager::registerController(Controller& controller)
 	controller.id = id;
 	controllers.add(&controller);
 	debug_i("Controller '%s' registered", controller.getId().c_str());
+}
+
+ErrorCode DeviceManager::begin()
+{
+	DynamicJsonDocument config(2048);
+	if(!Json::loadFromFile(config, FILE_DEVMGR)) {
+		return IO::Error::no_config;
+	}
+	return begin(config.as<JsonObjectConst>());
 }
 
 ErrorCode DeviceManager::begin(JsonObjectConst config)
