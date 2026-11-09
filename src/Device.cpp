@@ -85,9 +85,10 @@ ErrorCode Device::start()
 		return Error::success;
 	}
 
+	state = State::starting;
+
 	req->setID(F("query"));
 	req->submit();
-	state = State::starting;
 
 	return Error::success;
 }
