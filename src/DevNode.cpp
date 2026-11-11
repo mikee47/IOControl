@@ -25,10 +25,6 @@ DevNode::State getState(DevNode::States states)
 {
 	using State = DevNode::State;
 
-	if(states.none()) {
-		return State::unknown;
-	}
-
 	if(states == State::on) {
 		return State::on;
 	}
@@ -37,7 +33,7 @@ DevNode::State getState(DevNode::States states)
 		return State::off;
 	}
 
-	return State::someon;
+	return states[State::on] ? State::someon : State::unknown;
 }
 
 }; // namespace IO
